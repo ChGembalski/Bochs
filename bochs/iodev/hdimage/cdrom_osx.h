@@ -21,6 +21,10 @@
 
 // Header file for low-level OS specific CDROM emulation
 
+#if !__is_identifier(IOMainPort) /* macOS >= 12.0 */
+#define IOMainPort IOMasterPort
+#endif
+
 class cdrom_osx_c : public cdrom_base_c {
 public:
   cdrom_osx_c(const char *dev) : cdrom_base_c(dev) {}

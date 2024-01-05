@@ -106,10 +106,10 @@ static kern_return_t FindEjectableCDMedia(io_iterator_t *mediaIterator,
 {
   kern_return_t kernResult;
   CFMutableDictionaryRef     classesToMatch;
-  kernResult = IOMasterPort(bootstrap_port, masterPort);
+  kernResult = IOMainPort(bootstrap_port, masterPort);
   if (kernResult != KERN_SUCCESS)
   {
-      fprintf (stderr, "IOMasterPort returned %d\n", kernResult);
+      fprintf (stderr, "IOMainPort returned %d\n", kernResult);
       return kernResult;
   }
   // CD media are instances of class kIOCDMediaClass.
@@ -193,8 +193,8 @@ static struct _CDTOC * ReadTOC(const char *devpath)
     devname = (const char *) devpath;
   }
 
-  if (IOMasterPort(bootstrap_port, &port) != KERN_SUCCESS) {
-    fprintf(stderr, "IOMasterPort failed\n");
+  if (IOMainPort(bootstrap_port, &port) != KERN_SUCCESS) {
+    fprintf(stderr, "IOMainPort failed\n");
     goto Exit;
   }
 
