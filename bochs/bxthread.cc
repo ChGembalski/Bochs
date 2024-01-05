@@ -82,6 +82,7 @@ bool BOCHSAPI_MSVCONLY bx_create_sem(bx_thread_sem_t *thread_sem)
 
     sem = &thread_sem->sem;
     *sem = dispatch_semaphore_create(0);
+    return true;
   #else
     int ret = sem_init(&thread_sem->sem, 0, 0);
     return ret == 0;
