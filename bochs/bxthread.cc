@@ -77,8 +77,15 @@ bool BOCHSAPI_MSVCONLY bx_create_sem(bx_thread_sem_t *thread_sem)
   thread_sem->sem = CreateSemaphore(NULL, 0, 1, NULL);
   return thread_sem->sem != NULL;
 #else
-  int ret = sem_init(&thread_sem->sem, 0, 0);
-  return ret == 0;
+  #ifdef __APPLE__
+    dispatch_semaphore_t *sem;
+
+    sem = &thread_sem->sem;
+    *sem = dispatch_semaphore_create(0);
+  #else
+    int ret = sem_init(&thread_sem->sem, 0, 0);
+    return ret == 0;
+  #endif
 #endif
 }
 
@@ -87,7 +94,11 @@ void BOCHSAPI_MSVCONLY bx_destroy_sem(bx_thread_sem_t *thread_sem)
 #if defined(WIN32)
   CloseHandle(thread_sem->sem);
 #else
-  sem_destroy(&thread_sem->sem);
+  #ifdef __APPLE__
+    // there is no destroy ???!!!
+  #else
+    sem_destroy(&thread_sem->sem);
+  #endif
 #endif
 }
 
@@ -96,7 +107,11 @@ void BOCHSAPI_MSVCONLY bx_wait_sem(bx_thread_sem_t *thread_sem)
 #if defined(WIN32)
   WaitForSingleObject(thread_sem->sem, INFINITE);
 #else
-  sem_wait(&thread_sem->sem);
+  #ifdef __APPLE__
+    dispatch_semaphore_wait(thread_sem->sem, DISPATCH_TIME_FOREVER);
+  #else
+    sem_wait(&thread_sem->sem);
+  #endif
 #endif
 }
 
@@ -105,6 +120,10 @@ void BOCHSAPI_MSVCONLY bx_set_sem(bx_thread_sem_t *thread_sem)
 #if defined(WIN32)
   ReleaseSemaphore(thread_sem->sem, 1, NULL);
 #else
-  sem_post(&thread_sem->sem);
+  #ifdef __APPLE__
+    dispatch_semaphore_signal(thread_sem->sem);
+  #else
+    sem_post(&thread_sem->sem);
+  #endif
 #endif
 }

@@ -42,7 +42,11 @@
 #else
 
 #include <pthread.h>
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+#else
 #include <semaphore.h>
+#endif
 
 #define BX_THREAD_VAR(name) pthread_t name
 #define BX_THREAD_FUNC(name,arg) void name(void* arg)
@@ -75,7 +79,11 @@ typedef struct
 #if defined(WIN32)
   HANDLE sem;
 #else
-  sem_t sem;
+  #ifdef __APPLE__
+    dispatch_semaphore_t sem;
+  #else
+    sem_t sem;
+  #endif
 #endif
 } bx_thread_sem_t;
 
