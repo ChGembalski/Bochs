@@ -1054,7 +1054,7 @@ int bx_param_bytestring_c::dump_param(char *buf, int len, bool dquotes)
       tmpbyte[1] = 0;
       strcat(buf, tmpbyte);
     }
-    sprintf(tmpbyte, "%02x", (Bit8u)val[j]);
+    snprintf(tmpbyte, 4, "%02x", (Bit8u)val[j]);
     strcat(buf, tmpbyte);
   }
   return strlen(buf);

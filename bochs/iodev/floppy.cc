@@ -43,7 +43,7 @@
 //  The three SCAN commands are rarely used, and are not very well documented.
 //   Therefore, these three commands may or may not be fully functional.
 //   I have done my best to make them compatible with supported hardware.
-//  The VERIFY command, under normal operation, simply returns successful 
+//  The VERIFY command, under normal operation, simply returns successful
 //   since the emulated image file should always return valid data written.
 //   If not, there are more problems than this emulation...
 //  The POWER_DOWN command does not wait to auto power down if the PD_FLAGS_AUTO_PD
@@ -57,8 +57,8 @@
 //   a main status register, a data register, and the 82072 has a DSR.
 //
 // Adding a new controller:
-//  It is a simple task to add a new controller. 
-//   1) Add a new entry to the FDC_TYPE_xxxxxx list below, making sure 
+//  It is a simple task to add a new controller.
+//   1) Add a new entry to the FDC_TYPE_xxxxxx list below, making sure
 //      to use an unused bit.
 //   2) Add this newly created FDC_TYPE_xxxxxx to the 'supported' member of
 //      the 'fdc_type_supported' declaration to any commands this new
@@ -71,8 +71,8 @@
 //      #endif
 //      If two or more controllers have this quirk, simply use:
 //      #if (FDC_CURRENT_TYPE & (FDC_TYPE_xxxxxx0 | FDC_TYPE_xxxxxx1))
-// 
-//  For example, let's say I wanted to add the FDC_TYPE_BOCHS controller to 
+//
+//  For example, let's say I wanted to add the FDC_TYPE_BOCHS controller to
 //   the emulation (I have already added it so you can see how it is done):
 //    Add FDC_TYPE_BOCHS as: (please choose the next available bit)
 //      #define FDC_TYPE_BOCHS     (1 << 5)
@@ -200,7 +200,7 @@ bx_floppy_ctrl_c::~bx_floppy_ctrl_c()
   SIM->unregister_runtime_config_handler(s.rt_conf_id);
   for (int i = 0; i < 2; i++) {
     close_media(&BX_FD_THIS s.media[i]);
-    sprintf(pname, "floppy.%d", i);
+    snprintf(pname, 10, "floppy.%d", i);
     bx_list_c *floppy = (bx_list_c*)SIM->get_param(pname);
     SIM->get_param_string("path", floppy)->set_handler(NULL);
     SIM->get_param_bool("readonly", floppy)->set_handler(NULL);
@@ -351,7 +351,7 @@ void bx_floppy_ctrl_c::init(void)
   // runtime parameters
   char pname[10];
   for (int i = 0; i < 2; i++) {
-    sprintf(pname, "floppy.%d", i);
+    snprintf(pname, 10, "floppy.%d", i);
     bx_list_c *floppy = (bx_list_c*)SIM->get_param(pname);
     SIM->get_param_string("path", floppy)->set_handler(floppy_param_string_handler);
     SIM->get_param_string("path", floppy)->set_runtime_param(1);
@@ -473,7 +473,7 @@ void bx_floppy_ctrl_c::register_state(void)
   new bx_shadow_data_c(list, "scan", BX_FD_THIS s.scan_buffer, 512);
   for (unsigned i=0; i<4; i++) {
     char name[8];
-    sprintf(name, "drive%u", i);
+    snprintf(name, 8, "drive%u", i);
     bx_list_c *drive = new bx_list_c(list, name);
     new bx_shadow_num_c(drive, "cylinder", &BX_FD_THIS s.cylinder[i]);
     new bx_shadow_num_c(drive, "head", &BX_FD_THIS s.head[i]);
@@ -504,7 +504,7 @@ void bx_floppy_ctrl_c::runtime_config(void)
 
   for (unsigned drive=0; drive<2; drive++) {
     if (BX_FD_THIS s.media[drive].status_changed) {
-      sprintf(pname, "floppy.%u.status", drive);
+      snprintf(pname, 16, "floppy.%u.status", drive);
       bool status = (SIM->get_param_enum(pname)->get() == BX_INSERTED);
       if (BX_FD_THIS s.media_present[drive]) {
         BX_FD_THIS set_media_status(drive, 0);
@@ -542,7 +542,7 @@ Bit32u bx_floppy_ctrl_c::read(Bit32u address, unsigned io_len)
     BX_DEBUG(("tried to read from a powered down device..."));
     return 0xFF;
   }
-  
+
   Bit8u pending_command = BX_FD_THIS s.pending_command;
   switch (address) {
 #if BX_DMA_FLOPPY_IO
@@ -697,14 +697,14 @@ void bx_floppy_ctrl_c::write(Bit32u address, Bit32u value, unsigned io_len)
 
   // if we are in power down mode, no access is granted, other than a RESET via the DOR
   //  (only a reset can bring it out of power down mode)
-  if ((BX_FD_THIS s.power_down & PD_FLAGS_AUTO_PD) && 
+  if ((BX_FD_THIS s.power_down & PD_FLAGS_AUTO_PD) &&
       ((address != 0x3F2) || ((address == 0x3F2) && (value & 0x04)))) {
     BX_DEBUG(("tried to write to a powered down device..."));
     return;
   }
-  
+
   if (BX_FD_THIS s.standby) {
-    // writing a 1 to any of the drive enable bits, or writing a command 
+    // writing a 1 to any of the drive enable bits, or writing a command
     //  to the command byte will wake up the controller.
     if (((address == 0x3F2) && (value & 0x30)) ||
          (address == 0x3F5)) {
@@ -800,7 +800,7 @@ void bx_floppy_ctrl_c::write(Bit32u address, Bit32u value, unsigned io_len)
 
     case 0x3F5: /* diskette controller data */
       BX_DEBUG(("command byte = 0x%02x", (unsigned) value));
-      if ((BX_FD_THIS s.main_status_reg & FD_MS_NDMA) && 
+      if ((BX_FD_THIS s.main_status_reg & FD_MS_NDMA) &&
         (((BX_FD_THIS s.pending_command & 0x5f) == (FD_CMD_MFM | FD_CMD_WRITE_NORMAL_DATA)) ||
          ((BX_FD_THIS s.pending_command & 0x5f) == (FD_CMD_MFM | FD_CMD_SCAN_EQUAL))  ||
          ((BX_FD_THIS s.pending_command & 0x5f) == (FD_CMD_MFM | FD_CMD_SCAN_LOW_EQUAL))  ||
@@ -826,7 +826,7 @@ void bx_floppy_ctrl_c::write(Bit32u address, Bit32u value, unsigned io_len)
           //  the rest, we clear assuming no error
           if (value != FD_CMD_SENSE_INT_STATUS) {
             BX_FD_THIS s.status_reg0 =
-            BX_FD_THIS s.status_reg1 = 
+            BX_FD_THIS s.status_reg1 =
             BX_FD_THIS s.status_reg2 = 0x00;
           }
 
@@ -1061,7 +1061,7 @@ void bx_floppy_ctrl_c::floppy_command(void)
     case FD_CMD_MODE:
       if (!(BX_FD_THIS s.command[1] & 0x02) || !(BX_FD_THIS s.command[3] & 0xC0))
         BX_DEBUG(("Some always-set bits in Mode command not set"));
-      if ((BX_FD_THIS s.command[1] & 0x10) || (BX_FD_THIS s.command[2] & 0xff) || 
+      if ((BX_FD_THIS s.command[1] & 0x10) || (BX_FD_THIS s.command[2] & 0xff) ||
           (BX_FD_THIS s.command[3] & 0x20) || (BX_FD_THIS s.command[4] & 0xfa))
         BX_DEBUG(("Some always-clear bits in Mode command set"));
       BX_FD_THIS s.mode0 = BX_FD_THIS s.command[1];
@@ -1145,7 +1145,7 @@ void bx_floppy_ctrl_c::floppy_command(void)
         else
           new_cylinder = (int) (Bit16s) (BX_FD_THIS s.cylinder[drive] - cylinder);
       }
-      
+
       BX_FD_THIS s.cylinder[drive] = (Bit16u) new_cylinder;
       if (new_cylinder >= (int) BX_FD_THIS s.media[drive].tracks) {
         BX_ERROR(("attempt to access from non-present cylinder %d (of %d)", new_cylinder, BX_FD_THIS s.media[drive].tracks));
@@ -1248,7 +1248,7 @@ void bx_floppy_ctrl_c::floppy_command(void)
       if ((((unsigned int) BX_FD_THIS s.head[drive] + 1) > BX_FD_THIS s.media[drive].heads) ||
            (BX_FD_THIS s.cylinder[drive] >= BX_FD_THIS s.media[drive].tracks) ||
           ((BX_FD_THIS s.pending_command & FD_CMD_MFM) == 0)) {
-        BX_ERROR(("attempt to access from non-present cyl/head %d/%d, or a non-MFM attempt.", 
+        BX_ERROR(("attempt to access from non-present cyl/head %d/%d, or a non-MFM attempt.",
           BX_FD_THIS s.cylinder[drive], BX_FD_THIS s.head[drive]));
         // ST0: IC1,0=01  (abnormal termination: started execution but failed)
         BX_FD_THIS s.status_reg0 = 0x40 | (BX_FD_THIS s.head[drive]<<2) | drive;
@@ -1596,7 +1596,7 @@ void bx_floppy_ctrl_c::floppy_command(void)
       if (BX_FD_THIS s.command[i] & (1 << 6)) {
         BX_DEBUG(("Drive Spec Command requested no result phase"));
         enter_idle_phase();
-      } else      
+      } else
         enter_result_phase();
       break;
 
@@ -1738,7 +1738,7 @@ void bx_floppy_ctrl_c::timer_handler(void *this_ptr)
 void bx_floppy_ctrl_c::timer()
 {
   Bit8u motor_on;
-  
+
   Bit8u drive = BX_FD_THIS s.DOR & FDC_DRV_MASK;
   switch (BX_FD_THIS s.pending_command) {
     // recal
@@ -1879,7 +1879,7 @@ void bx_floppy_ctrl_c::timer()
         BX_DEBUG(("  cylinder = %u", BX_FD_THIS s.cylinder[drive]));
         BX_DEBUG(("  head     = %u", BX_FD_THIS s.head[drive]));
         BX_DEBUG(("  sector   = %u", BX_FD_THIS s.sector[drive]));
-        
+
         raise_interrupt();
         enter_result_phase();
       } else {
@@ -2035,7 +2035,7 @@ Bit16u bx_floppy_ctrl_c::dma_read(Bit8u *buffer, Bit16u maxlen)
               //  we ignore any remaining cylinder values, but give error
               //  if they don't match the first given.
               if (BX_FD_THIS s.format_cylinder == 0xFFFF) {
-                BX_FD_THIS s.format_cylinder = 
+                BX_FD_THIS s.format_cylinder =
                   BX_FD_THIS s.cylinder[drive] = *buffer;
               } else if (*buffer != BX_FD_THIS s.format_cylinder) {
                 BX_ERROR(("cylinder field must be constant: %d != %d", *buffer, BX_FD_THIS s.format_cylinder));
@@ -2080,7 +2080,7 @@ Bit16u bx_floppy_ctrl_c::dma_read(Bit8u *buffer, Bit16u maxlen)
             BX_DEBUG(("formatting cylinder %u head %u sector %u",
                       BX_FD_THIS s.cylinder[drive], BX_FD_THIS s.head[drive],
                       BX_FD_THIS s.sector[drive]));
-          
+
             // if we are format & write, we need to receive the 512-byte sector data
             if (BX_FD_THIS s.pending_command == (FD_CMD_MFM | FD_CMD_FORMAT_AND_WRITE)) {
               BX_FD_THIS s.format_write_flag = 1;
@@ -2615,63 +2615,63 @@ static const fdc_type_supported fdc_supported[] = {
   { FD_CMD_MODE,                 0x00,
         FDC_TYPE_DP8473 | FDC_TYPE_PC87306 | FDC_TYPE_BOCHS  },
   { FD_CMD_READ_TRACK,           FD_CMD_MFM,
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_SPECIFY,              0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_SENSE_DRV_STATUS,     0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_WRITE_NORMAL_DATA,    FD_CMD_MT | FD_CMD_MFM,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_READ_NORMAL_DATA,     FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_RECALIBRATE,          0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_SENSE_INT_STATUS,     0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   /*{ FD_CMD_WRITE_DELETED_DATA,    FD_CMD_MT | FD_CMD_MFM,
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 }, */
   { FD_CMD_READ_ID,              FD_CMD_MFM,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_MOTOR_ON_OFF,         0x00,
        FDC_TYPE_BOCHS },
   { FD_CMD_READ_DELETED_DATA,    FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK,
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_FORMAT_TRACK,         FD_CMD_MFM,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
-  { FD_CMD_DUMPREG,              0x00, 
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+  { FD_CMD_DUMPREG,              0x00,
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_PC87306 },
   { FD_CMD_SEEK,                 0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_VERSION,              0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_PC87306 },
   { FD_CMD_SCAN_EQUAL,           FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK,
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_PERPENDICULARE_MODE,  0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_PC87306 },
   { FD_CMD_CONFIGURE,            0x00,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_PC87306 },
   { FD_CMD_LOCK_UNLOCK,          FD_CMD_LOCK,
-      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+      FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
       FDC_TYPE_37c78 | FDC_TYPE_PC87306 },
   { FD_CMD_VERIFY,               FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK,
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_37c78 | FDC_TYPE_PC87306 },
   { FD_CMD_POWER_DOWN_MODE,      0x00,
       // must not have both Power Down and StandBy supported at the same time.
@@ -2679,14 +2679,14 @@ static const fdc_type_supported fdc_supported[] = {
   { FD_CMD_PART_ID,              0x00,
       FDC_TYPE_82078 | FDC_TYPE_BOCHS | FDC_TYPE_PC87306 },
   { FD_CMD_SCAN_LOW_EQUAL,       FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK,
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
-  { FD_CMD_SCAN_HIGH_EQUAL,      FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK, 
-        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS | 
+  { FD_CMD_SCAN_HIGH_EQUAL,      FD_CMD_MT | FD_CMD_MFM | FD_CMD_SK,
+        FDC_TYPE_82077AA | FDC_TYPE_82078 | FDC_TYPE_BOCHS |
         FDC_TYPE_DP8473 | FDC_TYPE_PC87306 },
   { FD_CMD_SET_TRACK,            FD_CMD_DIR,
       FDC_TYPE_DP8473 | FDC_TYPE_BOCHS | FDC_TYPE_PC87306 },
-  { FD_CMD_SAVE,                 0x00, 
+  { FD_CMD_SAVE,                 0x00,
       FDC_TYPE_82078 | FDC_TYPE_BOCHS },
   { FD_CMD_OPTION,               0x00,
       FDC_TYPE_82078 | FDC_TYPE_BOCHS },
@@ -2855,9 +2855,9 @@ void bx_floppy_ctrl_c::enter_result_phase(void)
           // format track
           case FD_CMD_FORMAT_TRACK | FD_CMD_MFM:
           case FD_CMD_FORMAT_AND_WRITE | FD_CMD_MFM:
-            BX_FD_THIS s.result[3] = 
-            BX_FD_THIS s.result[4] = 
-            BX_FD_THIS s.result[5] = 
+            BX_FD_THIS s.result[3] =
+            BX_FD_THIS s.result[4] =
+            BX_FD_THIS s.result[5] =
             BX_FD_THIS s.result[6] = 0;
             break;
         }
@@ -2938,7 +2938,7 @@ void bx_floppy_ctrl_c::enter_result_phase(void)
         BX_FD_THIS s.result[0] = BX_FD_THIS s.status_reg0;
     }
   }
-  
+
   // Print command result (max MAX_PHASE_SIZE bytes)
   char buf[8+(MAX_PHASE_SIZE*5)+1], *p = buf;
   p += sprintf(p, "RESULT: ");

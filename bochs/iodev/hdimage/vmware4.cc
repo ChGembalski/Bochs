@@ -491,7 +491,7 @@ int vmware4_image_t::create_image(const char *pathname, Bit64u size)
   memset(buffer, 0, SECTOR_SIZE);
   cyl = (Bit64u)(size / 16 / 63 / 512.0);
   snprintf(desc_line, 256, "RW " FMT_LL "d SPARSE \"%s\"", size / SECTOR_SIZE, pathname);
-  sprintf((char*)buffer, desc_template, (Bit32u)time(NULL), desc_line, cyl);
+  snprintf((char*)buffer, SECTOR_SIZE, desc_template, (Bit32u)time(NULL), desc_line, cyl);
   offset = dtoh64(header.description_offset_sectors) * SECTOR_SIZE;
   if (bx_write_image(fd, offset, buffer, SECTOR_SIZE) != SECTOR_SIZE) {
     ::close(fd);

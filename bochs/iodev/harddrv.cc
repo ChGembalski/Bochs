@@ -158,7 +158,7 @@ bx_hard_drive_c::~bx_hard_drive_c()
         delete [] channels[channel].drives[device].controller.buffer;
       }
       char ata_name[20];
-      sprintf(ata_name, "ata.%d.%s", channel, (device==0)?"master":"slave");
+      snprintf(ata_name, 20, "ata.%d.%s", channel, (device==0)?"master":"slave");
       bx_list_c *base = (bx_list_c*) SIM->get_param(ata_name);
       SIM->get_param_string("path", base)->set_handler(NULL);
       SIM->get_param_enum("status", base)->set_handler(NULL);
@@ -181,7 +181,7 @@ void bx_hard_drive_c::init(void)
   bx_list_c *base;
 
   for (channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
-    sprintf(ata_name, "ata.%d.resources", channel);
+    snprintf(ata_name, 20, "ata.%d.resources", channel);
     base = (bx_list_c*) SIM->get_param(ata_name);
     if (SIM->get_param_bool("enabled", base)->get() == 1) {
       BX_HD_THIS channels[channel].ioaddr1 = SIM->get_param_num("ioaddr1", base)->get();
@@ -207,7 +207,7 @@ void bx_hard_drive_c::init(void)
   }
 
   for (channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
-    sprintf(string ,"ATA%d", channel);
+    snprintf(string, 5, "ATA%d", channel);
 
     if (BX_HD_THIS channels[channel].irq != 0)
       DEV_register_irq(BX_HD_THIS channels[channel].irq, string);
@@ -242,7 +242,7 @@ void bx_hard_drive_c::init(void)
   BX_HD_THIS cdrom_count = 0;
   for (channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
     for (Bit8u device=0; device<2; device ++) {
-      sprintf(ata_name, "ata.%d.%s", channel, (device==0)?"master":"slave");
+      snprintf(ata_name, 20, "ata.%d.%s", channel, (device==0)?"master":"slave");
       base = (bx_list_c*) SIM->get_param(ata_name);
 
       // Initialize controller state, even if device is not present
@@ -292,7 +292,7 @@ void bx_hard_drive_c::init(void)
       if (SIM->get_param_enum("type", base)->get() == BX_ATA_DEVICE_DISK) {
         BX_DEBUG(("Hard-Disk on target %d/%d",channel,device));
         BX_HD_THIS channels[channel].drives[device].device_type = IDE_DISK;
-        sprintf(sbtext, "HD:%d-%s", channel, device?"S":"M");
+        snprintf(sbtext, 8, "HD:%d-%s", channel, device?"S":"M");
         BX_HD_THIS channels[channel].drives[device].statusbar_id =
           bx_gui->register_statusitem(sbtext, 1);
 
@@ -366,7 +366,7 @@ void bx_hard_drive_c::init(void)
         BX_HD_THIS channels[channel].drives[device].sect_size = sect_size;
       } else if (SIM->get_param_enum("type", base)->get() == BX_ATA_DEVICE_CDROM) {
         bx_list_c *cdrom_rt = (bx_list_c*)SIM->get_param(BXPN_MENU_RUNTIME_CDROM);
-        sprintf(pname, "cdrom%d", BX_HD_THIS cdrom_count + 1);
+        snprintf(pname, 10, "cdrom%d", BX_HD_THIS cdrom_count + 1);
         bx_list_c *menu = new bx_list_c(cdrom_rt, pname, base->get_title());
         menu->set_options(menu->SERIES_ASK | menu->USE_BOX_TITLE);
         menu->add(SIM->get_param("path", base));
@@ -379,7 +379,7 @@ void bx_hard_drive_c::init(void)
         BX_HD_THIS channels[channel].drives[device].sense.sense_key = SENSE_NONE;
         BX_HD_THIS channels[channel].drives[device].sense.asc = 0;
         BX_HD_THIS channels[channel].drives[device].sense.ascq = 0;
-        sprintf(sbtext, "CD:%d-%s", channel, device?"S":"M");
+        snprintf(sbtext, 8, "CD:%d-%s", channel, device?"S":"M");
         BX_HD_THIS channels[channel].drives[device].statusbar_id =
           bx_gui->register_statusitem(sbtext, 1);
         BX_HD_THIS cdrom_count++;
@@ -501,7 +501,7 @@ void bx_hard_drive_c::init(void)
     DEV_cmos_set_reg(0x3a, 0);
     for (channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
       for (Bit8u device=0; device<2; device ++) {
-        sprintf(ata_name, "ata.%d.%s", channel, (device==0)?"master":"slave");
+        snprintf(ata_name, 20, "ata.%d.%s", channel, (device==0)?"master":"slave");
         base = (bx_list_c*) SIM->get_param(ata_name);
         if (SIM->get_param_enum("type", base)->get() != BX_ATA_DEVICE_NONE) {
           if (BX_DRIVE_IS_HD(channel,device)) {
@@ -580,11 +580,11 @@ void bx_hard_drive_c::register_state(void)
 
   bx_list_c *list = new bx_list_c(SIM->get_bochs_root(), "hard_drive", "Hard Drive State");
   for (unsigned i=0; i<BX_MAX_ATA_CHANNEL; i++) {
-    sprintf(cname, "%u", i);
+    snprintf(cname, 4, "%u", i);
     bx_list_c *chan = new bx_list_c(list, cname);
     for (unsigned j=0; j<2; j++) {
       if (BX_DRIVE_IS_PRESENT(i, j)) {
-        sprintf(dname, "drive%u", j);
+        snprintf(dname, 8, "drive%u", j);
         bx_list_c *drive = new bx_list_c(chan, dname);
         if (channels[i].drives[j].hdimage != NULL) {
           channels[i].drives[j].hdimage->register_state(drive);
@@ -731,7 +731,7 @@ void bx_hard_drive_c::runtime_config(void)
     for (Bit8u device=0; device<2; device++) {
       if (BX_HD_THIS channels[channel].drives[device].status_changed == 1) {
         handle = (channel << 1) | device;
-        sprintf(pname, "ata.%d.%s", channel, device ? "slave":"master");
+        snprintf(pname, 16, "ata.%d.%s", channel, device ? "slave":"master");
         bx_list_c *base = (bx_list_c*) SIM->get_param(pname);
         status = SIM->get_param_enum("status", base)->get();
         BX_HD_THIS set_cd_media_status(handle, 0);
@@ -1291,7 +1291,7 @@ void bx_hard_drive_c::write(Bit32u address, Bit32u value, unsigned io_len)
             switch (atapi_command) {
               case 0x00: // test unit ready
                 // For guests that don't use GET_EVENT_STATUS_NOTIFICATION, we actually
-                //  have to simulate a tray open (status_changed == 1) and then a 
+                //  have to simulate a tray open (status_changed == 1) and then a
                 //  try close (status_changed == -1).
                 if (BX_SELECTED_DRIVE(channel).status_changed == 1) {
                   atapi_cmd_error(channel, SENSE_NOT_READY, ASC_MEDIUM_NOT_PRESENT, 0);
@@ -1363,7 +1363,7 @@ void bx_hard_drive_c::write(Bit32u address, Bit32u value, unsigned io_len)
                     if (BX_SELECTED_DRIVE(channel).cdrom.ready) {
                       BX_SELECTED_DRIVE(channel).cdrom.cd->eject_cdrom();
                       BX_SELECTED_DRIVE(channel).cdrom.ready = 0;
-                      sprintf(ata_name, "ata.%d.%s", channel, BX_SLAVE_SELECTED(channel)?"slave":"master");
+                      snprintf(ata_name, 20, "ata.%d.%s", channel, BX_SLAVE_SELECTED(channel)?"slave":"master");
                       bx_list_c *base = (bx_list_c*) SIM->get_param(ata_name);
                       SIM->get_param_enum("status", base)->set(BX_EJECTED);
                       bx_gui->update_drive_status_buttons();
@@ -1913,7 +1913,7 @@ void bx_hard_drive_c::write(Bit32u address, Bit32u value, unsigned io_len)
             BX_PANIC(("IO read(0x%04x): current command is a0h/%02xh",
               address, (unsigned) BX_SELECTED_DRIVE(channel).atapi.command));
           } else {
-            BX_PANIC(("IO write(0x%04x): current command is %02xh", 
+            BX_PANIC(("IO write(0x%04x): current command is %02xh",
               address, (unsigned) controller->current_command));
           }
       }
@@ -1958,7 +1958,7 @@ void bx_hard_drive_c::write(Bit32u address, Bit32u value, unsigned io_len)
       {
         if ((value & 0xa0) != 0xa0) // 1x1xxxxx
           BX_DEBUG(("IO write 0x%04x (%02x): not 1x1xxxxxb", address, (unsigned) value));
-        Bit32u drvsel = 
+        Bit32u drvsel =
           BX_HD_THIS channels[channel].drive_select = (value >> 4) & 1;
         WRITE_HEAD_NO(channel,value & 0xf);
         if (!controller->lba_mode && ((value >> 6) & 1) == 1)
@@ -2336,7 +2336,7 @@ void bx_hard_drive_c::write(Bit32u address, Bit32u value, unsigned io_len)
               controller->status.drq   = 1;
 
               // The TEAC-CDI driver relies on the TEAC drive to set its
-              //  'interrupt_reason' register, so the driver can determine 
+              //  'interrupt_reason' register, so the driver can determine
               //  the direction of the transfer even though a CD-ROM is readonly.
               //  atapi-4/5: 'Sector count' register after this command is N/A
               controller->interrupt_reason.i_o = 1;
@@ -3332,7 +3332,7 @@ bool bx_hard_drive_c::set_cd_media_status(Bit32u handle, bool status)
   Bit8u device  = handle % 2;
   BX_DEBUG_ATAPI(("ata%d-%d: set_cd_media_status(): status=%d", channel, device, status));
 
-  sprintf(ata_name, "ata.%d.%s", channel, (device==0)?"master":"slave");
+  snprintf(ata_name, 22, "ata.%d.%s", channel, (device==0)?"master":"slave");
   bx_list_c *base = (bx_list_c*) SIM->get_param(ata_name);
   // if setting to the current value, nothing to do
   if (status == BX_HD_THIS channels[channel].drives[device].cdrom.ready)

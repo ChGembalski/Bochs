@@ -316,7 +316,7 @@ void bx_vgacore_c::vgacore_register_state(bx_list_c *parent)
   BXRS_PARAM_BOOL(list, y_doublescan, BX_VGA_THIS s.y_doublescan);
   bx_list_c *vclk = new bx_list_c(list, "vclk");
   for (int i = 0; i < 4; i++) {
-    sprintf(name, "%d", i);
+    snprintf(name, 4, "%d", i);
     new bx_shadow_num_c(vclk, name, &BX_VGA_THIS s.vclk[i]);
   }
   new bx_shadow_num_c(list, "plane_shift", &BX_VGA_THIS s.plane_shift);

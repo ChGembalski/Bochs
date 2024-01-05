@@ -232,28 +232,28 @@ void iofunctions::out(int level, const char *prefix, const char *fmt, va_list ap
         else break;
         switch(*s) {
           case 'd':
-            sprintf(tmpstr, "%s", prefix==NULL?"":prefix);
+            snprintf(tmpstr, 80, "%s", prefix==NULL?"":prefix);
             break;
           case 't':
-            sprintf(tmpstr, FMT_TICK, bx_pc_system.time_ticks());
+            snprintf(tmpstr, 80, FMT_TICK, bx_pc_system.time_ticks());
             break;
           case 'i':
 #if BX_SUPPORT_SMP == 0
-            sprintf(tmpstr, "%08x", BX_CPU(0)->get_eip());
+            snprintf(tmpstr, 80, "%08x", BX_CPU(0)->get_eip());
 #endif
             break;
           case 'e':
-            sprintf(tmpstr, "%c", c);
+            snprintf(tmpstr, 80, "%c", c);
             break;
           case '%':
-            sprintf(tmpstr,"%%");
+            snprintf(tmpstr, 80, "%%");
             break;
           default:
-            sprintf(tmpstr,"%%%c",*s);
+            snprintf(tmpstr, 80, "%%%c",*s);
         }
         break;
       default:
-        sprintf(tmpstr,"%c",*s);
+        snprintf(tmpstr, 80, "%c",*s);
     }
     strcat(msgpfx, tmpstr);
     s++;
@@ -663,7 +663,7 @@ void logfunctions::fatal(int level, const char *prefix, const char *fmt, va_list
   }
   if (!SIM->is_wx_selected()) {
     // store prefix and message in 'exit_msg' before unloading device plugins
-    sprintf(exit_msg, "%s %s", prefix, tmpbuf);
+    snprintf(exit_msg, 1025, "%s %s", prefix, tmpbuf);
   }
 #if !BX_DEBUGGER
   bx_atexit();

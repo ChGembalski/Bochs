@@ -605,7 +605,7 @@ void bx_real_sim_c::log_msg(const char *prefix, int level, const char *msg)
   if (SIM->has_log_viewer()) {
     // send message to the log viewer
     char *logmsg = new char[strlen(prefix) + strlen(msg) + 4];
-    sprintf(logmsg, "%s %s\n", prefix, msg);
+    snprintf(logmsg, strlen(prefix) + strlen(msg) + 4, "%s %s\n", prefix, msg);
     BxEvent *event = new BxEvent();
     event->type = BX_ASYNC_EVT_LOG_MSG;
     event->u.logmsg.prefix = NULL;
@@ -661,7 +661,7 @@ int bx_real_sim_c::ask_yes_no(const char *title, const char *prompt, bool the_de
   char format[512];
 
   bx_param_bool_c param(NULL, "yes_no", title, prompt, the_default);
-  sprintf(format, "%s\n\n%s [%%s] ", title, prompt);
+  snprintf(format, 512, "%s\n\n%s [%%s] ", title, prompt);
   param.set_ask_format(format);
   event.type = BX_SYNC_EVT_ASK_PARAM;
   event.u.param.param = &param;
@@ -753,7 +753,7 @@ int bx_real_sim_c::create_disk_image(const char *filename, int sectors, bool ove
   if (fp == NULL) {
 #ifdef HAVE_PERROR
     char buffer[1024];
-    sprintf(buffer, "while opening '%s' for writing", filename);
+    snprintf(buffer, 1024, "while opening '%s' for writing", filename);
     perror(buffer);
     // not sure how to get this back into the CI
 #endif
@@ -800,14 +800,14 @@ bx_param_c *bx_real_sim_c::get_first_atadevice(Bit32u search_type)
 {
   char pname[80];
   for (int channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
-    sprintf(pname, "ata.%d.resources.enabled", channel);
+    snprintf(pname, 80, "ata.%d.resources.enabled", channel);
     if (!SIM->get_param_bool(pname)->get())
       continue;
     for (int slave=0; slave<2; slave++) {
-      sprintf(pname, "ata.%d.%s.type", channel, (slave==0)?"master":"slave");
+      snprintf(pname, 80, "ata.%d.%s.type", channel, (slave==0)?"master":"slave");
       Bit32u type = SIM->get_param_enum(pname)->get();
       if (type == search_type) {
-        sprintf(pname, "ata.%d.%s", channel, (slave==0)?"master":"slave");
+        snprintf(pname, 80, "ata.%d.%s", channel, (slave==0)?"master":"slave");
         return SIM->get_param(pname);
       }
     }
@@ -827,7 +827,7 @@ bool bx_real_sim_c::is_pci_device(const char *name)
       max_pci_slots = 4;
     }
     for (i = 0; i < max_pci_slots; i++) {
-      sprintf(devname, "pci.slot.%d", i+1);
+      snprintf(devname, 80, "pci.slot.%d", i+1);
       device = SIM->get_param_enum(devname)->get_selected();
       if (!strcmp(name, device)) {
         return 1;
@@ -1121,10 +1121,10 @@ bool bx_real_sim_c::save_state(const char *checkpoint_path)
   int type, ntype = SIM->get_max_log_level();
 
   get_param_string(BXPN_RESTORE_PATH)->set(checkpoint_path);
-  sprintf(sr_file, "%s/config", checkpoint_path);
+  snprintf(sr_file, BX_PATHNAME_LEN, "%s/config", checkpoint_path);
   if (write_rc(sr_file, 1) < 0)
     return 0;
-  sprintf(sr_file, "%s/logopts", checkpoint_path);
+  snprintf(sr_file, BX_PATHNAME_LEN, "%s/logopts", checkpoint_path);
   FILE *fp = fopen(sr_file, "w");
   if (fp != NULL) {
     for (dev=0; dev<ndev; dev++) {
@@ -1145,7 +1145,7 @@ bool bx_real_sim_c::save_state(const char *checkpoint_path)
   bx_list_c *sr_list = get_bochs_root();
   ndev = sr_list->get_size();
   for (dev=0; dev<ndev; dev++) {
-    sprintf(sr_file, "%s/%s", checkpoint_path, sr_list->get(dev)->get_name());
+    snprintf(sr_file, BX_PATHNAME_LEN, "%s/%s", checkpoint_path, sr_list->get(dev)->get_name());
     fp = fopen(sr_file, "w");
     if (fp != NULL) {
       save_sr_param(fp, sr_list->get(dev), checkpoint_path, 0);
@@ -1161,7 +1161,7 @@ bool bx_real_sim_c::save_state(const char *checkpoint_path)
 bool bx_real_sim_c::restore_config()
 {
   char config[BX_PATHNAME_LEN];
-  sprintf(config, "%s/config", get_param_string(BXPN_RESTORE_PATH)->getptr());
+  snprintf(config, BX_PATHNAME_LEN, "%s/config", get_param_string(BXPN_RESTORE_PATH)->getptr());
   BX_INFO(("restoring '%s'", config));
   if (read_rc(config) >= 0) {
     return 1;
@@ -1179,7 +1179,7 @@ bool bx_real_sim_c::restore_logopts()
   int i, j, p, dev = 0, type = 0, action = 0;
   FILE *fp;
 
-  sprintf(logopts, "%s/logopts", get_param_string(BXPN_RESTORE_PATH)->getptr());
+  snprintf(logopts, BX_PATHNAME_LEN, "%s/logopts", get_param_string(BXPN_RESTORE_PATH)->getptr());
   BX_INFO(("restoring '%s'", logopts));
   fp = fopen(logopts, "r");
   if (fp != NULL) {
@@ -1259,7 +1259,7 @@ bool bx_real_sim_c::restore_bochs_param(bx_list_c *root, const char *sr_path, co
     return 0;
   }
 
-  sprintf(devstate, "%s/%s", sr_path, restore_name);
+  snprintf(devstate, BX_PATHNAME_LEN, "%s/%s", sr_path, restore_name);
   BX_INFO(("restoring '%s'", devstate));
   bx_list_c *base = root;
   fp = fopen(devstate, "r");
@@ -1300,7 +1300,7 @@ bool bx_real_sim_c::restore_bochs_param(bx_list_c *root, const char *sr_path, co
                   {
                     bx_shadow_data_c *dparam = (bx_shadow_data_c*)param;
                     if (!dparam->is_text_format()) {
-                      sprintf(devdata, "%s/%s", sr_path, ptr);
+                      snprintf(devdata, BX_PATHNAME_LEN, "%s/%s", sr_path, ptr);
                       fp2 = fopen(devdata, "rb");
                       if (fp2 != NULL) {
                         fread(dparam->getptr(), 1, dparam->get_size(), fp2);
@@ -1327,7 +1327,7 @@ bool bx_real_sim_c::restore_bochs_param(bx_list_c *root, const char *sr_path, co
                   }
                   break;
                 case BXT_PARAM_FILEDATA:
-                  sprintf(devdata, "%s/%s", sr_path, ptr);
+                  snprintf(devdata, BX_PATHNAME_LEN, "%s/%s", sr_path, ptr);
                   fp2 = fopen(devdata, "rb");
                   if (fp2 != NULL) {
                     FILE **fpp = ((bx_shadow_filedata_c*)param)->get_fpp();
@@ -1415,7 +1415,7 @@ bool bx_real_sim_c::save_sr_param(FILE *fp, bx_param_c *node, const char *sr_pat
           }
           fprintf(fp, "%s\n", pname);
           if (sr_path)
-            sprintf(tmpstr, "%s/%s", sr_path, pname);
+            snprintf(tmpstr, BX_PATHNAME_LEN+1, "%s/%s", sr_path, pname);
           else
             strcpy(tmpstr, pname);
           fp2 = fopen(tmpstr, "wb");
@@ -1448,9 +1448,9 @@ bool bx_real_sim_c::save_sr_param(FILE *fp, bx_param_c *node, const char *sr_pat
     case BXT_PARAM_FILEDATA:
       fprintf(fp, "%s.%s\n", node->get_parent()->get_name(), node->get_name());
       if (sr_path)
-        sprintf(tmpstr, "%s/%s.%s", sr_path, node->get_parent()->get_name(), node->get_name());
+        snprintf(tmpstr, BX_PATHNAME_LEN+1, "%s/%s.%s", sr_path, node->get_parent()->get_name(), node->get_name());
       else
-        sprintf(tmpstr, "%s.%s", node->get_parent()->get_name(), node->get_name());
+        snprintf(tmpstr, BX_PATHNAME_LEN+1, "%s.%s", node->get_parent()->get_name(), node->get_name());
       fp2 = fopen(tmpstr, "wb");
       if (fp2 != NULL) {
         FILE **fpp = ((bx_shadow_filedata_c*)node)->get_fpp();

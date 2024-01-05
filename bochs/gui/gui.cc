@@ -554,7 +554,7 @@ void bx_gui_c::snapshot_handler(void)
       } else if (!strcmp(ext, "bmp")) {
         snap_fmt = BX_SNAPSHOT_BMP;
       } else {
-        sprintf(msg, "Unsupported snapshot file format '%s'", ext);
+        snprintf(msg, 80, "Unsupported snapshot file format '%s'", ext);
         SIM->message_box("ERROR", msg);
         return;
       }

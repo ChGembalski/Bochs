@@ -368,7 +368,7 @@ void bx_devices_c::init(BX_MEM_C *newmem)
       max_pci_slots = 4;
     }
     for (i = 0; i < max_pci_slots; i++) {
-      sprintf(devname, "pci.slot.%d", i+1);
+      snprintf(devname, 80, "pci.slot.%d", i+1);
       device = SIM->get_param_enum(devname)->get_selected();
       if (strcmp(device, "none") && !pci.slot_used[i]) {
         BX_PANIC(("Plugin '%s' at PCI slot #%d not loaded", device, i+1));
@@ -1102,7 +1102,7 @@ bool bx_devices_c::is_harddrv_enabled(void)
   char pname[24];
 
   for (int i=0; i<BX_MAX_ATA_CHANNEL; i++) {
-    sprintf(pname, "ata.%d.resources.enabled", i);
+    snprintf(pname, 24, "ata.%d.resources.enabled", i);
     if (SIM->get_param_bool(pname)->get())
       return true;
   }
@@ -1382,7 +1382,7 @@ bool bx_devices_c::register_pci_handlers(bx_pci_device_c *dev,
     }
     if (bus == 0) {
       for (i = 0; i < max_pci_slots; i++) {
-        sprintf(devname, "pci.slot.%d", i+1);
+        snprintf(devname, 80, "pci.slot.%d", i+1);
         device = SIM->get_param_enum(devname)->get_selected();
         if (strcmp(device, "none")) {
           if (!strcmp(name, device) && !pci.slot_used[i]) {
@@ -1399,7 +1399,7 @@ bool bx_devices_c::register_pci_handlers(bx_pci_device_c *dev,
         // auto-assign device to PCI slot if possible
         if (first_free_slot != -1) {
           i = (unsigned)first_free_slot;
-          sprintf(devname, "pci.slot.%d", i+1);
+          snprintf(devname, 80, "pci.slot.%d", i+1);
           SIM->get_param_enum(devname)->set_by_name(name);
           *devfunc = ((i + pci.map_slot_to_dev) << 3) | (*devfunc & 0x07);
           pci.slot_used[i] = true;

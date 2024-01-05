@@ -363,7 +363,7 @@ void create_flat_image_win32(const char *filename, Bit64u size)
   if (hFile == INVALID_HANDLE_VALUE) {
     // attempt to print an error
 #ifdef HAVE_PERROR
-    sprintf(buffer, "while opening '%s' for writing", filename);
+    snprintf(buffer, 1024, "while opening '%s' for writing", filename);
     perror(buffer);
 #endif
     fatal("ERROR: Could not write disk image");
@@ -387,7 +387,7 @@ void create_flat_image_win32(const char *filename, Bit64u size)
     if (errCode == ERROR_DISK_FULL) {
       fatal("\nERROR: Not enough space on disk for image!");
     } else {
-      sprintf(buffer, "\nERROR: Disk image creation failed with error code %i!", errCode);
+      snprintf(buffer, 1024, "\nERROR: Disk image creation failed with error code %i!", errCode);
       fatal(buffer);
     }
   }
@@ -727,7 +727,7 @@ void image_overwrite_check(const char *filename)
   if (fd >= 0) {
     close(fd);
     int confirm;
-    sprintf(buffer, "\nThe disk image '%s' already exists.  Are you sure you want to replace it?\nPlease type yes or no. ", filename);
+    snprintf(buffer, 512, "\nThe disk image '%s' already exists.  Are you sure you want to replace it?\nPlease type yes or no. ", filename);
     if (ask_yn(buffer, 0, &confirm) < 0)
       fatal(EOF_ERR);
     if (!confirm)
@@ -815,7 +815,7 @@ int CDECL main(int argc, char *argv[])
           } else if (bx_sectsize_val != 512) {
             fatal(EOF_ERR);
           }
-          sprintf(prompt, "\nEnter the hard disk size in megabytes, between %d and %d\n",
+          snprintf(prompt, 80, "\nEnter the hard disk size in megabytes, between %d and %d\n",
                   bx_min_hd_megs, bx_max_hd_megs);
           if (ask_int(prompt, bx_min_hd_megs, bx_max_hd_megs, bx_hdsize, &bx_hdsize) < 0)
             fatal(EOF_ERR);
@@ -864,7 +864,7 @@ int CDECL main(int argc, char *argv[])
         if (ask_string("\nWhat should be the name of the new image?\n", tmpfname, bx_filename_2) < 0)
           fatal(EOF_ERR);
         bx_min_hd_megs = get_image_mode_and_hdsize(bx_filename_1, &image_mode);
-        sprintf(prompt, "\nEnter the new hard disk size in megabytes, between %d and %d\n",
+        snprintf(prompt, 80, "\nEnter the new hard disk size in megabytes, between %d and %d\n",
                 bx_min_hd_megs, bx_max_hd_megs);
         if (bx_hdsize < bx_min_hd_megs) bx_hdsize = bx_min_hd_megs;
         if (ask_int(prompt, bx_min_hd_megs, bx_max_hd_megs, bx_hdsize, &bx_hdsize) < 0)
@@ -910,17 +910,17 @@ int CDECL main(int argc, char *argv[])
       case BXIMAGE_FUNC_CREATE_IMAGE:
         image_overwrite_check(bx_filename_1);
         if (bx_hdimage == 0) {
-          sprintf(bochsrc_line, "floppya: image=\"%s\", status=inserted", bx_filename_1);
+          snprintf(bochsrc_line, 1024, "floppya: image=\"%s\", status=inserted", bx_filename_1);
           printf("\nCreating floppy image '%s' with %u sectors\n", bx_filename_1, fdsize_sectors[bx_fdsize_idx]);
           create_flat_image(bx_filename_1, fdsize_sectors[bx_fdsize_idx] * 512);
         } else {
           int heads = 16, spt = 63;
 
           if (bx_sectsize_val == 512) {
-            sprintf(bochsrc_line, "ata0-master: type=disk, path=\"%s\", mode=%s",
+            snprintf(bochsrc_line, 1024, "ata0-master: type=disk, path=\"%s\", mode=%s",
                     bx_filename_1, hdmode_choices[bx_imagemode]);
           } else {
-            sprintf(bochsrc_line, "ata0-master: type=disk, path=\"%s\", mode=%s, sect_size=%d",
+            snprintf(bochsrc_line, 1024, "ata0-master: type=disk, path=\"%s\", mode=%s, sect_size=%d",
                     bx_filename_1, hdmode_choices[bx_imagemode], bx_sectsize_val);
           }
           image_mode = hdmode_choices[bx_imagemode];

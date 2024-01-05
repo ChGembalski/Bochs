@@ -108,16 +108,16 @@ size_t bx_get_timestamp(char *buffer)
 #if VER_SVNFLAG == 1
 #ifdef __DATE__
 #ifdef __TIME__
-  sprintf(buffer, "Compiled on %s at %s", __DATE__, __TIME__);
+  snprintf(buffer, 128, "Compiled on %s at %s", __DATE__, __TIME__);
 #else
-  sprintf(buffer, "Compiled on %s", __DATE__);
+  snprintf(buffer, 128, "Compiled on %s", __DATE__);
 #endif
 #else
   buffer[0] = 0;
 #endif
 #else
   // Releases use the timestamp from README file
-  sprintf(buffer, "Timestamp: %s", REL_TIMESTAMP);
+  snprintf(buffer, 128, "Timestamp: %s", REL_TIMESTAMP);
 #endif
   return strlen(buffer);
 }
@@ -127,10 +127,10 @@ void bx_print_header()
   char buffer[128];
 
   printf("%s\n", divider);
-  sprintf (buffer, "Bochs x86 Emulator %s\n", VERSION);
+  snprintf (buffer, 128, "Bochs x86 Emulator %s\n", VERSION);
   bx_center_print(stdout, buffer, 72);
   if (REL_STRING[0]) {
-    sprintf(buffer, "%s\n", REL_STRING);
+    snprintf(buffer, 128, "%s\n", REL_STRING);
     bx_center_print(stdout, buffer, 72);
     if (bx_get_timestamp(buffer) > 0) {
       bx_center_print(stdout, buffer, 72);
@@ -1341,7 +1341,7 @@ void bx_init_hardware()
 
   // Then load the optional ROM images
   for (i=0; i<BX_N_OPTROM_IMAGES; i++) {
-    sprintf(pname, "%s.%d", BXPN_OPTROM_BASE, i+1);
+    snprintf(pname, 16, "%s.%d", BXPN_OPTROM_BASE, i+1);
     base = (bx_list_c*) SIM->get_param(pname);
     if (!SIM->get_param_string("file", base)->isempty())
       BX_MEM(0)->load_ROM(SIM->get_param_string("file", base)->getptr(),
@@ -1350,7 +1350,7 @@ void bx_init_hardware()
 
   // Then load the optional RAM images
   for (i=0; i<BX_N_OPTRAM_IMAGES; i++) {
-    sprintf(pname, "%s.%d", BXPN_OPTRAM_BASE, i+1);
+    snprintf(pname, 16, "%s.%d", BXPN_OPTRAM_BASE, i+1);
     base = (bx_list_c*) SIM->get_param(pname);
     if (!SIM->get_param_string("file", base)->isempty())
       BX_MEM(0)->load_RAM(SIM->get_param_string("file", base)->getptr(),

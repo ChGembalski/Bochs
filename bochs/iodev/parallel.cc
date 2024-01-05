@@ -45,16 +45,16 @@ void parport_init_options(void)
   bx_list_c *parallel = new bx_list_c(ports, "parallel", "Parallel Port Options");
   parallel->set_options(parallel->SHOW_PARENT);
   for (int i=0; i<BX_N_PARALLEL_PORTS; i++) {
-    sprintf(name, "%d", i+1);
-    sprintf(label, "Parallel Port %d", i+1);
+    snprintf(name, 4, "%d", i+1);
+    snprintf(label, 80, "Parallel Port %d", i+1);
     bx_list_c *menu = new bx_list_c(parallel, name, label);
     menu->set_options(menu->SERIES_ASK);
-    sprintf(label, "Enable parallel port #%d", i+1);
-    sprintf(descr, "Controls whether parallel port #%d is installed or not", i+1);
+    snprintf(label, 80, "Enable parallel port #%d", i+1);
+    snprintf(descr, 80, "Controls whether parallel port #%d is installed or not", i+1);
     bx_param_bool_c *enabled = new bx_param_bool_c(menu, "enabled", label, descr,
       (i==0)? 1 : 0);  // only enable #1 by default
-    sprintf(label, "Parallel port #%d output file", i+1);
-    sprintf(descr, "Data written to parport#%d by the guest OS is written to this file", i+1);
+    snprintf(label, 80, "Parallel port #%d output file", i+1);
+    snprintf(descr, 80, "Data written to parport#%d by the guest OS is written to this file", i+1);
     bx_param_filename_c *path = new bx_param_filename_c(menu, "file", label, descr,
       "", BX_PATHNAME_LEN);
     path->set_extension("out");
@@ -76,7 +76,7 @@ Bit32s parport_options_parser(const char *context, int num_params, char *params[
     if (idx > BX_N_PARALLEL_PORTS) {
       BX_PANIC(("%s: parportX port number out of range.", context));
     }
-    sprintf(tmpname, "ports.parallel.%d", idx);
+    snprintf(tmpname, 80, "ports.parallel.%d", idx);
     bx_list_c *base = (bx_list_c*) SIM->get_param(tmpname);
     for (int i=1; i<num_params; i++) {
       if (SIM->parse_param_from_list(context, params[i], base) < 0) {
@@ -94,9 +94,9 @@ Bit32s parport_options_save(FILE *fp)
   char pname[20], optname[10];
 
   for (int i=0; i<BX_N_PARALLEL_PORTS; i++) {
-    sprintf(pname, "ports.parallel.%d", i+1);
+    snprintf(pname, 20, "ports.parallel.%d", i+1);
     bx_list_c *base = (bx_list_c*) SIM->get_param(pname);
-    sprintf(optname, "parport%d", i+1);
+    snprintf(optname, 10, "parport%d", i+1);
     SIM->write_param_list(fp, base, optname, 0);
   }
   return 0;
@@ -157,10 +157,10 @@ void bx_parallel_c::init(void)
   int count = 0;
 
   for (unsigned i=0; i<BX_N_PARALLEL_PORTS; i++) {
-    sprintf(pname, "ports.parallel.%d", i+1);
+    snprintf(pname, 20, "ports.parallel.%d", i+1);
     base = (bx_list_c*) SIM->get_param(pname);
     if (SIM->get_param_bool("enabled", base)->get()) {
-      sprintf(name, "Parallel Port %d", i + 1);
+      snprintf(name, 16, "Parallel Port %d", i + 1);
       /* parallel interrupt and i/o ports */
       BX_PAR_THIS s[i].IRQ = irqs[i];
       for (unsigned addr=ports[i]; addr<=(unsigned)(ports[i]+2); addr++) {
@@ -219,10 +219,10 @@ void bx_parallel_c::register_state(void)
 
   bx_list_c *list = new bx_list_c(SIM->get_bochs_root(), "parallel", "Parallel Port State");
   for (i=0; i<BX_N_PARALLEL_PORTS; i++) {
-    sprintf(pname, "ports.parallel.%u", i+1);
+    snprintf(pname, 20, "ports.parallel.%u", i+1);
     base = (bx_list_c*) SIM->get_param(pname);
     if (SIM->get_param_bool("enabled", base)->get()) {
-      sprintf(name, "%u", i);
+      snprintf(name, 4, "%u", i);
       port = new bx_list_c(list, name);
       new bx_shadow_num_c(port, "data", &BX_PAR_THIS s[i].data, BASE_HEX);
       BXRS_PARAM_BOOL(port, slct, BX_PAR_THIS s[i].STATUS.slct);
@@ -413,14 +413,14 @@ void bx_parallel_c::write(Bit32u address, Bit32u value, unsigned io_len)
         if ((value & 0x10) == 0x10) {
           if (BX_PAR_THIS s[port].CONTROL.irq == 0) {
             BX_PAR_THIS s[port].CONTROL.irq = 1;
-            sprintf(name, "Parallel Port %d", port+1);
+            snprintf(name, 16, "Parallel Port %d", port+1);
             DEV_register_irq(BX_PAR_THIS s[port].IRQ, name);
             BX_DEBUG(("parport%d: irq mode selected", port+1));
           }
         } else {
           if (BX_PAR_THIS s[port].CONTROL.irq == 1) {
             BX_PAR_THIS s[port].CONTROL.irq = 0;
-            sprintf(name, "Parallel Port %d", port+1);
+            snprintf(name, 16, "Parallel Port %d", port+1);
             DEV_unregister_irq(BX_PAR_THIS s[port].IRQ, name);
             BX_DEBUG(("parport%d: polling mode selected", port+1));
           }

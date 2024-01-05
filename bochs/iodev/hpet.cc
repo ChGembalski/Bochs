@@ -241,7 +241,7 @@ void bx_hpet_c::register_state(void)
   BXRS_HEX_PARAM_FIELD(list, isr, s.isr);
   BXRS_HEX_PARAM_FIELD(list, hpet_counter, s.hpet_counter);
   for (int i = 0; i < s.num_timers; i++) {
-    sprintf(tnum, "timer%d", i);
+    snprintf(tnum, 16, "timer%d", i);
     tim = new bx_list_c(list, tnum);
     BXRS_HEX_PARAM_FIELD(tim, config, s.timer[i].config);
     BXRS_HEX_PARAM_FIELD(tim, cmp, s.timer[i].cmp);

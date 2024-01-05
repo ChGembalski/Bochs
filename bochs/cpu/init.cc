@@ -44,8 +44,8 @@ BX_CPU_C::BX_CPU_C(unsigned id): bx_cpuid(id)
   // in the constructor because the only access to it is via
   // global variables which aren't initialized quite yet.
   char name[16], logname[16];
-  sprintf(name, "CPU%x", bx_cpuid);
-  sprintf(logname, "cpu%x", bx_cpuid);
+  snprintf(name, 16, "CPU%x", bx_cpuid);
+  snprintf(logname, 16, "cpu%x", bx_cpuid);
   put(logname, name);
 
 #if BX_SUPPORT_APIC
@@ -198,12 +198,12 @@ void BX_CPU_C::register_state(void)
   char name[128]; // to fit long enough name
   unsigned n;
 
-  sprintf(name, "cpu%d", BX_CPU_ID);
+  snprintf(name, 128, "cpu%d", BX_CPU_ID);
 
   bx_list_c *cpu = new bx_list_c(SIM->get_bochs_root(), name, name);
 
   for (n=0;n<BX_ISA_EXTENSIONS_ARRAY_SIZE;n++) {
-    sprintf(name, "ia_extensions_bitmask_%u", n);
+    snprintf(name, 128, "ia_extensions_bitmask_%u", n);
     new bx_shadow_num_c(cpu, name, &ia_extensions_bitmask[n], BASE_HEX);
   }
 
@@ -442,7 +442,7 @@ void BX_CPU_C::register_state(void)
   bx_list_c *MSRS = new bx_list_c(cpu, "USER_MSR");
   for(n=0; n < BX_MSR_MAX_INDEX; n++) {
     if (! msrs[n]) continue;
-    sprintf(name, "msr_0x%03x", n);
+    snprintf(name, 128, "msr_0x%03x", n);
     bx_list_c *m = new bx_list_c(MSRS, name);
     BXRS_HEX_PARAM_FIELD(m, index, msrs[n]->index);
     BXRS_DEC_PARAM_FIELD(m, type, msrs[n]->type);
@@ -477,7 +477,7 @@ void BX_CPU_C::register_state(void)
   BXRS_HEX_PARAM_FIELD(fpu, fds, the_i387.fds);
   BXRS_HEX_PARAM_FIELD(fpu, fdp, the_i387.fdp);
   for (n=0; n<8; n++) {
-    sprintf(name, "st%d", n);
+    snprintf(name, 128, "st%d", n);
     bx_list_c *STx = new bx_list_c(fpu, name);
     BXRS_HEX_PARAM_FIELD(STx, exp,      the_i387.st_space[n].exp);
     BXRS_HEX_PARAM_FIELD(STx, fraction, the_i387.st_space[n].fraction);
@@ -491,7 +491,7 @@ void BX_CPU_C::register_state(void)
     BXRS_HEX_PARAM_FIELD(sse, mxcsr, mxcsr.mxcsr);
     for (n=0; n<BX_XMM_REGISTERS; n++) {
       for(unsigned j=0;j < BX_VLMAX*2;j++) {
-        sprintf(name, "xmm%02d_%d", n, j);
+        snprintf(name, 128, "xmm%02d_%d", n, j);
         new bx_shadow_num_c(sse, name, &vmm[n].vmm64u(j), BASE_HEX);
       }
     }
@@ -500,7 +500,7 @@ void BX_CPU_C::register_state(void)
   if (BX_CPUID_SUPPORT_ISA_EXTENSION(BX_ISA_AVX512)) {
     bx_list_c *mask = new bx_list_c(cpu, "OPMASK");
     for (n=0; n<8; n++) {
-      sprintf(name, "k%d", n);
+      snprintf(name, 128, "k%d", n);
       new bx_shadow_num_c(mask, name, &opmask[n].rrx, BASE_HEX);
     }
   }
@@ -537,7 +537,7 @@ void BX_CPU_C::register_state(void)
   BXRS_PARAM_BOOL(dtlb, split_large, DTLB.split_large);
 #endif
   for (n=0; n<BX_DTLB_SIZE; n++) {
-    sprintf(name, "entry%u", n);
+    snprintf(name, 128, "entry%u", n);
     bx_list_c *tlb_entry = new bx_list_c(dtlb, name);
     BXRS_HEX_PARAM_FIELD(tlb_entry, lpf, DTLB.entry[n].lpf);
     BXRS_HEX_PARAM_FIELD(tlb_entry, lpf_mask, DTLB.entry[n].lpf_mask);
@@ -556,7 +556,7 @@ void BX_CPU_C::register_state(void)
   BXRS_PARAM_BOOL(itlb, split_large, ITLB.split_large);
 #endif
   for (n=0; n<BX_ITLB_SIZE; n++) {
-    sprintf(name, "entry%u", n);
+    snprintf(name, 128, "entry%u", n);
     bx_list_c *tlb_entry = new bx_list_c(itlb, name);
     BXRS_HEX_PARAM_FIELD(tlb_entry, lpf, ITLB.entry[n].lpf);
     BXRS_HEX_PARAM_FIELD(tlb_entry, lpf_mask, ITLB.entry[n].lpf_mask);

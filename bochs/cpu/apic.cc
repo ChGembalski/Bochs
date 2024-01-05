@@ -182,8 +182,8 @@ bx_local_apic_c::bx_local_apic_c(BX_CPU_C *mycpu, unsigned id)
 #endif
 
   char name[16], logname[16];
-  sprintf(name, "APIC%x", apic_id);
-  sprintf(logname, "apic%x", apic_id);
+  snprintf(name, 16, "APIC%x", apic_id);
+  snprintf(logname, 16, "apic%x", apic_id);
   put(logname, name);
 
   // Register a non-active timer for use when the timer is started.
@@ -1410,13 +1410,13 @@ void bx_local_apic_c::register_state(bx_param_c *parent)
   BXRS_HEX_PARAM_SIMPLE(lapic, dest_format);
 
   for (i=0; i<8; i++) {
-    sprintf(name, "isr%u", i);
+    snprintf(name, 6, "isr%u", i);
     new bx_shadow_num_c(lapic, name, &isr[i], BASE_HEX);
 
-    sprintf(name, "tmr%u", i);
+    snprintf(name, 6, "tmr%u", i);
     new bx_shadow_num_c(lapic, name, &tmr[i], BASE_HEX);
 
-    sprintf(name, "irr%u", i);
+    snprintf(name, 6, "irr%u", i);
     new bx_shadow_num_c(lapic, name, &irr[i], BASE_HEX);
   }
 
@@ -1424,7 +1424,7 @@ void bx_local_apic_c::register_state(bx_param_c *parent)
   if (cpu->is_cpu_extension_supported(BX_ISA_XAPIC_EXT)) {
     BXRS_HEX_PARAM_SIMPLE(lapic, xapic_ext);
     for (i=0; i<8; i++) {
-      sprintf(name, "ier%u", i);
+      snprintf(name, 6, "ier%u", i);
       new bx_shadow_num_c(lapic, name, &ier[i], BASE_HEX);
     }
   }
@@ -1436,7 +1436,7 @@ void bx_local_apic_c::register_state(bx_param_c *parent)
   BXRS_HEX_PARAM_SIMPLE(lapic, icr_lo);
 
   for (i=0; i<APIC_LVT_ENTRIES; i++) {
-    sprintf(name, "lvt%u", i);
+    snprintf(name, 6, "lvt%u", i);
     new bx_shadow_num_c(lapic, name, &lvt[i], BASE_HEX);
   }
 

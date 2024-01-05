@@ -403,12 +403,12 @@ void build_runtime_options_prompt(const char *format, char *buf, int size)
   char buffer[6][128];
 
   for (int i=0; i<2; i++) {
-    sprintf(pname, "floppy.%d", i);
+    snprintf(pname, 80, "floppy.%d", i);
     floppyop = (bx_list_c*) SIM->get_param(pname);
     if (SIM->get_param_enum("devtype", floppyop)->get() == BX_FDD_NONE)
       strcpy(buffer[i], "(not present)");
     else {
-      sprintf(buffer[i], "%s, size=%s, %s", SIM->get_param_string("path", floppyop)->getptr(),
+      snprintf(buffer[i], 128, "%s, size=%s, %s", SIM->get_param_string("path", floppyop)->getptr(),
         SIM->get_param_enum("type", floppyop)->get_selected(),
         SIM->get_param_enum("status", floppyop)->get_selected());
       if (!SIM->get_param_string("path", floppyop)->getptr()[0]) strcpy(buffer[i], "none");
@@ -627,7 +627,7 @@ void bx_log_options(int individual)
       for (level=0; level<SIM->get_max_log_level(); level++) {
         char prompt[1024];
         int default_action = SIM->get_log_action(id, level);
-        sprintf(prompt, "Enter action for %s event: [%s] ", SIM->get_log_level_name(level), SIM->get_action_name(default_action));
+        snprintf(prompt, 1024, "Enter action for %s event: [%s] ", SIM->get_log_level_name(level), SIM->get_action_name(default_action));
         // don't show the no change choice (choices=3)
         if (ask_menu(prompt, "", log_level_n_choices_normal, log_level_choices, default_action, &action)<0)
           return;
@@ -647,7 +647,7 @@ void bx_log_options(int individual)
     for (int level=0; level<SIM->get_max_log_level(); level++) {
       char prompt[1024];
       int action, default_action = N_ACT;  // default to no change
-      sprintf(prompt, "Enter action for %s event on all devices: [no change] ", SIM->get_log_level_name(level));
+      snprintf(prompt, 1024, "Enter action for %s event on all devices: [no change] ", SIM->get_log_level_name(level));
       // do show the no change choice (choices=4)
       if (ask_menu(prompt, "", log_level_n_choices_normal+1, log_level_choices, default_action, &action)<0)
         return;
@@ -702,7 +702,7 @@ int bx_write_rc(char *rc)
       // confirmation is required.
       Bit32u overwrite = 0;
       char prompt[570];
-      sprintf(prompt, "Configuration file '%s' already exists.  Overwrite it? [no] ", newrc);
+      snprintf(prompt, 570, "Configuration file '%s' already exists.  Overwrite it? [no] ", newrc);
       if (ask_yn(prompt, "", 0, &overwrite) < 0) return -1;
       if (!overwrite) continue;  // if "no", start loop over, asking for a different file
       // they confirmed, so try again with overwrite bit set
@@ -973,11 +973,11 @@ int text_ask(bx_param_c *param)
         char buffer[512];
         if (prompt == NULL) {
           if (bparam->get_label() != NULL) {
-            sprintf(buffer, "%s? [%%s] ", bparam->get_label());
+            snprintf(buffer, 512, "%s? [%%s] ", bparam->get_label());
             prompt = buffer;
           } else {
             // default prompt, if they didn't set an ask format or label string
-            sprintf(buffer, "%s? [%%s] ", bparam->get_name());
+            snprintf(buffer, 512, "%s? [%%s] ", bparam->get_name());
             prompt = buffer;
           }
         }

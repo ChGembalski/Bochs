@@ -178,7 +178,7 @@ void bx_piix3_c::register_state(void)
   bx_list_c *irql = new bx_list_c(list, "irq_level");
   for (i=0; i<4; i++) {
     for (j=0; j<16; j++) {
-      sprintf(name, "%u_%u", i, j);
+      snprintf(name, 6, "%u_%u", i, j);
       new bx_shadow_num_c(irql, name, &BX_P2I_THIS s.irq_level[i][j]);
     }
   }

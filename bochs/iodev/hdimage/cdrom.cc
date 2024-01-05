@@ -36,7 +36,7 @@ cdrom_base_c::cdrom_base_c(const char *dev)
 {
   char prefix[6];
 
-  sprintf(prefix, "CD%d", ++bx_cdrom_count);
+  snprintf(prefix, 6, "CD%d", ++bx_cdrom_count);
   put(prefix);
   fd = -1; // File descriptor not yet allocated
 

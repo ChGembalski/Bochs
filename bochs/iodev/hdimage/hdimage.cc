@@ -312,7 +312,7 @@ int bx_close_image(int fd, const char *pathname)
 #ifndef BXIMAGE
   char lockfn[BX_PATHNAME_LEN];
 
-  sprintf(lockfn, "%s.lock", pathname);
+  snprintf(lockfn, BX_PATHNAME_LEN, "%s.lock", pathname);
   if (access(lockfn, F_OK) == 0) {
     unlink(lockfn);
   }
@@ -353,7 +353,7 @@ int hdimage_open_file(const char *pathname, int flags, Bit64u *fsize, FILETIME *
 #endif
 
 #ifndef BXIMAGE
-  sprintf(lockfn, "%s.lock", pathname);
+  snprintf(lockfn, BX_PATHNAME_LEN, "%s.lock", pathname);
   lockfd = ::open(lockfn, O_RDONLY);
   if (lockfd >= 0) {
     ::close(lockfd);
@@ -489,7 +489,7 @@ Bit64s hdimage_save_handler(void *class_ptr, bx_param_c *param)
   if (SIM->get_param_string(BXPN_RESTORE_PATH)->isempty()) {
     return 0;
   }
-  sprintf(path, "%s/%s", SIM->get_param_string(BXPN_RESTORE_PATH)->getptr(), imgname);
+  snprintf(path, BX_PATHNAME_LEN+1, "%s/%s", SIM->get_param_string(BXPN_RESTORE_PATH)->getptr(), imgname);
   return ((device_image_t*)class_ptr)->save_state(path);
 }
 
@@ -503,7 +503,7 @@ void hdimage_restore_handler(void *class_ptr, bx_param_c *param, Bit64s value)
     if (!strncmp(imgname, "bochs.", 6)) {
       strcpy(imgname, imgname+6);
     }
-    sprintf(path, "%s/%s", SIM->get_param_string(BXPN_RESTORE_PATH)->getptr(), imgname);
+    snprintf(path, BX_PATHNAME_LEN+1, "%s/%s", SIM->get_param_string(BXPN_RESTORE_PATH)->getptr(), imgname);
     ((device_image_t*)class_ptr)->restore_state(path);
   }
 }
@@ -924,7 +924,7 @@ bool concat_image_t::save_state(const char *backup_fname)
   char tempfn[BX_PATHNAME_LEN];
 
   for (int index = 0; index < maxfd; index++) {
-    sprintf(tempfn, "%s%d", backup_fname, index);
+    snprintf(tempfn, BX_PATHNAME_LEN, "%s%d", backup_fname, index);
     ret &= hdimage_backup_file(fd_table[index], tempfn);
     if (ret == 0) break;
   }
@@ -939,7 +939,7 @@ void concat_image_t::restore_state(const char *backup_fname)
   char *image_name = new char[strlen(pathname0) + 1];
   strcpy(image_name, pathname0);
   for (int index = 0; index < maxfd; index++) {
-    sprintf(tempfn, "%s%d", backup_fname, index);
+    snprintf(tempfn, BX_PATHNAME_LEN, "%s%d", backup_fname, index);
     if (!hdimage_copy_file(tempfn, image_name)) {
       BX_PANIC(("Failed to restore concat image '%s'", image_name));
       delete [] image_name;
@@ -1742,7 +1742,7 @@ int redolog_t::create(const char* filename, const char* type, Bit64u size)
 #ifndef BXIMAGE
   char lockfn[BX_PATHNAME_LEN];
 
-  sprintf(lockfn, "%s.lock", filename);
+  snprintf(lockfn, BX_PATHNAME_LEN, "%s.lock", filename);
   if (access(lockfn, F_OK) == 0) {
     return -1;
   }
@@ -2299,7 +2299,7 @@ bool coherency_check(device_image_t *ro_disk, redolog_t *redolog)
   timestamp2 = redolog->get_timestamp();
   if (timestamp2 != 0) {
     if (timestamp1 != timestamp2) {
-      sprintf(buffer, "%02d.%02d.%04d %02d:%02d:%02d", (timestamp2 >> 16) & 0x001f,
+      snprintf(buffer, 24, "%02d.%02d.%04d %02d:%02d:%02d", (timestamp2 >> 16) & 0x001f,
               (timestamp2 >> 21) & 0x000f, ((timestamp2 >> 25) & 0x007f) + 1980,
               (timestamp2 & 0xf800) >> 11, (timestamp2 & 0x07e0) >> 5,
               (timestamp2 & 0x001f) << 1);
@@ -2367,7 +2367,7 @@ int undoable_image_t::open(const char* pathname, int flags)
   // If not set, we make up the redolog filename from the pathname
   if (redolog_name == NULL) {
     redolog_name = new char[strlen(pathname) + UNDOABLE_REDOLOG_EXTENSION_LENGTH + 1];
-    sprintf(redolog_name, "%s%s", pathname, UNDOABLE_REDOLOG_EXTENSION);
+    snprintf(redolog_name, strlen(pathname) + UNDOABLE_REDOLOG_EXTENSION_LENGTH + 1, "%s%s", pathname, UNDOABLE_REDOLOG_EXTENSION);
   }
 
   if (redolog->open(redolog_name, REDOLOG_SUBTYPE_UNDOABLE) < 0) {
@@ -2526,7 +2526,7 @@ int volatile_image_t::open(const char* pathname, int flags)
   }
 
   redolog_temp = new char[strlen(redolog_name) + VOLATILE_REDOLOG_EXTENSION_LENGTH + 1];
-  sprintf(redolog_temp, "%s%s", redolog_name, VOLATILE_REDOLOG_EXTENSION);
+  snprintf(redolog_temp, strlen(redolog_name) + VOLATILE_REDOLOG_EXTENSION_LENGTH + 1, "%s%s", redolog_name, VOLATILE_REDOLOG_EXTENSION);
 
   filedes = mkstemp(redolog_temp);
 

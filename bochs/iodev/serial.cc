@@ -85,20 +85,20 @@ void serial_init_options(void)
   bx_list_c *serial = new bx_list_c(ports, "serial", "Serial Port Options");
   serial->set_options(serial->SHOW_PARENT);
   for (int i=0; i<BX_N_SERIAL_PORTS; i++) {
-    sprintf(name, "%d", i+1);
-    sprintf(label, "Serial Port %d", i+1);
+    snprintf(name, 4, "%d", i+1);
+    snprintf(label, 80, "Serial Port %d", i+1);
     bx_list_c *menu = new bx_list_c(serial, name, label);
     menu->set_options(menu->SERIES_ASK);
-    sprintf(label, "Enable serial port #%d (COM%d)", i+1, i+1);
-    sprintf(descr, "Controls whether COM%d is installed or not", i+1);
+    snprintf(label, 80, "Enable serial port #%d (COM%d)", i+1, i+1);
+    snprintf(descr, 120, "Controls whether COM%d is installed or not", i+1);
     bx_param_bool_c *enabled = new bx_param_bool_c(menu, "enabled", label, descr,
       (i==0)?1 : 0);  // only enable the first by default
-    sprintf(label, "I/O mode of the serial device for COM%d", i+1);
+    snprintf(label, 80, "I/O mode of the serial device for COM%d", i+1);
     bx_param_enum_c *mode = new bx_param_enum_c(menu, "mode", label,
       "The mode can be one these: 'null', 'file', 'term', 'raw', 'mouse', 'socket*', 'pipe*'",
       serial_mode_list, BX_SER_MODE_NULL, BX_SER_MODE_NULL);
     mode->set_ask_format("Choose I/O mode of the serial device [%s] ");
-    sprintf(label, "Pathname of the serial device for COM%d", i+1);
+    snprintf(label, 80, "Pathname of the serial device for COM%d", i+1);
     bx_param_filename_c *path = new bx_param_filename_c(menu, "dev", label,
       "The path can be a real serial device or a pty (X/Unix only)",
       "", BX_PATHNAME_LEN);
@@ -125,7 +125,7 @@ Bit32s serial_options_parser(const char *context, int num_params, char *params[]
     if (idx > BX_N_SERIAL_PORTS) {
       BX_PANIC(("%s: comX port number out of range.", context));
     }
-    sprintf(tmpname, "ports.serial.%d", idx);
+    snprintf(tmpname, 80, "ports.serial.%d", idx);
     bx_list_c *base = (bx_list_c*) SIM->get_param(tmpname);
     for (int i=1; i<num_params; i++) {
       if (SIM->parse_param_from_list(context, params[i], base) < 0) {
@@ -143,9 +143,9 @@ Bit32s serial_options_save(FILE *fp)
   char port[20];
 
   for (int i=0; i<BX_N_SERIAL_PORTS; i++) {
-    sprintf(port, "ports.serial.%d", i+1);
+    snprintf(port, 20, "ports.serial.%d", i+1);
     bx_list_c *base = (bx_list_c*) SIM->get_param(port);
-    sprintf(port, "com%d", i+1);
+    snprintf(port, 20, "com%d", i+1);
     SIM->write_param_list(fp, base, port, 0);
   }
   return 0;
@@ -200,7 +200,7 @@ bx_serial_c::~bx_serial_c(void)
   bx_list_c *base;
 
   for (int i=0; i<BX_SERIAL_MAXDEV; i++) {
-    sprintf(pname, "ports.serial.%d", i+1);
+    snprintf(pname, 20, "ports.serial.%d", i+1);
     base = (bx_list_c*) SIM->get_param(pname);
     if (SIM->get_param_bool("enabled", base)->get()) {
       switch (BX_SER_THIS s[i].io_mode) {
@@ -271,10 +271,10 @@ bx_serial_c::init(void)
    * Put the UART registers into their RESET state
    */
   for (i=0; i<BX_N_SERIAL_PORTS; i++) {
-    sprintf(pname, "ports.serial.%d", i+1);
+    snprintf(pname, 20, "ports.serial.%d", i+1);
     base = (bx_list_c*) SIM->get_param(pname);
     if (SIM->get_param_bool("enabled", base)->get()) {
-      sprintf(name, "Serial Port %d", i + 1);
+      snprintf(name, 16, "Serial Port %d", i + 1);
       /* serial interrupt */
       BX_SER_THIS s[i].IRQ = 4 - (i & 1);
       if (i < 2) {
@@ -614,7 +614,7 @@ void bx_serial_c::register_state(void)
 
   bx_list_c *list = new bx_list_c(SIM->get_bochs_root(), "serial", "Serial Port State");
   for (i=0; i<BX_N_SERIAL_PORTS; i++) {
-    sprintf(name, "%u", i);
+    snprintf(name, 6, "%u", i);
     port = new bx_list_c(list, name);
     BXRS_PARAM_BOOL(port, ls_interrupt, BX_SER_THIS s[i].ls_interrupt);
     BXRS_PARAM_BOOL(port, ms_interrupt, BX_SER_THIS s[i].ms_interrupt);

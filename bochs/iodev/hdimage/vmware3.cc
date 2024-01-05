@@ -216,7 +216,7 @@ char* vmware3_image_t::generate_cow_name(const char * filename, unsigned chain)
   strcpy(name, filename);
   if (chain != 0) {
     char chainstr[12];
-    sprintf(chainstr, "-%02u", chain + 1);
+    snprintf(chainstr, 12, "-%02u", chain + 1);
     char * period = strrchr(name, '.');
     if (period != 0) {
       char temp[1024];
@@ -570,7 +570,7 @@ bool vmware3_image_t::save_state(const char *backup_fname)
   unsigned count = current->header.number_of_chains;
   if (count < 1) count = 1;
   for (unsigned i = 0; i < count; ++i) {
-    sprintf(tempfn, "%s%d", backup_fname, i);
+    snprintf(tempfn, BX_PATHNAME_LEN, "%s%d", backup_fname, i);
     ret &= hdimage_backup_file(images[i].fd, tempfn);
     if (ret == 0) break;
   }
@@ -599,7 +599,7 @@ void vmware3_image_t::restore_state(const char *backup_fname)
   close();
   if (count < 1) count = 1;
   for (unsigned i = 0; i < count; ++i) {
-    sprintf(tempfn, "%s%d", backup_fname, i);
+    snprintf(tempfn, BX_PATHNAME_LEN, "%s%d", backup_fname, i);
     char *filename = generate_cow_name(pathname, i);
     ret &= hdimage_copy_file(tempfn, filename);
     strcpy(tempfn, filename);

@@ -1017,7 +1017,7 @@ int vvfat_image_t::init_directories(const char* dirname)
     cluster = mapping->end;
 
     if (cluster >= (cluster_count + 2)) {
-      sprintf(size_txt, "%d", (sector_count >> 11));
+      snprintf(size_txt, 8, "%d", (sector_count >> 11));
       BX_PANIC(("Directory does not fit in FAT%d (capacity %s MB)",
                 fat_type,
                 (fat_type == 12) ? (sector_count == 2880) ? "1.44":"2.88"
@@ -1140,7 +1140,7 @@ void vvfat_image_t::set_file_attributes(void)
   Bit8u attributes;
   int i;
 
-  sprintf(path, "%s/%s", vvfat_path, VVFAT_ATTR);
+  snprintf(path, BX_PATHNAME_LEN, "%s/%s", vvfat_path, VVFAT_ATTR);
   fd = fopen(path, "r");
   if (fd != NULL) {
     do {
@@ -1160,7 +1160,7 @@ void vvfat_image_t::set_file_attributes(void)
         }
         if (strncmp(fpath, vvfat_path, strlen(vvfat_path))) {
           strcpy(path, fpath);
-          sprintf(fpath, "%s/%s", vvfat_path, path);
+          snprintf(fpath, BX_PATHNAME_LEN+1, "%s/%s", vvfat_path, path);
         }
         mapping_t* mapping = find_mapping_for_path(fpath);
         if (mapping != NULL) {
@@ -1241,7 +1241,7 @@ int vvfat_image_t::open(const char* dirname, int flags)
   if (read_sector_from_file(path, boot_buf, 0)) {
     bootsector_t* bs = (bootsector_t*)boot_buf;
     if (use_mbr_file) {
-      sprintf(ftype, "FAT%d   ", fat_type);
+      snprintf(ftype, 10, "FAT%d   ", fat_type);
       if (fat_type == 32) {
         ftype_ok = memcmp(bs->u.fat32.fat_type, ftype, 8) == 0;
       } else {
@@ -1379,7 +1379,7 @@ int vvfat_image_t::open(const char* dirname, int flags)
   }
 
   redolog_temp = (char*)malloc(strlen(logname) + VOLATILE_REDOLOG_EXTENSION_LENGTH + 1);
-  sprintf(redolog_temp, "%s%s", logname, VOLATILE_REDOLOG_EXTENSION);
+  snprintf(redolog_temp, strlen(logname) + VOLATILE_REDOLOG_EXTENSION_LENGTH + 1, "%s%s", logname, VOLATILE_REDOLOG_EXTENSION);
 
   filedes = mkstemp(redolog_temp);
 
@@ -1633,7 +1633,7 @@ void vvfat_image_t::parse_directory(const char *path, Bit32u start_cluster)
   do {
     newentry = read_direntry(ptr, filename);
     if (newentry != NULL) {
-      sprintf(full_path, "%s/%s", path, filename);
+      snprintf(full_path, BX_PATHNAME_LEN+1, "%s/%s", path, filename);
       if ((newentry->attributes != 0x10) && (newentry->attributes != 0x20)) {
         if (vvfat_attr_fd != NULL) {
           attr_txt[0] = 0;
@@ -1733,7 +1733,7 @@ void vvfat_image_t::commit_changes(void)
       mapping->mode |= MODE_DELETED;
     }
   }
-  sprintf(path, "%s/%s", vvfat_path, VVFAT_ATTR);
+  snprintf(path, BX_PATHNAME_LEN, "%s/%s", vvfat_path, VVFAT_ATTR);
   vvfat_attr_fd = fopen(path, "w");
   // parse new directory tree and create / modify directories and files
   parse_directory(vvfat_path, (fat_type == 32) ? first_cluster_of_root_dir : 0);
@@ -1760,7 +1760,7 @@ void vvfat_image_t::close(void)
   mapping_t *mapping;
 
   if (vvfat_modified) {
-    sprintf(msg, "Write back changes to directory '%s'?\n\nWARNING: This feature is still experimental!", vvfat_path);
+    snprintf(msg, BX_PATHNAME_LEN+80, "Write back changes to directory '%s'?\n\nWARNING: This feature is still experimental!", vvfat_path);
     if (SIM->ask_yes_no("Bochs VVFAT modified", msg, 0)) {
       commit_changes();
     }

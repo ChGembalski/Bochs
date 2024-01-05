@@ -179,7 +179,7 @@ void bx_init_std_nic_options(const char *name, bx_list_c *menu)
   bx_param_filename_c *path, *bootrom;
   char descr[120];
 
-  sprintf(descr, "MAC address of the %s device. Don't use an address of a machine on your net.", name);
+  snprintf(descr, 120, "MAC address of the %s device. Don't use an address of a machine on your net.", name);
   macaddr = new bx_param_bytestring_c(menu,
     "mac",
     "MAC Address",
@@ -233,14 +233,14 @@ void bx_init_usb_options(const char *usb_name, const char *pname, int maxports, 
     usbrt->set_runtime_param(1);
     usbrt->set_options(usbrt->SHOW_PARENT | usbrt->USE_TAB_WINDOW);
   }
-  sprintf(group, "USB %s", usb_name);
-  sprintf(label, "%s Configuration", usb_name);
+  snprintf(group, 16, "USB %s", usb_name);
+  snprintf(label, 512, "%s Configuration", usb_name);
   bx_list_c *menu = new bx_list_c(usb, pname, label);
   menu->set_options(menu->SHOW_PARENT);
-  sprintf(label, "Enable %s emulation", usb_name);
-  sprintf(descr, "Enables the %s emulation", usb_name);
+  snprintf(label, 512, "Enable %s emulation", usb_name);
+  snprintf(descr, 512, "Enables the %s emulation", usb_name);
   bx_param_bool_c *enabled = new bx_param_bool_c(menu, "enabled", label, descr, 1);
-  
+
   // ehci companion type
   static const char *ehci_comp_type[] = { "uhci", "ohci", NULL };
   new bx_param_enum_c(menu,
@@ -249,7 +249,7 @@ void bx_init_usb_options(const char *usb_name, const char *pname, int maxports, 
       ehci_comp_type,
       0, 0
   );
-  
+
   // xhci host controller type and number of ports
   static const char *xhci_model_names[] = { "uPD720202", "uPD720201", NULL };
   new bx_param_enum_c(menu,
@@ -264,22 +264,22 @@ void bx_init_usb_options(const char *usb_name, const char *pname, int maxports, 
       -1, 10,
       -1, 0   // -1 as a default so that we can tell if this parameter was given
   );
-  
+
   deplist = new bx_list_c(NULL);
   for (Bit8u i = 0; i < maxports; i++) {
-    sprintf(name, "port%u", i+1);
-    sprintf(label, "Port #%u Configuration", i+1);
-    sprintf(descr, "Device connected to %s port #%u and it's options", usb_name, i+1);
+    snprintf(name, 8, "port%u", i+1);
+    snprintf(label, 512, "Port #%u Configuration", i+1);
+    snprintf(descr, 512, "Device connected to %s port #%u and it's options", usb_name, i+1);
     bx_list_c *port = new bx_list_c(menu, name, label);
     port->set_options(port->SERIES_ASK | port->USE_BOX_TITLE);
-    sprintf(descr, "Device connected to %s port #%d", usb_name, i+1);
+    snprintf(descr, 512, "Device connected to %s port #%d", usb_name, i+1);
     bx_param_enum_c *device = new bx_param_enum_c(port,
       "device",
       "Device",
       descr,
       bx_usbdev_ctl.get_device_names(),
       0, 0);
-    sprintf(descr, "Options for device connected to %s port #%u", usb_name, i+1);
+    snprintf(descr, 512, "Options for device connected to %s port #%u", usb_name, i+1);
 #if BX_SUPPORT_USB_XHCI
     if (!strcmp(usb_name, "xHCI")) {
       if (i < (param0 / 2))
@@ -294,7 +294,7 @@ void bx_init_usb_options(const char *usb_name, const char *pname, int maxports, 
       label,
       descr,
       "", BX_PATHNAME_LEN);
-    bx_param_bool_c *overcurrent = new bx_param_bool_c(port, 
+    bx_param_bool_c *overcurrent = new bx_param_bool_c(port,
       "over_current",
       "signal over-current",
       "signal over-current", 0);
@@ -882,7 +882,7 @@ void bx_init_options()
       "Pathname of ROM image to load",
       "", BX_PATHNAME_LEN);
   path->set_format("Name of ROM BIOS image: %s");
-  sprintf(name, "%s" DIRECTORY_SEPARATOR "BIOS-bochs-latest", (char *)get_builtin_variable("BXSHARE"));
+  snprintf(name, BX_PATHNAME_LEN, "%s" DIRECTORY_SEPARATOR "BIOS-bochs-latest", (char *)get_builtin_variable("BXSHARE"));
   path->set_initial_val(name);
   bx_param_num_c *romaddr = new bx_param_num_c(rom,
       "address",
@@ -911,7 +911,7 @@ void bx_init_options()
       "Pathname of VGA ROM image to load",
       "", BX_PATHNAME_LEN);
   path->set_format("Name of VGA BIOS image: %s");
-  sprintf(name, "%s" DIRECTORY_SEPARATOR "VGABIOS-lgpl-latest", get_builtin_variable("BXSHARE"));
+  snprintf(name, BX_PATHNAME_LEN, "%s" DIRECTORY_SEPARATOR "VGABIOS-lgpl-latest", get_builtin_variable("BXSHARE"));
   path->set_initial_val(name);
   vgarom->set_options(vgarom->SERIES_ASK);
 
@@ -919,19 +919,19 @@ void bx_init_options()
   bx_param_num_c *optaddr;
 
   for (i=0; i<BX_N_OPTROM_IMAGES; i++) {
-    sprintf(name, "%d", i+1);
-    sprintf(descr, "Pathname of optional ROM image #%d to load", i+1);
-    sprintf(label, "Optional ROM image #%d", i+1);
+    snprintf(name, BX_PATHNAME_LEN, "%d", i+1);
+    snprintf(descr, 512, "Pathname of optional ROM image #%d to load", i+1);
+    snprintf(label, 512, "Optional ROM image #%d", i+1);
     optnum = new bx_list_c(optrom, name, label);
     path = new bx_param_filename_c(optnum,
       "file",
       "Path",
       descr,
       "", BX_PATHNAME_LEN);
-    sprintf(label, "Name of optional ROM image #%d", i+1);
+    snprintf(label, 512, "Name of optional ROM image #%d", i+1);
     strcat(label, " : %s");
     path->set_format(label);
-    sprintf(descr, "The address at which the optional ROM image #%d should be loaded", i+1);
+    snprintf(descr, 512, "The address at which the optional ROM image #%d should be loaded", i+1);
     optaddr = new bx_param_num_c(optnum,
       "address",
       "Address",
@@ -940,7 +940,7 @@ void bx_init_options()
       0);
     optaddr->set_base(16);
     optaddr->set_format("0x%05x");
-    sprintf(label, "Optional ROM #%d address:", i+1);
+    snprintf(label, 512, "Optional ROM #%d address:", i+1);
     strcat(label, " 0x%05x");
     optaddr->set_long_format(label);
     deplist = new bx_list_c(NULL);
@@ -951,19 +951,19 @@ void bx_init_options()
   optrom->set_options(optrom->SHOW_PARENT);
 
   for (i=0; i<BX_N_OPTRAM_IMAGES; i++) {
-    sprintf(name, "%d", i+1);
-    sprintf(descr, "Pathname of optional RAM image #%d to load", i+1);
-    sprintf(label, "Optional RAM image #%d", i+1);
+    snprintf(name, BX_PATHNAME_LEN, "%d", i+1);
+    snprintf(descr, 512, "Pathname of optional RAM image #%d to load", i+1);
+    snprintf(label, 512, "Optional RAM image #%d", i+1);
     optnum = new bx_list_c(optram, name, label);
     path = new bx_param_filename_c(optnum,
       "file",
       "Path",
       descr,
       "", BX_PATHNAME_LEN);
-    sprintf(label, "Name of optional RAM image #%d", i+1);
+    snprintf(label, 512, "Name of optional RAM image #%d", i+1);
     strcat(label, " : %s");
     path->set_format(label);
-    sprintf(descr, "The address at which the optional RAM image #%d should be loaded", i+1);
+    snprintf(descr, 512, "The address at which the optional RAM image #%d should be loaded", i+1);
     optaddr = new bx_param_num_c(optnum,
       "address",
       "Address",
@@ -972,7 +972,7 @@ void bx_init_options()
       0);
     optaddr->set_base(16);
     optaddr->set_format("0x%05x");
-    sprintf(label, "Optional RAM #%d address:", i+1);
+    snprintf(label, 512, "Optional RAM #%d address:", i+1);
     strcat(label, " 0x%05x");
     optaddr->set_long_format(label);
     deplist = new bx_list_c(NULL);
@@ -1079,9 +1079,9 @@ void bx_init_options()
   bx_list_c *slot = new bx_list_c(pci, "slot", "PCI Slots");
   deplist->add(slot);
   for (i=0; i<BX_N_PCI_SLOTS; i++) {
-    sprintf(name, "%d", i+1);
-    sprintf (descr, "Name of the device connected to PCI slot #%d", i+1);
-    sprintf (label, "PCI slot #%d device", i+1);
+    snprintf(name, BX_PATHNAME_LEN, "%d", i+1);
+    snprintf (descr, 512, "Name of the device connected to PCI slot #%d", i+1);
+    snprintf (label, 512, "PCI slot #%d device", i+1);
     bx_param_enum_c *devname = new bx_param_enum_c(slot,
         name,
         label,
@@ -1283,9 +1283,9 @@ void bx_init_options()
   bx_list_c *boot_params = new bx_list_c(root_param, "boot_params", "Boot Options");
   // boot sequence
   for (i=0; i<3; i++) {
-    sprintf(name, "boot_drive%d", i+1);
-    sprintf(label, "Boot drive #%d", i+1);
-    sprintf(descr, "Name of drive #%d in boot sequence (A, C or CD)", i+1);
+    snprintf(name, BX_PATHNAME_LEN, "boot_drive%d", i+1);
+    snprintf(label, 512, "Boot drive #%d", i+1);
+    snprintf(descr, 512, "Name of drive #%d in boot sequence (A, C or CD)", i+1);
     bx_param_enum_c *bootdrive = new bx_param_enum_c(boot_params,
         name,
         label,
@@ -1423,7 +1423,7 @@ void bx_init_options()
 
   for (Bit8u channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
 
-    sprintf(name, "%d", channel);
+    snprintf(name, BX_PATHNAME_LEN, "%d", channel);
     ata_menu[channel] = new bx_list_c(ata, name, s_atachannel[channel]);
     ata_menu[channel]->set_options(bx_list_c::USE_TAB_WINDOW);
     ata_res[channel] = new bx_list_c(ata_menu[channel], "resources", s_atachannel[channel]);
@@ -2019,7 +2019,7 @@ static int parse_bochsrc(const char *rcfile)
     if ((len>0) && (line[len-1] < ' '))
       line[len-1] = '\0';
     if ((ret != NULL) && strlen(line)) {
-      sprintf(context, "%s:%u", rcfile, linenum);
+      snprintf(context, BX_PATHNAME_LEN, "%s:%u", rcfile, linenum);
       if (parse_line_unformatted(context, line) < 0) {
         retval = -1;
         break;  // quit parsing after first error
@@ -2268,7 +2268,7 @@ static Bit32s parse_log_options(const char *context, int num_params, char *param
       if (def_action) {
         SIM->set_default_log_action(level, action);
       } else {
-        sprintf(pname, "general.logfn.%s", params[0]);
+        snprintf(pname, 20, "general.logfn.%s", params[0]);
         base = (bx_list_c*) SIM->get_param(pname);
         mparam = (bx_param_num_c*) base->get_by_name(module);
         if (mparam != NULL) {
@@ -2403,10 +2403,10 @@ int bx_parse_usb_port_params(const char *context, const char *param,
     PARSE_ERR(("%s: usb_%s: port number out of range.", context, base->get_name()));
     return -1;
   }
-  sprintf(tmpname, "port%d.%s", idx, devopt ? "device" : "options");
+  snprintf(tmpname, 20, "port%d.%s", idx, devopt ? "device" : "options");
   if (devopt) {
     compat_mode = false;
-    
+
     // if we already have found this port's declaration in the bochsrc.txt file, give error
     // for example:
     //   usb_ohci: port1=mouse, options1="speed:low, model:m228"
@@ -2432,12 +2432,12 @@ int bx_parse_usb_port_params(const char *context, const char *param,
           opt = "file";
         }
         if (opt != NULL) {
-          sprintf(tmpname, "port%d.options", idx);
+          snprintf(tmpname, 20, "port%d.options", idx);
           origopts = SIM->get_param_string(tmpname, base)->getptr();
           if (strlen(origopts) > 0) {
-            sprintf(newopts, "%s:%s, %s", opt, arg, origopts);
+            snprintf(newopts, BX_PATHNAME_LEN, "%s:%s, %s", opt, arg, origopts);
           } else {
-            sprintf(newopts, "%s:%s", opt, arg);
+            snprintf(newopts, BX_PATHNAME_LEN, "%s:%s", opt, arg);
           }
           SIM->get_param_string(tmpname, base)->set(newopts);
           compat_mode = true;
@@ -2461,7 +2461,7 @@ int bx_parse_usb_port_params(const char *context, const char *param,
 
     if (compat_mode) {
       origopts = SIM->get_param_string(tmpname, base)->getptr();
-      sprintf(newopts, "%s, %s", origopts, &param[plen + 2]);
+      snprintf(newopts, BX_PATHNAME_LEN, "%s, %s", origopts, &param[plen + 2]);
       compat_mode = false;
     } else {
       strcpy(newopts, &param[plen + 2]);
@@ -2748,7 +2748,7 @@ static int parse_line_formatted(const char *context, int num_params, char *param
     if ((num_params < 2) || (num_params > 5)) {
       PARSE_ERR(("%s: ataX directive malformed.", context));
     }
-    sprintf(tmpname, "ata.%d.resources", channel);
+    snprintf(tmpname, 80, "ata.%d.resources", channel);
     for (i=1; i<num_params; i++) {
       if (bx_parse_param_from_list(context, params[i], (bx_list_c*) SIM->get_param(tmpname)) < 0) {
         PARSE_ERR(("%s: ataX directive malformed.", context));
@@ -2774,7 +2774,7 @@ static int parse_line_formatted(const char *context, int num_params, char *param
       PARSE_ERR(("%s: ataX-master/slave directive malformed.", context));
     }
 
-    sprintf(tmpname, "ata.%d.%s", channel, &params[0][5]);
+    snprintf(tmpname, 80, "ata.%d.%s", channel, &params[0][5]);
     base = (bx_list_c*) SIM->get_param(tmpname);
     for (i=1; i<num_params; i++) {
       if (!strncmp(params[i], "type=", 5)) {
@@ -2820,7 +2820,7 @@ static int parse_line_formatted(const char *context, int num_params, char *param
       PARSE_ERR(("%s: boot directive malformed.", context));
     }
     for (i=1; i<num_params; i++) {
-      sprintf(tmppath, "boot_params.boot_drive%d", i);
+      snprintf(tmppath, 80, "boot_params.boot_drive%d", i);
       if (!strcmp(params[i], "none")) {
         SIM->get_param_enum(tmppath)->set(BX_BOOT_NONE);
       } else if (!strcmp(params[i], "a")) {
@@ -2986,7 +2986,7 @@ static int parse_line_formatted(const char *context, int num_params, char *param
     if (num_params > 3) {
       PARSE_ERR(("%s: optromimage%d directive: wrong # args.", context, num));
     }
-    sprintf(pname, "%s.%d", BXPN_OPTROM_BASE, num);
+    snprintf(pname, 16, "%s.%d", BXPN_OPTROM_BASE, num);
     base = (bx_list_c*) SIM->get_param(pname);
     for (i=1; i<num_params; i++) {
       if (!strncmp(params[i], "file=", 5)) {
@@ -3009,7 +3009,7 @@ static int parse_line_formatted(const char *context, int num_params, char *param
     if (num_params > 3) {
       PARSE_ERR(("%s: optramimage%d directive: wrong # args.", context, num));
     }
-    sprintf(pname, "%s.%d", BXPN_OPTRAM_BASE, num);
+    snprintf(pname, 16, "%s.%d", BXPN_OPTRAM_BASE, num);
     base = (bx_list_c*) SIM->get_param(pname);
     for (i=1; i<num_params; i++) {
       if (!strncmp(params[i], "file=", 5)) {
@@ -3116,7 +3116,7 @@ static int parse_line_formatted(const char *context, int num_params, char *param
       } else if ((!strncmp(params[i], "slot", 4)) && (params[i][5] == '=')) {
         slot = atol(&params[i][4]);
         if ((slot > 0) && (slot < 6)) {
-          sprintf(tmpdev, "pci.slot.%d", slot);
+          snprintf(tmpdev, 80, "pci.slot.%d", slot);
           if (strlen(&params[i][6]) > 0) {
             if (!SIM->get_param_enum(tmpdev)->set_by_name(&params[i][6])) {
               PARSE_ERR(("%s: unknown plugin '%s' at PCI slot #%d.",
@@ -3360,11 +3360,11 @@ int bx_write_param_list(FILE *fp, bx_list_c *base, const char *optname, bool mul
         fprintf(fp, "%s\n", bxrcline);
       }
       if (optname == NULL) {
-        sprintf(bxrcline, "%s: ", base->get_name());
+        snprintf(bxrcline, BX_PATHNAME_LEN, "%s: ", base->get_name());
       } else if (isspace(optname[strlen(optname)-1])) {
-        sprintf(bxrcline, "%s", optname);
+        snprintf(bxrcline, BX_PATHNAME_LEN, "%s", optname);
       } else {
-        sprintf(bxrcline, "%s: ", optname);
+        snprintf(bxrcline, BX_PATHNAME_LEN, "%s: ", optname);
       }
       newline = 0;
       p = 0;
@@ -3374,7 +3374,7 @@ int bx_write_param_list(FILE *fp, bx_list_c *base, const char *optname, bool mul
       if (p > 0) {
         strcat(bxrcline, ", ");
       }
-      sprintf(tmpstr, "%s=", param->get_name());
+      snprintf(tmpstr, BX_PATHNAME_LEN, "%s=", param->get_name());
       strcat(bxrcline, tmpstr);
       switch (param->get_type()) {
         case BXT_PARAM_NUM:
@@ -3409,11 +3409,11 @@ int bx_write_floppy_options(FILE *fp, int drive)
   int ftype;
 
   BX_ASSERT(drive==0 || drive==1);
-  sprintf(devtype, "floppy.%d.devtype", drive);
-  sprintf(path, "floppy.%d.path", drive);
-  sprintf(type, "floppy.%d.type", drive);
-  sprintf(status, "floppy.%d.status", drive);
-  sprintf(readonly, "floppy.%d.readonly", drive);
+  snprintf(devtype, 80, "floppy.%d.devtype", drive);
+  snprintf(path, 80, "floppy.%d.path", drive);
+  snprintf(type, 80, "floppy.%d.type", drive);
+  snprintf(status, 80, "floppy.%d.status", drive);
+  snprintf(readonly, 80, "floppy.%d.readonly", drive);
   ftype = SIM->get_param_enum(devtype)->get();
   if (ftype == BX_FDD_NONE) {
     fprintf(fp, "# no floppy%c\n", (char)'a'+drive);
@@ -3463,10 +3463,10 @@ int bx_write_usb_options(FILE *fp, int maxports, bx_list_c *base)
 
   if (SIM->get_param_bool("enabled", base)->get()) {
     for (int i = 1; i <= maxports; i++) {
-      sprintf(tmpname, "port%d.device", i);
+      snprintf(tmpname, 24, "port%d.device", i);
       SIM->get_param_enum(tmpname, base)->dump_param(tmpstr, BX_PATHNAME_LEN, 1);
       fprintf(fp, ", port%d=%s", i, tmpstr);
-      sprintf(tmpname, "port%d.options", i);
+      snprintf(tmpname, 24, "port%d.options", i);
       SIM->get_param_string(tmpname, base)->dump_param(tmpstr, BX_PATHNAME_LEN, 1);
       fprintf(fp, ", options%d=%s", i, tmpstr);
     }
@@ -3594,7 +3594,7 @@ int bx_write_configuration(const char *rc, int overwrite)
   bx_write_param_list(fp, (bx_list_c*) SIM->get_param(BXPN_VGA_ROMIMAGE), "vgaromimage", 0);
   fprintf(fp, "boot: %s", SIM->get_param_enum(BXPN_BOOTDRIVE1)->get_selected());
   for (i=1; i<3; i++) {
-    sprintf(tmppath, "boot_params.boot_drive%d", i+1);
+    snprintf(tmppath, 80, "boot_params.boot_drive%d", i+1);
     if (SIM->get_param_enum(tmppath)->get() != BX_BOOT_NONE) {
       fprintf(fp, ", %s", SIM->get_param_enum(tmppath)->get_selected());
     }
@@ -3606,23 +3606,23 @@ int bx_write_configuration(const char *rc, int overwrite)
   bx_write_floppy_options(fp, 0);
   bx_write_floppy_options(fp, 1);
   for (Bit8u channel=0; channel<BX_MAX_ATA_CHANNEL; channel++) {
-    sprintf(tmppath, "ata.%d", channel);
+    snprintf(tmppath, 80, "ata.%d", channel);
     base = (bx_list_c*) SIM->get_param(tmppath);
-    sprintf(tmppath, "ata%d", channel);
+    snprintf(tmppath, 80, "ata%d", channel);
     bx_write_param_list(fp, (bx_list_c*) SIM->get_param("resources", base), tmppath, 0);
-    sprintf(tmppath, "ata%d-master", channel);
+    snprintf(tmppath, 80, "ata%d-master", channel);
     bx_write_param_list(fp, (bx_list_c*) SIM->get_param("master", base), tmppath, 0);
-    sprintf(tmppath, "ata%d-slave", channel);
+    snprintf(tmppath, 80, "ata%d-slave", channel);
     bx_write_param_list(fp, (bx_list_c*) SIM->get_param("slave", base), tmppath, 0);
   }
   for (i=0; i<BX_N_OPTROM_IMAGES; i++) {
-    sprintf(pname, "%s.%d", BXPN_OPTROM_BASE, i+1);
-    sprintf(tmppath, "optromimage%d", i+1);
+    snprintf(pname, 16, "%s.%d", BXPN_OPTROM_BASE, i+1);
+    snprintf(tmppath, 80, "optromimage%d", i+1);
     bx_write_param_list(fp, (bx_list_c*) SIM->get_param(pname), tmppath, 0);
   }
   for (i=0; i<BX_N_OPTRAM_IMAGES; i++) {
-    sprintf(pname, "%s.%d", BXPN_OPTRAM_BASE, i+1);
-    sprintf(tmppath, "optramimage%d", i+1);
+    snprintf(pname, 16, "%s.%d", BXPN_OPTRAM_BASE, i+1);
+    snprintf(tmppath, 80, "optramimage%d", i+1);
     bx_write_param_list(fp, (bx_list_c*) SIM->get_param(pname), tmppath, 0);
   }
   // pci
@@ -3631,7 +3631,7 @@ int bx_write_configuration(const char *rc, int overwrite)
   if (SIM->get_param_bool(BXPN_PCI_ENABLED)->get()) {
     fprintf(fp, ", chipset=%s", SIM->get_param_enum(BXPN_PCI_CHIPSET)->get_selected());
     for (i=0; i<BX_N_PCI_SLOTS; i++) {
-      sprintf(tmpdev, "pci.slot.%d", i+1);
+      snprintf(tmpdev, 80, "pci.slot.%d", i+1);
       fprintf(fp, ", slot%d=%s", i+1, SIM->get_param_enum(tmpdev)->get_selected());
     }
     sparam = SIM->get_param_string(BXPN_PCI_ADV_OPTS);
