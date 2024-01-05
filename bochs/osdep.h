@@ -133,6 +133,12 @@ extern "C" {
 #endif
 #endif   /* not WIN32 definitions */
 
+#if SIZEOF_UNSIGNED_LONG == 8
+#define FMT_LL_CAST (long)
+#else
+#define FMT_LL_CAST
+#endif
+
 #define FMT_ADDRX32 "%08x"
 #define FMT_ADDRX16 "%04x"
 
