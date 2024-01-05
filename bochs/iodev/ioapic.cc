@@ -98,7 +98,7 @@ static bool ioapic_write(bx_phy_address a20addr, unsigned len, void *data, void 
 
 void bx_io_redirect_entry_t::sprintf_self(char *buf)
 {
-  sprintf(buf, "dest=%02x, masked=%d, trig_mode=%d, remote_irr=%d, polarity=%d, delivery_status=%d, dest_mode=%d, delivery_mode=%d, vector=%02x",
+  snprintf(buf, 1024, "dest=%02x, masked=%d, trig_mode=%d, remote_irr=%d, polarity=%d, delivery_status=%d, dest_mode=%d, delivery_mode=%d, vector=%02x",
      (unsigned) destination(),
      (unsigned) is_masked(),
      (unsigned) trigger_mode(),

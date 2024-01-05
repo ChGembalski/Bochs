@@ -1020,9 +1020,9 @@ void bx_floppy_ctrl_c::floppy_command(void)
 
   // Print command
   char buf[9+(MAX_PHASE_SIZE*5)+1], *p = buf;
-  p += sprintf(p, "COMMAND: ");
+  p += snprintf(p, 9+(MAX_PHASE_SIZE*5)+1, "COMMAND: ");
   for (i=0; i<BX_FD_THIS s.command_size; i++) {
-    p += sprintf(p, "[%02x] ", (unsigned) BX_FD_THIS s.command[i]);
+    p += snprintf(p, 9+(MAX_PHASE_SIZE*5)+1-(p-buf), "[%02x] ", (unsigned) BX_FD_THIS s.command[i]);
   }
   BX_DEBUG(("%s", buf));
 
@@ -2941,9 +2941,9 @@ void bx_floppy_ctrl_c::enter_result_phase(void)
 
   // Print command result (max MAX_PHASE_SIZE bytes)
   char buf[8+(MAX_PHASE_SIZE*5)+1], *p = buf;
-  p += sprintf(p, "RESULT: ");
+  p += snprintf(p, 8+(MAX_PHASE_SIZE*5)+1, "RESULT: ");
   for (Bit8u i=0; i<BX_FD_THIS s.result_size; i++) {
-    p += sprintf(p, "[%02x] ", (unsigned) BX_FD_THIS s.result[i]);
+    p += snprintf(p, 8+(MAX_PHASE_SIZE*5)+1-(p-buf), "[%02x] ", (unsigned) BX_FD_THIS s.result[i]);
   }
   BX_DEBUG(("%s", buf));
 }
