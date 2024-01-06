@@ -443,10 +443,10 @@ static void debug_loop(void)
     get_command(buffer);
     BX_DEBUG(("get_buffer '%s'", buffer));
 
-    // At a minimum, a stub is required to support the ‘g’ and ‘G’ commands for register access,
-    // and the ‘m’ and ‘M’ commands for memory access. Stubs that only control single-threaded
-    // targets can implement run control with the ‘c’ (continue), and ‘s’ (step) commands. Stubs
-    // that support multi-threading targets should support the ‘vCont’ command. All other commands
+    // At a minimum, a stub is required to support the ï¿½gï¿½ and ï¿½Gï¿½ commands for register access,
+    // and the ï¿½mï¿½ and ï¿½Mï¿½ commands for memory access. Stubs that only control single-threaded
+    // targets can implement run control with the ï¿½cï¿½ (continue), and ï¿½sï¿½ (step) commands. Stubs
+    // that support multi-threading targets should support the ï¿½vContï¿½ command. All other commands
     // are optional.
 
     switch (buffer[0])
@@ -526,7 +526,7 @@ static void debug_loop(void)
         break;
       }
 
-      // ‘M addr,length:XX...’
+      // ï¿½M addr,length:XX...ï¿½
       // Write length bytes of memory starting at address addr. XX... is the data;
       // each byte is transmitted as a two-digit hexadecimal number.
       case 'M':
@@ -561,7 +561,7 @@ static void debug_loop(void)
         break;
       }
 
-      // ‘m addr,length’
+      // ï¿½m addr,lengthï¿½
       // Read length bytes of memory starting at address addr. Note that addr may
       // not be aligned to any particular boundary.
 
@@ -586,7 +586,7 @@ static void debug_loop(void)
         break;
       }
 
-      // ‘P n...=r...’
+      // ï¿½P n...=r...ï¿½
       // Write register n... with value r... The register number n is in hexadecimal,
       // and r... contains two hex digits for each byte in the register (target byte order).
       case 'P':
@@ -658,7 +658,7 @@ static void debug_loop(void)
         break;
       }
 
-      // ‘g’ Read general registers.
+      // ï¿½gï¿½ Read general registers.
       case 'g':
       {
 #if BX_SUPPORT_X86_64 == 0
@@ -735,15 +735,15 @@ static void debug_loop(void)
       }
 
       case '?':
-        sprintf(obuf, "S%02x", SIGTRAP);
+        snprintf(obuf, 1024, "S%02x", SIGTRAP);
         put_reply(obuf);
         break;
 
-      // ‘H op thread-id’
-      // Set thread for subsequent operations (‘m’, ‘M’, ‘g’, ‘G’, et.al.). op depends on the
-      // operation to be performed: it should be ‘c’ for step and continue operations
-      // (note that this is deprecated, supporting the ‘vCont’ command is a better option),
-      // ‘g’ for other operations. The thread designator thread-id has the format
+      // ï¿½H op thread-idï¿½
+      // Set thread for subsequent operations (ï¿½mï¿½, ï¿½Mï¿½, ï¿½gï¿½, ï¿½Gï¿½, et.al.). op depends on the
+      // operation to be performed: it should be ï¿½cï¿½ for step and continue operations
+      // (note that this is deprecated, supporting the ï¿½vContï¿½ command is a better option),
+      // ï¿½gï¿½ for other operations. The thread designator thread-id has the format
       // and interpretation described in [thread-id syntax]
       case 'H':
         if (buffer[1] == 'c')
@@ -762,19 +762,19 @@ static void debug_loop(void)
         }
         break;
 
-      // ‘q name params...’
-      // ‘Q name params...’
-      // General query (‘q’) and set (‘Q’). These packets are described fully in
+      // ï¿½q name params...ï¿½
+      // ï¿½Q name params...ï¿½
+      // General query (ï¿½qï¿½) and set (ï¿½Qï¿½). These packets are described fully in
       // Section E.4 [General Query Packets]
       case 'q':
         if (buffer[1] == 'C')
         {
-          sprintf(obuf, FMT_ADDRX64, (Bit64u)1);
+          snprintf(obuf, 1024, FMT_ADDRX64, (Bit64u)1);
           put_reply(obuf);
         }
         else if (strncmp(&buffer[1], "Offsets", strlen("Offsets")) == 0)
         {
-          sprintf(obuf, "Text=%x;Data=%x;Bss=%x",
+          snprintf(obuf, 1024"Text=%x;Data=%x;Bss=%x",
                   SIM->get_param_num("text_base", gdbstub_list)->get(),
                   SIM->get_param_num("data_base", gdbstub_list)->get(),
                   SIM->get_param_num("bss_base", gdbstub_list)->get());
@@ -790,9 +790,9 @@ static void debug_loop(void)
         }
         break;
 
-      // ‘z type,addr,kind’
-      // ‘Z type,addr,kind’
-      // Insert (‘Z’) or remove (‘z’) a type breakpoint or watchpoint starting at address
+      // ï¿½z type,addr,kindï¿½
+      // ï¿½Z type,addr,kindï¿½
+      // Insert (ï¿½Zï¿½) or remove (ï¿½zï¿½) a type breakpoint or watchpoint starting at address
       // address of kind kind.
       case 'Z':
         do_breakpoint(1, buffer+1);
@@ -801,7 +801,7 @@ static void debug_loop(void)
         do_breakpoint(0, buffer+1);
         break;
 
-      // ‘k’ Kill request.
+      // ï¿½kï¿½ Kill request.
       case 'k':
         BX_PANIC(("Debugger asked us to quit"));
         break;
