@@ -364,7 +364,7 @@ void bx_get_command(void)
 
   char prompt[256];
   if (bx_infile_stack_index == 0) {
-    sprintf(prompt, "<bochs:%u> ", bx_infile_stack[bx_infile_stack_index].lineno);
+    snprintf(prompt, 256, "<bochs:%u> ", bx_infile_stack[bx_infile_stack_index].lineno);
   }
   if (SIM->has_debug_gui() && bx_infile_stack_index == 0) {
     // wait for gui debugger to send another debugger command
@@ -812,9 +812,9 @@ void bx_dbg_print_sse_state(void)
     char param_name[20];
     unsigned registers = BX_SUPPORT_X86_64 ? 16 : 8; // don't want to print XMM16..31 in EVEX mode
     for(unsigned i=0;i<registers;i++) {
-      sprintf(param_name, "SSE.xmm%02d_1", i);
+      snprintf(param_name, 20, "SSE.xmm%02d_1", i);
       Bit64u hi = SIM->get_param_num(param_name, dbg_cpu_list)->get64();
-      sprintf(param_name, "SSE.xmm%02d_0", i);
+      snprintf(param_name, 20, "SSE.xmm%02d_0", i);
       Bit64u lo = SIM->get_param_num(param_name, dbg_cpu_list)->get64();
       dbg_printf("XMM[%02u]: %08x_%08x_%08x_%08x\n", i,
          GET32H(hi), GET32L(hi), GET32H(lo), GET32L(lo));
@@ -846,9 +846,9 @@ void bx_dbg_print_avx_state(unsigned vlen)
     for(unsigned i=0;i<num_regs;i++) {
       dbg_printf("VMM[%02u]: ", i);
       for (int j=vlen-1;j >= 0; j--) {
-        sprintf(param_name, "SSE.xmm%02u_%d", i, j*2+1);
+        snprintf(param_name, 20, "SSE.xmm%02u_%d", i, j*2+1);
         Bit64u hi = SIM->get_param_num(param_name, dbg_cpu_list)->get64();
-        sprintf(param_name, "SSE.xmm%02u_%d", i, j*2);
+        snprintf(param_name, 20, "SSE.xmm%02u_%d", i, j*2);
         Bit64u lo = SIM->get_param_num(param_name, dbg_cpu_list)->get64();
         dbg_printf("%08x_%08x_%08x_%08x", GET32H(hi), GET32L(hi), GET32H(lo), GET32L(lo));
         if (j!=0) dbg_printf("_");
@@ -865,7 +865,7 @@ void bx_dbg_print_avx_state(unsigned vlen)
 #if BX_SUPPORT_EVEX
   if (BX_CPU(dbg_cpu)->is_cpu_extension_supported(BX_ISA_AVX512)) {
     for(unsigned i=0;i<8;i++) {
-      sprintf(param_name, "OPMASK.k%u", i);
+      snprintf(param_name, 20, "OPMASK.k%u", i);
       Bit64u opmask = SIM->get_param_num(param_name, dbg_cpu_list)->get64();
       dbg_printf("K%d: %08x_%08x\n", i, GET32H(opmask), GET32L(opmask));
     }
@@ -879,7 +879,7 @@ void bx_dbg_print_mmx_state(void)
   if (BX_CPU(dbg_cpu)->is_cpu_extension_supported(BX_ISA_MMX)) {
     char param_name[20];
     for(unsigned i=0;i<8;i++) {
-      sprintf(param_name, "FPU.st%d.fraction", i);
+      snprintf(param_name, 20, "FPU.st%d.fraction", i);
       Bit64u mmreg = SIM->get_param_num(param_name, dbg_cpu_list)->get64();
       dbg_printf("MM[%d]: %08x_%08x\n", i, GET32H(mmreg), GET32L(mmreg));
     }
@@ -1504,11 +1504,11 @@ void bx_dbg_tlb_lookup(bx_lin_address laddr)
   char cpu_param_name[16];
 
   Bit32u index = BX_CPU(dbg_cpu)->ITLB.get_index_of(laddr);
-  sprintf(cpu_param_name, "ITLB.entry%d", index);
+  snprintf(cpu_param_name, 16, "ITLB.entry%d", index);
   bx_dbg_show_param_command(cpu_param_name, 0);
 
   index = BX_CPU(dbg_cpu)->DTLB.get_index_of(laddr);
-  sprintf(cpu_param_name, "DTLB.entry%d", index);
+  snprintf(cpu_param_name, 16, "DTLB.entry%d", index);
   bx_dbg_show_param_command(cpu_param_name, 0);
 }
 
@@ -1774,11 +1774,11 @@ void bx_dbg_deref_command(bx_address addr, unsigned deep)
       dbg_printf("error dereferencing 0x" FMT_ADDRX "\n", addr);
     }
     else {
-      dbg_printf("error dereferencing 0x" FMT_ADDRX " (deep: 0x%lx) - last data found: 0x" FMT_ADDRX "\n", 
+      dbg_printf("error dereferencing 0x" FMT_ADDRX " (deep: 0x%lx) - last data found: 0x" FMT_ADDRX "\n",
         addr, deep_sc, last_data_found);
     }
   }
-  else { 
+  else {
     dbg_printf("0x" FMT_ADDRX "\n", deref_addr);
   }
 }
@@ -2281,13 +2281,13 @@ Bit8u bx_dbg_get_magic_bp_mask_from_str(const char *str)
   if (NULL == str) {
     return 0;
   }
- 
+
   for (int i = 1; i < 8; i++) {
     if (strstr(str, magic_bp_regs[i]) != NULL) {
       new_mask |= (1 << i);
     }
   }
-    
+
   return new_mask;
 }
 
@@ -2355,7 +2355,7 @@ void bx_dbg_print_guard_results(void)
         dbg_printf("Error: (%u) print_guard_results: guard_found ? (stop reason %u)\n",
           cpu, BX_CPU(cpu)->stop_reason);
     }
-	
+
     if (cpu == 0) {
       bx_dbg_lyt();
     }
@@ -2904,7 +2904,7 @@ void bx_dbg_set_symbol_command(const char *symbol, bx_address val)
       return;
     }
     char cpu_param_name[10];
-    sprintf(cpu_param_name, "cpu%d", (int)val);
+    snprintf(cpu_param_name, 10, "cpu%d", (int)val);
     dbg_cpu_list = (bx_list_c*) SIM->get_param(cpu_param_name, SIM->get_bochs_root());
     dbg_cpu = val;
     return;
