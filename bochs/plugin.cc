@@ -314,7 +314,7 @@ void plugins_search(void)
   setlocale(LC_ALL, "en_US");
 #endif
   ltdl_path_var = getenv("LTDL_LIBRARY_PATH");
-  sprintf(fmtstr, PLUGIN_FILENAME_FORMAT, "*");
+  snprintf(fmtstr, 32, PLUGIN_FILENAME_FORMAT, "*");
   fmtptr = strchr(fmtstr, '*');
   flen1 = fmtptr - fmtstr;
   flen2 = strlen(fmtstr) - flen1 - 1;
@@ -339,7 +339,7 @@ void plugins_search(void)
           pgn_name[nlen - flen1 - flen2] = 0;
           handle = lt_dlopen(dent->d_name);
           if (handle) {
-            sprintf(tmpname, PLUGIN_ENTRY_FMT_STRING, pgn_name);
+            snprintf(tmpname, BX_PATHNAME_LEN, PLUGIN_ENTRY_FMT_STRING, pgn_name);
             plugin_entry = (plugin_entry_t) lt_dlsym(handle, tmpname);
             if (plugin_entry != NULL) {
               type = (Bit16u) plugin_entry(NULL, PLUGTYPE_NULL, PLUGIN_PROBE);
@@ -355,7 +355,7 @@ void plugins_search(void)
       closedir(dir);
     }
 #else
-    sprintf(filter, "%s\\*.dll", ptr);
+    snprintf(filter, MAX_PATH, "%s\\*.dll", ptr);
     hFind = FindFirstFile(filter, &finddata);
     if (hFind != INVALID_HANDLE_VALUE) {
       do {
@@ -365,10 +365,10 @@ void plugins_search(void)
           pgn_name = new char[nlen - flen1 - flen2 + 1];
           strncpy(pgn_name, finddata.cFileName + flen1, nlen - flen1 - flen2);
           pgn_name[nlen - flen1 - flen2] = 0;
-          sprintf(path, "%s\\%s", ptr, finddata.cFileName);
+          snprintf(path, MAX_PATH, "%s\\%s", ptr, finddata.cFileName);
           handle = LoadLibrary(path);
           if (handle) {
-            sprintf(tmpname, PLUGIN_ENTRY_FMT_STRING, pgn_name);
+            snprintf(tmpname, BX_PATHNAME_LEN, PLUGIN_ENTRY_FMT_STRING, pgn_name);
             plugin_entry = (plugin_entry_t) GetProcAddress(handle, tmpname);
             if (plugin_entry != NULL) {
               type = (Bit16u) plugin_entry(NULL, PLUGTYPE_NULL, PLUGIN_PROBE);
@@ -509,17 +509,17 @@ bool plugin_load(const char *name, Bit16u type)
 
   char plugin_filename[BX_PATHNAME_LEN], tmpname[BX_PATHNAME_LEN];
   if (type == PLUGTYPE_GUI) {
-    sprintf(tmpname, GUI_PLUGIN_FILENAME_FORMAT, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, GUI_PLUGIN_FILENAME_FORMAT, name);
   } else if (type == PLUGTYPE_IMG) {
-    sprintf(tmpname, IMG_PLUGIN_FILENAME_FORMAT, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, IMG_PLUGIN_FILENAME_FORMAT, name);
   } else if (type == PLUGTYPE_NET) {
-    sprintf(tmpname, NET_PLUGIN_FILENAME_FORMAT, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, NET_PLUGIN_FILENAME_FORMAT, name);
   } else if (type == PLUGTYPE_SND) {
-    sprintf(tmpname, SND_PLUGIN_FILENAME_FORMAT, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, SND_PLUGIN_FILENAME_FORMAT, name);
   } else {
-    sprintf(tmpname, PLUGIN_FILENAME_FORMAT, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, PLUGIN_FILENAME_FORMAT, name);
   }
-  sprintf(plugin_filename, "%s%s", PLUGIN_PATH, tmpname);
+  snprintf(plugin_filename, BX_PATHNAME_LEN, "%s%s", PLUGIN_PATH, tmpname);
 
   // Set context so that any devices that the plugin registers will
   // be able to see which plugin created them.  The registration will
@@ -533,7 +533,7 @@ bool plugin_load(const char *name, Bit16u type)
     if (GetEnvironmentVariable("LTDL_LIBRARY_PATH", dll_path_list, MAX_PATH)) {
       ptr = strtok(dll_path_list, ";");
       while ((ptr) && !plugin->handle) {
-        sprintf(plugin_filename, "%s\\%s", ptr, tmpname);
+        snprintf(plugin_filename, BX_PATHNAME_LEN, "%s\\%s", ptr, tmpname);
         plugin->handle = LoadLibrary(plugin_filename);
         ptr = strtok(NULL, ";");
       }
@@ -559,15 +559,15 @@ bool plugin_load(const char *name, Bit16u type)
   plugin->loadtype = type;
 
   if (type == PLUGTYPE_GUI) {
-    sprintf(tmpname, GUI_PLUGIN_ENTRY_FMT_STRING, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, GUI_PLUGIN_ENTRY_FMT_STRING, name);
   } else if (type == PLUGTYPE_IMG) {
-    sprintf(tmpname, IMG_PLUGIN_ENTRY_FMT_STRING, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, IMG_PLUGIN_ENTRY_FMT_STRING, name);
   } else if (type == PLUGTYPE_NET) {
-    sprintf(tmpname, NET_PLUGIN_ENTRY_FMT_STRING, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, NET_PLUGIN_ENTRY_FMT_STRING, name);
   } else if (type == PLUGTYPE_SND) {
-    sprintf(tmpname, SND_PLUGIN_ENTRY_FMT_STRING, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, SND_PLUGIN_ENTRY_FMT_STRING, name);
   } else {
-    sprintf(tmpname, PLUGIN_ENTRY_FMT_STRING, name);
+    snprintf(tmpname, BX_PATHNAME_LEN, PLUGIN_ENTRY_FMT_STRING, name);
   }
 #if defined(WIN32)
   plugin->plugin_entry = (plugin_entry_t) GetProcAddress(plugin->handle, tmpname);
