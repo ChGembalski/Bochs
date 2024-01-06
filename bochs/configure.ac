@@ -9,9 +9,9 @@ AC_CONFIG_HEADERS([ltdlconf.h])
 
 dnl // Put Bochs version information right here so that it gets substituted
 dnl // into all the right places.
-VERSION="2.7.svn"
+VERSION="2.8.svn"
 VER_MAJOR=2
-VER_MINOR=7
+VER_MINOR=8
 dnl // this should be > 90 for pre-release of next version otherwise revision level
 VER_REVISION=0
 dnl // this should be 0 for release and 1 for svn version
@@ -82,7 +82,7 @@ case "$target" in
     ;;
   *-macosx* | *-darwin*)
     ADD_FLAGS="-fpascal-strings -fno-common -Wno-four-char-constants -Wno-unknown-pragmas -Dmacintosh"      # required for macosx compile
-    DEFAULT_GUI=carbon                # default to carbon
+    DEFAULT_GUI=cocoa                 # default to cocoa
     need_dlcompat_for_plugins=1
     ;;
   *-macos*)
@@ -129,6 +129,7 @@ if (test "$with_sdl" != yes) && \
    (test "$with_vncsrv" != yes) && \
    (test "$with_amigaos" != yes) && \
    (test "$with_carbon" != yes) && \
+   (test "$with_cocoa" != yes) && \
    (test "$with_wx" != yes) && \
    (test "$with_macos" != yes); then
   # use DEFAULT_GUI.  Set the appropriate variable.
@@ -324,6 +325,15 @@ if test "$with_all_libs" = yes; then
     AC_CHECK_HEADER([ApplicationServices/ApplicationServices.h], [], [ can_compile_carbon=0 ])
     if test $can_compile_carbon = 1; then
       with_carbon=yes
+    fi
+  fi
+
+  if test "$with_cocoa" != yes; then
+    can_compile_cocoa=1
+    AC_CHECK_HEADER([Cocoa.h], [], [ can_compile_cocoa=0 ])
+    AC_CHECK_HEADER([Cocoa/Cocoa.h], [], [ can_compile_cocoa=0 ])
+    if test $can_compile_cocoa = 1; then
+      with_cocoa=yes
     fi
   fi
 
@@ -1004,7 +1014,7 @@ if test "$want_readline" = yes; then
       #include <readline/readline.h>
       int main() { rl_initialize(); return 0; }
       ]])],[ AC_MSG_RESULT(yes)
-        rl_without_curses_ok=yes ],[ AC_MSG_RESULT(no) 
+        rl_without_curses_ok=yes ],[ AC_MSG_RESULT(no)
     ],[])
     AC_MSG_CHECKING(if readline works with -lcurses)
     LIBS="$LIBS -lcurses"
@@ -1013,7 +1023,7 @@ if test "$want_readline" = yes; then
       #include <readline/readline.h>
       int main() { rl_initialize(); return 0; }
       ]])],[AC_MSG_RESULT(yes)
-       rl_with_curses_ok=yes ],[ AC_MSG_RESULT(no) 
+       rl_with_curses_ok=yes ],[ AC_MSG_RESULT(no)
     ],[])
     LIBS=$OLD_LIBS
 
@@ -2220,6 +2230,10 @@ AC_ARG_WITH(carbon,
   [  --with-carbon                     compile for MacOS X with Carbon GUI],
   )
 
+AC_ARG_WITH(cocoa,
+  [  --with-cocoa                      compile for MacOS X with Cocoa GUI],
+  )
+
 AC_ARG_WITH(nogui,
   [  --with-nogui                      no native GUI, just use blank stubs],
   )
@@ -2587,6 +2601,20 @@ if test "$with_carbon" = yes; then
   fi
   INSTALL_TARGET='install_macosx'
   AC_MSG_WARN([This Bochs feature is not maintained yet and may fail])
+fi
+
+if test "$with_cocoa" = yes; then
+  display_libs="$display_libs cocoa"
+  AC_DEFINE(BX_WITH_COCOA, 1)
+  SPECIFIC_GUI_OBJS="$SPECIFIC_GUI_OBJS \$(GUI_OBJS_COCOA)"
+  GUI_LINK_OPTS="$GUI_LINK_OPTS \$(GUI_LINK_OPTS_COCOA)"
+  if test "$bx_plugins" = 1; then
+    PRIMARY_TARGET=bochs.app/.build_plugins   # only for cocoa application
+  else
+    PRIMARY_TARGET=bochs.app/.build   # only for cocoa application
+  fi
+  INSTALL_TARGET='install_macosx'
+  AC_MSG_WARN([This Bochs feature is maintained by Ch.Gembalski])
 fi
 
 if test "$with_term" = yes; then
