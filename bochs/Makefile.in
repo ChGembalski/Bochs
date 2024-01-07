@@ -107,6 +107,7 @@ GUI_LINK_OPTS_WIN32_VCPP = user32.lib gdi32.lib winmm.lib \
   comdlg32.lib comctl32.lib advapi32.lib shell32.lib
 GUI_LINK_OPTS_MACOS =
 GUI_LINK_OPTS_CARBON = -framework Carbon
+GUI_LINK_OPTS_COCOA = -framework Cocoa
 GUI_LINK_OPTS_NOGUI =
 GUI_LINK_OPTS_TERM = @GUI_LINK_OPTS_TERM@
 GUI_LINK_OPTS_WX = @GUI_LINK_OPTS_WX@
@@ -727,7 +728,7 @@ $(SCRIPT_EXEC): $(SCRIPT_DATA) $(SCRIPT_COMPILED_RSRC)
 	$(CP) $(SCRIPT_COMPILED_RSRC) $(SCRIPT_EXEC)/rsrc
 	$(SETFILE) -t "APPL" -c "aplt" $(SCRIPT_EXEC)
 
-$(APP)/.build: bochs test_hfsplus $(SCRIPT_EXEC)
+$(APP)/.build: bochs
 	rm -f $(APP)/.build
 	$(MKDIR) -p $(APP)
 	$(MKDIR) -p $(APP)/Contents
@@ -737,9 +738,9 @@ $(APP)/.build: bochs test_hfsplus $(SCRIPT_EXEC)
 	$(MKDIR) -p $(APP)/Contents/$(APP_PLATFORM)
 	$(CP) bochs $(APP)/Contents/$(APP_PLATFORM)
 	$(MKDIR) -p $(APP)/Contents/Resources
-	$(REZ) $(REZ_ARGS) $(MACOSX_STUFF_SRCDIR)/bochs.r -o $(APP)/Contents/Resources/bochs.rsrc
+	#$(REZ) $(REZ_ARGS) $(MACOSX_STUFF_SRCDIR)/bochs.r -o $(APP)/Contents/Resources/bochs.rsrc
 	$(CP) -f $(MACOSX_STUFF_SRCDIR)/bochs-icn.icns $(APP)/Contents/Resources
-	ls -ld $(APP) $(SCRIPT_EXEC) $(SCRIPT_EXEC)/rsrc
+	#ls -ld $(APP) $(SCRIPT_EXEC) $(SCRIPT_EXEC)/rsrc
 	touch $(APP)/.build
 
 $(APP)/.build_plugins: $(APP)/.build bochs_plugins

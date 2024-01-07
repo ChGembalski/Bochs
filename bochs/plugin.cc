@@ -996,6 +996,9 @@ plugin_t bx_builtin_plugins[] = {
 #if BX_WITH_CARBON
   BUILTIN_GUI_PLUGIN_ENTRY(carbon),
 #endif
+#if BX_WITH_COCOA
+  BUILTIN_GUI_PLUGIN_ENTRY(cocoa),
+#endif
 #if BX_WITH_MACOS
   BUILTIN_GUI_PLUGIN_ENTRY(macos),
 #endif

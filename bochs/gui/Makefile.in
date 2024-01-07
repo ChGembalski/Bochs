@@ -58,6 +58,7 @@ GUI_OBJS_SDL2 = sdl2.o
 GUI_OBJS_WIN32 = win32.o
 GUI_OBJS_MACOS = macintosh.o
 GUI_OBJS_CARBON = carbon.o
+GUI_OBJS_COCOA = cocoa.o
 GUI_OBJS_NOGUI = nogui.o
 GUI_OBJS_TERM  = term.o
 GUI_OBJS_RFB = rfb.o
@@ -85,6 +86,7 @@ GUI_LINK_OPTS_WIN32 = -luser32 -lgdi32 -lcomctl32
 GUI_LINK_OPTS_WIN32_VCPP = user32.lib gdi32.lib comctl32.lib
 GUI_LINK_OPTS_MACOS =
 GUI_LINK_OPTS_CARBON = -framework Carbon
+GUI_LINK_OPTS_COCOA = -framework Cocoa
 GUI_LINK_OPTS_NOGUI =
 GUI_LINK_OPTS_TERM = @GUI_LINK_OPTS_TERM@
 GUI_LINK_OPTS_WX = @GUI_LINK_OPTS_WX@
@@ -152,6 +154,9 @@ libbx_macos_gui.la: macos.lo
 
 libbx_carbon_gui.la: carbon.lo
 	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_CARBON)
+
+libbx_cocoa_gui.la: cocoa.lo
+	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_COCOA)
 
 libbx_nogui_gui.la: nogui.lo
 	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_NOGUI)
@@ -224,6 +229,11 @@ amigaos.o: amigaos.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h \
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
  ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
 carbon.o: carbon.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
+ ../logio.h ../misc/bswap.h \
+ keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
+ ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
+ ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
+cocoa.o: cocoa.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
  ../logio.h ../misc/bswap.h \
  keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
@@ -345,6 +355,11 @@ amigaos.lo: amigaos.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h \
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
  ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
 carbon.lo: carbon.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
+ ../logio.h ../misc/bswap.h \
+ keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
+ ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
+ ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
+cocoa.lo: cocoa.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
  ../logio.h ../misc/bswap.h \
  keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
