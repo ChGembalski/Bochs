@@ -37,6 +37,11 @@
 #if BX_WITH_COCOA
 #include "icon_bochs.h"
 
+#include "cocoa_device.h"
+
+BXGuiCocoaDevice * device;
+
+
 class bx_cocoa_gui_c : public bx_gui_c {
 public:
   bx_cocoa_gui_c (void) {}
@@ -80,6 +85,17 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   UNUSED(bochs_icon_bits);  // global variable
 
+  // init device
+  device = new BXGuiCocoaDevice();
+
+  BX_INFO(("bx_cocoa_gui_c::specific_init() running some events now ..."));
+
+  for (int i=0; i<50; i++) {
+    device->run_once();
+  }
+
+  BX_INFO(("bx_cocoa_gui_c::specific_init() done running some events now ..."));
+
   if (SIM->get_param_bool(BXPN_PRIVATE_COLORMAP)->get()) {
     BX_INFO(("private_colormap option ignored."));
   }
@@ -104,6 +120,7 @@ void bx_cocoa_gui_c::handle_events(void)
 
 void bx_cocoa_gui_c::flush(void)
 {
+    device->run_once();
 }
 
 
@@ -316,7 +333,12 @@ void bx_cocoa_gui_c::replace_bitmap(unsigned hbar_id, unsigned bmap_id)
 
 void bx_cocoa_gui_c::exit(void)
 {
-  BX_INFO(("bx_cocoa_gui_c::exit() not implemented yet."));
+  if (device != NULL) {
+    device->run_terminate();
+    delete device;
+  }
+
+  BX_INFO(("bx_cocoa_gui_c::exit() implemented yet."));
 }
 
 

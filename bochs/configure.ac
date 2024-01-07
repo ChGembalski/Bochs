@@ -330,7 +330,6 @@ if test "$with_all_libs" = yes; then
 
   if test "$with_cocoa" != yes; then
     can_compile_cocoa=1
-    AC_CHECK_HEADER([Cocoa.h], [], [ can_compile_cocoa=0 ])
     AC_CHECK_HEADER([Cocoa/Cocoa.h], [], [ can_compile_cocoa=0 ])
     if test $can_compile_cocoa = 1; then
       with_cocoa=yes
@@ -772,16 +771,16 @@ AC_ARG_ENABLE(cpp,
   AS_HELP_STRING([--enable-cpp], [use .cpp as C++ suffix (no)]),
   [if test "$enableval" = yes; then
     AC_MSG_RESULT(yes)
-    SUFFIX_LINE='.SUFFIXES: .cpp'
+    SUFFIX_LINE='.SUFFIXES: .cpp .mm'
     CPP_SUFFIX='cpp'
    else
     AC_MSG_RESULT(no)
-    SUFFIX_LINE='.SUFFIXES: .cc'
+    SUFFIX_LINE='.SUFFIXES: .cc .mm'
     CPP_SUFFIX='cc'
    fi],
   [
     AC_MSG_RESULT(no)
-    SUFFIX_LINE='.SUFFIXES: .cc'
+    SUFFIX_LINE='.SUFFIXES: .cc .mm'
     CPP_SUFFIX='cc'
     ]
   )

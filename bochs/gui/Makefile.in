@@ -58,7 +58,7 @@ GUI_OBJS_SDL2 = sdl2.o
 GUI_OBJS_WIN32 = win32.o
 GUI_OBJS_MACOS = macintosh.o
 GUI_OBJS_CARBON = carbon.o
-GUI_OBJS_COCOA = cocoa.o
+GUI_OBJS_COCOA = cocoa.o cocoa_device.o cocoa_view.o cocoa_window.o
 GUI_OBJS_NOGUI = nogui.o
 GUI_OBJS_TERM  = term.o
 GUI_OBJS_RFB = rfb.o
@@ -121,6 +121,10 @@ libgui.a: $(NONPLUGIN_OBJS)
 .@CPP_SUFFIX@.o:
 	$(CXX) @DASH@c  $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
 
+# standard compile rule for mm files
+.mm.o:
+	$(CXX) @DASH@c  $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
+
 ##### building plugins with libtool
 %.lo: %.@CPP_SUFFIX@
 	$(LIBTOOL) --mode=compile --tag CXX $(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) $< -o $@
@@ -155,8 +159,11 @@ libbx_macos_gui.la: macos.lo
 libbx_carbon_gui.la: carbon.lo
 	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_CARBON)
 
-libbx_cocoa_gui.la: cocoa.lo
-	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_COCOA)
+#libbx_cocoa_gui.la: cocoa.lo
+#	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_COCOA)
+
+#libbx_cocoa_gui.la: $(GUI_OBJS_COCOA:.o=.lo) $(GUI_OBJS_COCOA_SUPPORT:.o=.lo)
+#	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $(GUI_OBJS_COCOA:.o=.lo) $(GUI_OBJS_COCOA_SUPPORT:.o=.lo) -o $@ -rpath $(PLUGIN_PATH)  $(GUI_LINK_OPTS_COCOA)
 
 libbx_nogui_gui.la: nogui.lo
 	$(LIBTOOL) --mode=link --tag CXX $(CXX) $(LDFLAGS) -module $< -o $@ -rpath $(PLUGIN_PATH) $(GUI_LINK_OPTS_NOGUI)
@@ -233,7 +240,8 @@ carbon.o: carbon.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree
  keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
  ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
-cocoa.o: cocoa.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
+cocoa.o: cocoa.@CPP_SUFFIX@ \
+ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
  ../logio.h ../misc/bswap.h \
  keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
