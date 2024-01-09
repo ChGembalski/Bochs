@@ -233,7 +233,7 @@ unsigned last_rx;
     last_lx += (BX_GUI_GAP_SIZE + rgbData.width);
   }
   if (align == BX_GUI_GRAVITY_RIGHT) {
-    x = last_rx;
+    x = last_rx - rgbData.width;
     last_rx -= (BX_GUI_GAP_SIZE + rgbData.width);
   }
   y = self.yofs; // - self.height;
@@ -292,7 +292,7 @@ unsigned last_rx;
       last_lx += (BX_GUI_GAP_SIZE + btn.size.width);
     }
     if (btn.alignment == BX_GUI_GRAVITY_RIGHT) {
-      x = last_rx;
+      x = last_rx - btn.size.width;
       last_rx -= (BX_GUI_GAP_SIZE + btn.size.width);
     }
     y = self.yofs;
