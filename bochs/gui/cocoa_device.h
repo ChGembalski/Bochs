@@ -27,7 +27,6 @@
 
   #define BX_GUI_COCOA_DEVICE_H
 
-  #include "cocoa_view.h"
   #include "cocoa_window.h"
 
   struct BXGuiCocoaDeviceImpl;
@@ -36,15 +35,20 @@
 
   private:
     BXGuiCocoaDeviceImpl * BXCocoaDevice;
-    BXGuiCocoaView * BXview;
     BXGuiCocoaWindow * BXwindow;
 
   public:
-    BXGuiCocoaDevice();
+    BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y);
     ~BXGuiCocoaDevice();
 
-    void run_once();
+    void handle_events();
     void run_terminate();
+
+    unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
+    unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
+    void show_headerbar(void);
+
+    void dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp);
 
   };
 

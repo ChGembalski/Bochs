@@ -39,8 +39,10 @@
 
 #include "cocoa_device.h"
 
-BXGuiCocoaDevice * device;
+#define BX_GUI_STARTUP_X 640
+#define BX_GUI_STARTUP_Y 64
 
+BXGuiCocoaDevice * device;
 
 class bx_cocoa_gui_c : public bx_gui_c {
 public:
@@ -63,6 +65,10 @@ IMPLEMENT_GUI_PLUGIN_CODE(cocoa)
 // Look in 'x.cc', 'carbon.cc', and 'win32.cc' for specific
 // implementations of this interface.  -Kevin
 
+extern "C" void bx_cocoa_gui_c_log(const char *data) {
+  BX_INFO(("%s", data));
+}
+
 // ::SPECIFIC_INIT()
 //
 // Called from gui.cc, once upon program startup, to allow for the
@@ -83,15 +89,17 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   UNUSED(argv);
   UNUSED(headerbar_y);
 
-  UNUSED(bochs_icon_bits);  // global variable
+  UNUSED(bochs_icon_bits);  // global variable of bochs icon
+
+  BX_INFO(("bx_cocoa_gui_c::specific_init() headerbar_y=%d", headerbar_y));
 
   // init device
-  device = new BXGuiCocoaDevice();
+  device = new BXGuiCocoaDevice(BX_GUI_STARTUP_X, BX_GUI_STARTUP_Y, headerbar_y);
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() running some events now ..."));
 
-  for (int i=0; i<50; i++) {
-    device->run_once();
+  for (int i=0; i<100; i++) {
+    device->handle_events();
   }
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() done running some events now ..."));
@@ -110,6 +118,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
 void bx_cocoa_gui_c::handle_events(void)
 {
+    device->handle_events();
 }
 
 
@@ -120,7 +129,7 @@ void bx_cocoa_gui_c::handle_events(void)
 
 void bx_cocoa_gui_c::flush(void)
 {
-    device->run_once();
+    device->handle_events();
 }
 
 
@@ -250,6 +259,10 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
   guest_yres = y;
   guest_bpp = bpp;
   UNUSED(fwidth);
+
+  BX_INFO(("bx_cocoa_gui_c::dimension_update x=%d y=%d fheight=%d fwidth=%d bpp=%d", x, y, fheight, fwidth, bpp));
+  device->dimension_update(x, y, fheight, fwidth, bpp);
+
 }
 
 
@@ -269,7 +282,9 @@ unsigned bx_cocoa_gui_c::create_bitmap(const unsigned char *bmap, unsigned xdim,
   UNUSED(bmap);
   UNUSED(xdim);
   UNUSED(ydim);
-  return(0);
+
+  BX_INFO(("bx_cocoa_gui_c::create_bitmap xdim=%d ydim=%d", xdim, ydim));
+  return(device->create_bitmap(bmap, xdim, ydim));
 }
 
 
@@ -292,7 +307,8 @@ unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, 
   UNUSED(bmap_id);
   UNUSED(alignment);
   UNUSED(f);
-  return(0);
+  BX_INFO(("bx_cocoa_gui_c::headerbar_bitmap bmap_id=%d alignment=%x", bmap_id, alignment));
+  return(device->headerbar_bitmap(bmap_id, alignment, f));
 }
 
 
@@ -303,6 +319,8 @@ unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, 
 
 void bx_cocoa_gui_c::show_headerbar(void)
 {
+  BX_INFO(("bx_cocoa_gui_c::show_headerbar"));
+  device->show_headerbar();
 }
 
 

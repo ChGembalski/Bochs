@@ -23,24 +23,19 @@
 // cocoa -- bochs GUI file for MacOS X with Cocoa API
 // written by Christoph Gembalski <christoph@gembalski.de>
 
-#ifndef BX_GUI_COCOA_VIEW_H
+#ifndef BX_GUI_COCOA_LOGGING_H
 
-  #define BX_GUI_COCOA_VIEW_H
+  #define BX_GUI_COCOA_LOGGING_H
 
-  struct BXGuiCocoaViewImpl;
+  #if __cplusplus
+    extern "C" {
+  #endif
 
-  struct BXGuiCocoaViewRect;
+  extern void bx_cocoa_gui_c_log(const char *data);
+  #define BX_LOG(x) bx_cocoa_gui_c_log([x UTF8String])
 
-  class BXGuiCocoaView {
+  #if __cplusplus
+    }   // Extern C
+  #endif
 
-  private:
-    BXGuiCocoaViewImpl * BXCocoaView;
-    BXGuiCocoaViewRect * BXCocoaViewRect;
-
-  public:
-    BXGuiCocoaView();
-    ~BXGuiCocoaView();
-    
-  };
-
-#endif /* BX_GUI_COCOA_VIEW_H */
+#endif /* BX_GUI_COCOA_LOGGING_H */

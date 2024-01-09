@@ -38,12 +38,11 @@ struct BXGuiCocoaDeviceImpl {
 /**
  * BXGuiCocoaDevice CTor
  */
-BXGuiCocoaDevice::BXGuiCocoaDevice() : BXCocoaDevice(new BXGuiCocoaDeviceImpl) {
+BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y) : BXCocoaDevice(new BXGuiCocoaDeviceImpl) {
   BXCocoaDevice->BXNSApp = [NSApplication sharedApplication];
-  // test create window
-  BXview = new BXGuiCocoaView();
-  BXwindow = new BXGuiCocoaWindow(BXview);
-  [BXCocoaDevice->BXNSApp setDelegate:BXwindow->getWindow()];
+  // create main window
+  BXwindow = new BXGuiCocoaWindow(x, y, headerbar_y);
+  //[BXCocoaDevice->BXNSApp setDelegate:BXwindow->getWindow()];
 }
 
 /**
@@ -61,7 +60,7 @@ BXGuiCocoaDevice::~BXGuiCocoaDevice() {
  * run once
  * NSEvent loop processing
  */
-void BXGuiCocoaDevice::run_once() {
+void BXGuiCocoaDevice::handle_events() {
   @autoreleasepool {
 
     NSEvent* ev;
@@ -76,6 +75,7 @@ void BXGuiCocoaDevice::run_once() {
         // handle events here
         [NSApp sendEvent: ev];
       }
+      [NSApp updateWindows];
     } while (ev);
 
   }
@@ -87,4 +87,32 @@ void BXGuiCocoaDevice::run_once() {
  */
 void BXGuiCocoaDevice::run_terminate() {
   [BXCocoaDevice->BXNSApp terminate:nil];
+}
+
+/**
+ * create_bitmap forwarding
+ */
+unsigned BXGuiCocoaDevice::create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim) {
+  return (BXwindow->create_bitmap(bmap, xdim, ydim));
+}
+
+/**
+ * headerbar_bitmap forwarding
+ */
+unsigned BXGuiCocoaDevice::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void)) {
+  return (BXwindow->headerbar_bitmap(bmap_id, alignment, f));
+}
+
+/**
+ * show_headerbar forwarding
+ */
+void BXGuiCocoaDevice::show_headerbar(void) {
+  BXwindow->show_headerbar();
+}
+
+/**
+ * dimension_update forwarding
+ */
+void BXGuiCocoaDevice::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp) {
+  BXwindow->dimension_update(x, y, fheight, fwidth, bpp);
 }

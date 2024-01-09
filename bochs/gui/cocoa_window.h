@@ -27,13 +27,6 @@
 
   #define BX_GUI_COCOA_WINDOW_H
 
-  #include "cocoa_view.h"
-
-  @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
-  @end
-
-  // struct BXGuiCocoaNSWindow;
-
   struct BXGuiCocoaWindowImpl;
 
   class BXGuiCocoaWindow {
@@ -42,10 +35,21 @@
     BXGuiCocoaWindowImpl * BXCocoaWindow;
 
   public:
-    BXGuiCocoaWindow(BXGuiCocoaView * view);
+    BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y);
     ~BXGuiCocoaWindow();
-    BXGuiCocoaNSWindow * getWindow(void);
+
+    unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
+    unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
+    void show_headerbar(void);
+    void dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp);
+
+
+    // void setVGAsize(unsigned x, unsigned y);
 
   };
+
+
+
+
 
 #endif /* BX_GUI_COCOA_WINDOW_H */

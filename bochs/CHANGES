@@ -4,6 +4,7 @@ The Bochs source tree is transitioning from SVN to GIT hosted on github (https:/
 We welcome every new contributor !
 
 Brief summary :
+  - Macos X Cocoa GUI
   - Bugfixes for CPU emulation correctness (MONITOR/MWAIT, VMX/SVM, AVX-512, CET, SHA, GFNI fixes)
   ! Implemented VMX MBE (Mode Based Execution Control) emulation required for Windows 11 guest
   ! Implemented Posted-Interrupt Processing VMX extension emulation
@@ -124,7 +125,7 @@ Detailed change log :
        supports these commands. Even though the controller is a 82078, which specifies that it should
        support these commands, it returns 'command unsupported'. If I find another controller type, I will
        try that one. It would surprise me if any of them actually support this rarely used command.
-    - this new code fixes an error where Win98 and older Windows versions would set the high order 
+    - this new code fixes an error where Win98 and older Windows versions would set the high order
        drive select bit in error. This would specify drive 2 for drive 0, and drive 3 for drive 1.
     - replaced the broken 82078 datasheet URL with one from the QEMU wiki. It should be static now.
 
@@ -186,8 +187,11 @@ Detailed change log :
     - Align SB16 DMA buffer size to 4 to avoid crash in 16-bit stereo mode
     - Added 16-bit write support for even i/o addresses
 
-   - Keyboard/Mouse
+  - Keyboard/Mouse
     - Reduce default keyboard serial delay to 150 to avoid timeouts
+
+- GUI and display libraries
+  - Added Macos X Cocoa as default GUI
 
 -BIOS / VGABIOS
   - Added capability to enter keycode with ALT + numeric keypad
@@ -2767,7 +2771,7 @@ Detailed change log :
  [1021758] GNU/k*BSD host support by Robert Millan
   [969967] int 15/ah=87h clearing cr0 by Ben Lunt
  [1048327] Russian Keymap by Dmitry Soshnikov
-  [851332] DESTDIR support for install_dlx by Ville Skyttä
+  [851332] DESTDIR support for install_dlx by Ville Skyttï¿½
   [970929] gdbstub support for MinGW tool chains by Muranaka Masaki
  [1021740] Turn gdb stub into a runtime option by Charles Duffy
  [1063329] RFB key press/release bug fix by Remko van der Vossen
