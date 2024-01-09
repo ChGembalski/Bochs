@@ -54,9 +54,11 @@
     @property (nonatomic, readwrite) unsigned alignment;
     @property (nonatomic, readwrite) NSPoint position;
     @property (nonatomic, readwrite) NSSize size;
+    @property (nonatomic, readwrite) void * func;
     @property (nonatomic, readwrite, strong) NSButton * button;
-    - (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img;
+    - (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f;
     - (void)dealloc;
+    - (void)mouseEvent: (NSButton*)button;
   @end
 
   @interface BXHeaderbar : NSObject

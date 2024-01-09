@@ -109,7 +109,7 @@ unsigned char flip_byte(unsigned char b) {
 /**
  * BXHeaderbarButton CTor
  */
-- (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img {
+- (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f {
   self = [super init];
   if(self) {
 
@@ -117,9 +117,12 @@ unsigned char flip_byte(unsigned char b) {
     self.alignment = align;
     self.position = NSMakePoint(x, y);
     self.size = NSMakeSize(w, h);
+    self.func = f;
     self.button = [[NSButton alloc] initWithFrame:NSMakeRect(x, y, w, h)];
     [self.button setImage:img];
     [self.button setImagePosition:NSImageOnly];
+    [self.button setTarget:self];
+    [self.button setAction:@selector(mouseEvent:)];
 
   }
   return self;
@@ -133,6 +136,12 @@ unsigned char flip_byte(unsigned char b) {
   [self.button dealloc];
 }
 
+- (void)mouseEvent: (NSButton*)button {
+  if (self.func != nil) {
+    BX_LOG((@"Hit the Button"));
+    ((void (*)())self.func)();
+  }
+}
 
 @end
 
@@ -237,7 +246,7 @@ unsigned last_rx;
     }
   }];
 
-  [buttons addObject: [[BXHeaderbarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:y left:x image:image]];
+  [buttons addObject: [[BXHeaderbarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:y left:x image:image func:f]];
 
   BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap idx=%lu x=%d y=%d", curIdx, x, y]));
   return (curIdx);
