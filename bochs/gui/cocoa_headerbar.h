@@ -27,18 +27,12 @@
 
   #define BX_GUI_COCOA_HEADERBAR_H
 
+  #include "cocoa_display.h"
+
   #define BX_GUI_GRAVITY_LEFT   10
   #define BX_GUI_GRAVITY_RIGHT  11
   #define BX_GUI_GAP_SIZE       10
 
-  @interface BXVGAdisplay : NSObject
-    @property (nonatomic, readwrite) unsigned width;
-    @property (nonatomic, readwrite) unsigned height;
-    @property (nonatomic, readwrite) unsigned font_width;
-    @property (nonatomic, readwrite) unsigned font_height;
-    @property (nonatomic, readwrite) unsigned bpp;
-    - (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh;
-  @end
 
   @interface BXHeaderbarButtonData : NSObject
     @property (nonatomic, readwrite) CFDataRef data;
@@ -65,6 +59,7 @@
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned yofs;
+    @property (nonatomic, readwrite) BOOL visible;
     - (instancetype)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
     - (void)dealloc;
     -(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;

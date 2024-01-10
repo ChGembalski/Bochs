@@ -48,29 +48,23 @@
   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
   - (void)dealloc;
 
-  -(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
-  -(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
-  -(void) headerbarCreate;
-  -(void) headerbarUpdate;
-  -(unsigned) getHeaderbarHeight;
+  - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
+  - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
+  - (void)headerbarCreate;
+  - (void)headerbarUpdate;
+  - (unsigned)getHeaderbarHeight;
+  - (void)renderVGA;
+  - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
+  - (void)clearVGAscreen;
 
 // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
 // -(NSArray<NSButton *> *)createToolbar;
--(void)updateToolbar:(NSSize) size;
+// -(void)updateToolbar:(NSSize) size;
 @end
 
 @implementation BXGuiCocoaNSWindow
 
 BXHeaderbar * BXToolbar;
-
-
-// NSSize VGAsize;
-// NSArray<NSButton *> * toolbar;
-// NSToolbar * BXtoolbar;
-// NSTextField* label;
-// NSButton * BXbutton1;
-// NSImage * BXbutton1image;
-// NSData * BXbutton1imagedata;
 
 /**
  * BXGuiCocoaNSWindow CTor
@@ -82,28 +76,28 @@ BXHeaderbar * BXToolbar;
   [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
-                    NSWindowStyleMaskMiniaturizable |
-                    NSWindowStyleMaskResizable
+                    NSWindowStyleMaskMiniaturizable
            backing: NSBackingStoreBuffered
              defer: NO
   ];
-
+// |                    NSWindowStyleMaskResizable
   [NSApp setDelegate:self];
   [NSApp setDelegate:[self contentView]];
   [self setTitle:@"Bochs for MacOsX"];
 
   // Setup VGA display
-  self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga.width height:vga.height font_width:0 font_height:0];
+  self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga.width height:vga.height font_width:0 font_height:0 view:[self contentView]];
 
   // setup Toolbar
   BXToolbar = [[BXHeaderbar alloc] init:headerbar_y width:self.BXVGA.width yofs:self.BXVGA.height];
 
-  // [[self contentView] addSubview:BXbutton1];
-  // [[self contentView] addSubview:label];
+
+
   [self center];
   [self setIsVisible:YES];
   [self makeKeyAndOrderFront:self];
 
+  // [self makeMainWindow];
 
   return self;
 }
@@ -125,34 +119,57 @@ BXHeaderbar * BXToolbar;
 /**
  * createBXBitmap forwarding
  */
--(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y {
+- (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y {
   return ([BXToolbar createBXBitmap:bmap xdim:x ydim:y]);
 }
 
 /**
  * headerbarBXBitmap forwarding
  */
--(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
+- (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
   return ([BXToolbar headerbarBXBitmap:bmap_id alignment:align func:f]);
 }
 
 /**
  * create new headerbar
+ * multiple calls allowed
  */
--(void) headerbarCreate {
+- (void)headerbarCreate {
   [BXToolbar headerbarCreate:[self contentView]];
 }
 
--(void) headerbarUpdate {
+/**
+ * update headerbar
+ */
+- (void)headerbarUpdate {
   [BXToolbar headerbarUpdate:self.BXVGA];
-  // [self display];
-  // [[self contentView] setNeedsDisplay:YES];
-  // [NSApp setWindowsNeedUpdate:YES];
 }
 
--(unsigned) getHeaderbarHeight {
+- (unsigned)getHeaderbarHeight {
   return (BXToolbar.height);
 }
+
+/**
+ * render VGA display
+ */
+- (void)renderVGA {
+  [self.BXVGA render];
+}
+
+/**
+ * change one VGA palette entry
+ */
+- (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b {
+  return [self.BXVGA setPaletteRGB:index red:r green:g blue:b];
+}
+
+/**
+ * clear the VGA screen
+ */
+- (void)clearVGAscreen {
+  [self.BXVGA clearScreen];
+}
+
 
 
 
@@ -211,11 +228,11 @@ BXHeaderbar * BXToolbar;
 
 
 
--(void)updateToolbar:(NSSize) size {
-  BX_LOG(([NSString stringWithFormat:@"updateToolbar width=%d height=%d", (int)size.width, (int)size.height]));
-  // BXbutton1.frame = NSMakeRect(0, VGAsize.height , 32, 32);
-  // [BXbutton1 setHidden:YES];
-}
+// -(void)updateToolbar:(NSSize) size {
+//   BX_LOG(([NSString stringWithFormat:@"updateToolbar width=%d height=%d", (int)size.width, (int)size.height]));
+//   // BXbutton1.frame = NSMakeRect(0, VGAsize.height , 32, 32);
+//   // [BXbutton1 setHidden:YES];
+// }
 
 // -(NSImage *)createFromByteArray {
 //   NSImage * result;
@@ -279,10 +296,6 @@ BXGuiCocoaWindow::~BXGuiCocoaWindow() {
     [BXCocoaWindow->BXWindow release];
 }
 
-// BXGuiCocoaNSWindow * BXGuiCocoaWindow::getWindow(void) {
-//   return (BXCocoaWindow->BXWindow);
-// }
-
 /**
  * create_bitmap
  */
@@ -312,11 +325,8 @@ void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fheight
   NSRect windowFrame;
   NSRect newWindowFrame;
 
-  // reallocate BXVGA ...
-  [BXCocoaWindow->BXWindow.BXVGA dealloc];
-
-  // Setup VGA display
-  BXCocoaWindow->BXWindow.BXVGA = [[BXVGAdisplay alloc] init:bpp width:x height:y font_width:fheight font_height:fwidth];
+  // Change VGA display
+  [BXCocoaWindow->BXWindow.BXVGA changeBPP:bpp width:x height:y font_width:fheight font_height:fwidth];
 
   // prepare window
   windowFrame = [BXCocoaWindow->BXWindow contentRectForFrameRect:[BXCocoaWindow->BXWindow frame]];
@@ -330,6 +340,26 @@ void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fheight
 
 }
 
+/**
+ * render
+ */
+void BXGuiCocoaWindow::render(void) {
+  [BXCocoaWindow->BXWindow renderVGA];
+}
+
+/**
+ * palette_change
+ */
+bool BXGuiCocoaWindow::palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue) {
+  return ([BXCocoaWindow->BXWindow changeVGApalette:index red:red green:green blue:blue]);
+}
+
+/**
+ * clear_screen
+ */
+void BXGuiCocoaWindow::clear_screen(void) {
+  [BXCocoaWindow->BXWindow clearVGAscreen];
+}
 
 
 
@@ -337,21 +367,12 @@ void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fheight
 
 
 
-// /**
-//  * setVGAsize
-//  * set the new VGA size
-//  */
-// void BXGuiCocoaWindow::setVGAsize(unsigned x, unsigned y) {
-//
-//   NSRect windowFrame;
-//   NSRect newWindowFrame;
-//
-//   BXCocoaWindow->BXWindow.BXVGA.width = x;
-//   BXCocoaWindow->BXWindow.BXVGA.height = y;
-//
-//   windowFrame = [BXCocoaWindow->BXWindow contentRectForFrameRect:[BXCocoaWindow->BXWindow frame]];
-//   newWindowFrame = [BXCocoaWindow->BXWindow frameRectForContentRect:NSMakeRect( NSMinX( windowFrame ), NSMinY( windowFrame ), x, y + BXCocoaWindow->BXWindow.getHeaderbarHeight)];
-//   [BXCocoaWindow->BXWindow updateToolbar:VGAsize];
-//   [BXCocoaWindow->BXWindow setFrame:newWindowFrame display:YES animate:[BXCocoaWindow->BXWindow isVisible]];
-//
-// }
+
+
+
+
+
+
+
+
+// EOF

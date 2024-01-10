@@ -116,3 +116,24 @@ void BXGuiCocoaDevice::show_headerbar(void) {
 void BXGuiCocoaDevice::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp) {
   BXwindow->dimension_update(x, y, fheight, fwidth, bpp);
 }
+
+/**
+ * render forwarding
+ */
+void BXGuiCocoaDevice::render(void) {
+  BXwindow->render();
+}
+
+/**
+ * palette_change forwarding
+ */
+bool BXGuiCocoaDevice::palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue) {
+  return (BXwindow->palette_change(index, red, green, blue));
+}
+
+/**
+ * clear_screen forwarding
+ */
+void BXGuiCocoaDevice::clear_screen(void) {
+  BXwindow->clear_screen();
+}

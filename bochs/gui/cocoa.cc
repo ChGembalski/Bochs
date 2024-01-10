@@ -48,6 +48,35 @@ class bx_cocoa_gui_c : public bx_gui_c {
 public:
   bx_cocoa_gui_c (void) {}
   DECLARE_GUI_VIRTUAL_METHODS()
+  // DECLARE_GUI_NEW_VIRTUAL_METHODS()
+  // // new text update API
+  // virtual void set_font(bool lg);
+  // virtual void draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u yc,
+  //                        Bit8u fw, Bit8u fh, Bit8u fx, Bit8u fy,
+  //                        bool gfxcharw9, Bit8u cs, Bit8u ce, bool curs, bool font2);
+  // // optional gui methods (stubs or default code in gui.cc)
+  // virtual void statusbar_setitem_specific(int element, bool active, bool w);
+  // virtual void set_tooltip(unsigned hbar_id, const char *tip);
+  // set_display_mode() changes the mode between the configuration interface
+  // and the simulation.  This is primarily intended for display libraries
+  // which have a full-screen mode such as SDL or term.  The display mode is
+  // set to DISP_MODE_CONFIG before displaying any configuration menus,
+  // for panics that requires user input, when entering the debugger, etc.  It
+  // is set to DISP_MODE_SIM when the Bochs simulation resumes.  The
+  // enum is defined in gui/siminterface.h.
+  // virtual void set_display_mode (disp_mode_t newmode);
+  // #if BX_USE_IDLE_HACK
+  //   // this is called from the CPU model when the HLT instruction is executed.
+  //   virtual void sim_is_idle(void);
+  // #endif
+  //   virtual void show_ips(Bit32u ips_count);
+  //   virtual void beep_on(float frequency);
+  //   virtual void beep_off();
+  //   virtual void get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp);
+  //   virtual void set_mouse_mode_absxy(bool mode);
+  // #if BX_USE_GUI_CONSOLE
+  //   virtual void set_console_edit_mode(bool mode);
+  // #endif
 };
 
 // declare one instance of the gui object and call macro to insert the
@@ -65,9 +94,23 @@ IMPLEMENT_GUI_PLUGIN_CODE(cocoa)
 // Look in 'x.cc', 'carbon.cc', and 'win32.cc' for specific
 // implementations of this interface.  -Kevin
 
+
+// Logging to console support
+
 extern "C" void bx_cocoa_gui_c_log(const char *data) {
   BX_INFO(("%s", data));
 }
+
+
+// flip bits
+
+extern "C" unsigned char flip_byte(unsigned char b) {
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
 
 // ::SPECIFIC_INIT()
 //
@@ -93,8 +136,13 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() headerbar_y=%d", headerbar_y));
 
+  // use BOCHS_WINDOW_NAME as DLG Name
+
   // init device
   device = new BXGuiCocoaDevice(BX_GUI_STARTUP_X, BX_GUI_STARTUP_Y, headerbar_y);
+
+  // init startup
+  device->dimension_update(640, 480, 0, 0, 8);
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() running some events now ..."));
 
@@ -108,40 +156,6 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
     BX_INFO(("private_colormap option ignored."));
   }
 }
-
-
-// ::HANDLE_EVENTS()
-//
-// Called periodically (every 1 virtual millisecond) so the
-// the gui code can poll for keyboard, mouse, and other
-// relevant events.
-
-void bx_cocoa_gui_c::handle_events(void)
-{
-    device->handle_events();
-}
-
-
-// ::FLUSH()
-//
-// Called periodically, requesting that the gui code flush all pending
-// screen update requests.
-
-void bx_cocoa_gui_c::flush(void)
-{
-    device->handle_events();
-}
-
-
-// ::CLEAR_SCREEN()
-//
-// Called to request that the VGA region is cleared.  Don't
-// clear the area that defines the headerbar.
-
-void bx_cocoa_gui_c::clear_screen(void)
-{
-}
-
 
 
 // ::TEXT_UPDATE()
@@ -172,48 +186,44 @@ void bx_cocoa_gui_c::text_update(Bit8u *old_text, Bit8u *new_text,
   UNUSED(cursor_x);
   UNUSED(cursor_y);
   UNUSED(tm_info);
-}
+  BX_INFO(("bx_cocoa_gui_c::text_update cursor_x=%lu cursor_y=%lu", cursor_x, cursor_y));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info start_address=%d", tm_info->start_address));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info cs_start=%d", tm_info->cs_start));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info cs_end=%d", tm_info->cs_end));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info line_offset=%d", tm_info->line_offset));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info line_compare=%d", tm_info->line_compare));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info h_panning=%d", tm_info->h_panning));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info v_panning=%d", tm_info->v_panning));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info line_graphics=%d", tm_info->line_graphics));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info split_hpanning=%d", tm_info->split_hpanning));
+  BX_INFO(("bx_cocoa_gui_c::text_update tm_info blink_flags=%d", tm_info->blink_flags));
+  for (int i=0;i<16;i++) {
+    BX_INFO(("bx_cocoa_gui_c::text_update tm_info actl_palette[%d]=%d", i, tm_info->actl_palette[i]));
+  }
 
+  // char bufferold[80*25+2] = {0};
+  // int ibufold = 1;
+  // bufferold[0] = '>';
+  // for (int i=0;i<tm_info->line_offset*25;i+=2) {
+  //   bufferold[ibufold] = old_text[i];
+  //   ibufold++;
+  // }
+  // bufferold[ibufold] = '<';
+  // BX_INFO(("bx_cocoa_gui_c::text_update old_text=%s", bufferold));
 
-// ::GET_CLIPBOARD_TEXT()
-//
-// Called to get text from the GUI clipboard. Returns 1 if successful.
+  char buffer[80*25+2] = {0};
+  int ibuf = 1;
+  buffer[0] = '>';
+  for (int i=0;i<tm_info->line_offset*25;i+=2) {
+    buffer[ibuf] = new_text[i];
+    ibuf++;
+  }
+  buffer[ibuf] = '<';
+  BX_INFO(("bx_cocoa_gui_c::text_update new_text=%s", buffer));
 
-int bx_cocoa_gui_c::get_clipboard_text(Bit8u **bytes, Bit32s *nbytes)
-{
-  UNUSED(bytes);
-  UNUSED(nbytes);
-  return 0;
-}
-
-
-// ::SET_CLIPBOARD_TEXT()
-//
-// Called to copy the text screen contents to the GUI clipboard.
-// Returns 1 if successful.
-
-int bx_cocoa_gui_c::set_clipboard_text(char *text_snapshot, Bit32u len)
-{
-  UNUSED(text_snapshot);
-  UNUSED(len);
-  return 0;
-}
-
-
-// ::PALETTE_CHANGE()
-//
-// Allocate a color in the native GUI, for this color, and put
-// it in the colormap location 'index'.
-// returns: 0=no screen update needed (color map change has direct effect)
-//          1=screen updated needed (redraw using current colormap)
-
-bool bx_cocoa_gui_c::palette_change(Bit8u index, Bit8u red, Bit8u green, Bit8u blue)
-{
-  UNUSED(index);
-  UNUSED(red);
-  UNUSED(green);
-  UNUSED(blue);
-  return(0);
+  //>Bochs VGABios (PCI) 0.8b 28 Dez 2023                                            <
+  // 01234567890123456789012345678901234567890123456789012345678901234567890123456789
+  //           1         2         3         4         5         6         7
 }
 
 
@@ -237,6 +247,62 @@ void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
   UNUSED(tile);
   UNUSED(x0);
   UNUSED(y0);
+  BX_INFO(("bx_cocoa_gui_c::graphics_tile_update x0=%d y0=%d", x0, y0));
+}
+
+
+// ::HANDLE_EVENTS()
+//
+// Called periodically (every 1 virtual millisecond) so the
+// the gui code can poll for keyboard, mouse, and other
+// relevant events.
+
+void bx_cocoa_gui_c::handle_events(void)
+{
+    device->handle_events();
+}
+
+
+// ::FLUSH()
+//
+// Called periodically, requesting that the gui code flush all pending
+// screen update requests.
+
+void bx_cocoa_gui_c::flush(void)
+{
+    BX_INFO(("bx_cocoa_gui_c::flush"));
+    device->render();
+    device->handle_events();
+}
+
+
+// ::CLEAR_SCREEN()
+//
+// Called to request that the VGA region is cleared.  Don't
+// clear the area that defines the headerbar.
+
+void bx_cocoa_gui_c::clear_screen(void)
+{
+  BX_INFO(("bx_cocoa_gui_c::clear_screen"));
+  device->clear_screen();
+}
+
+
+// ::PALETTE_CHANGE()
+//
+// Allocate a color in the native GUI, for this color, and put
+// it in the colormap location 'index'.
+// returns: 0=no screen update needed (color map change has direct effect)
+//          1=screen updated needed (redraw using current colormap)
+
+bool bx_cocoa_gui_c::palette_change(Bit8u index, Bit8u red, Bit8u green, Bit8u blue)
+{
+  UNUSED(index);
+  UNUSED(red);
+  UNUSED(green);
+  UNUSED(blue);
+  BX_INFO(("bx_cocoa_gui_c::palette_change index=%d R=%d G=%d B=%d", index, red, green, blue));
+  return(device->palette_change(index, red, green, blue));
 }
 
 
@@ -312,18 +378,6 @@ unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, 
 }
 
 
-// ::SHOW_HEADERBAR()
-//
-// Show (redraw) the current headerbar, which is composed of
-// currently installed bitmaps.
-
-void bx_cocoa_gui_c::show_headerbar(void)
-{
-  BX_INFO(("bx_cocoa_gui_c::show_headerbar"));
-  device->show_headerbar();
-}
-
-
 // ::REPLACE_BITMAP()
 //
 // Replace the bitmap installed in the headerbar ID slot 'hbar_id',
@@ -341,22 +395,46 @@ void bx_cocoa_gui_c::replace_bitmap(unsigned hbar_id, unsigned bmap_id)
 {
   UNUSED(hbar_id);
   UNUSED(bmap_id);
+  BX_INFO(("bx_cocoa_gui_c::replace_bitmap hbar_id=%d bmap_id=%x", hbar_id, bmap_id));
 }
 
 
-// ::EXIT()
+// ::SHOW_HEADERBAR()
 //
-// Called before bochs terminates, to allow for a graceful
-// exit from the native GUI mechanism.
+// Show (redraw) the current headerbar, which is composed of
+// currently installed bitmaps.
 
-void bx_cocoa_gui_c::exit(void)
+void bx_cocoa_gui_c::show_headerbar(void)
 {
-  if (device != NULL) {
-    device->run_terminate();
-    delete device;
-  }
+  BX_INFO(("bx_cocoa_gui_c::show_headerbar"));
+  device->show_headerbar();
+}
 
-  BX_INFO(("bx_cocoa_gui_c::exit() implemented yet."));
+
+// ::GET_CLIPBOARD_TEXT()
+//
+// Called to get text from the GUI clipboard. Returns 1 if successful.
+
+int bx_cocoa_gui_c::get_clipboard_text(Bit8u **bytes, Bit32s *nbytes)
+{
+  UNUSED(bytes);
+  UNUSED(nbytes);
+  BX_INFO(("bx_cocoa_gui_c::get_clipboard_text"));
+  return 0;
+}
+
+
+// ::SET_CLIPBOARD_TEXT()
+//
+// Called to copy the text screen contents to the GUI clipboard.
+// Returns 1 if successful.
+
+int bx_cocoa_gui_c::set_clipboard_text(char *text_snapshot, Bit32u len)
+{
+  UNUSED(text_snapshot);
+  UNUSED(len);
+  BX_INFO(("bx_cocoa_gui_c::set_clipboard_text"));
+  return 0;
 }
 
 
@@ -369,7 +447,62 @@ void bx_cocoa_gui_c::exit(void)
 
 void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 {
+  BX_INFO(("bx_cocoa_gui_c::mouse_enabled_changed_specific Mouse capture %s", val ? "on":"off"));
 }
+
+
+// ::EXIT()
+//
+// Called before bochs terminates, to allow for a graceful
+// exit from the native GUI mechanism.
+
+void bx_cocoa_gui_c::exit(void)
+{
+  BX_INFO(("bx_cocoa_gui_c::exit() need some attention."));
+
+  if (device != NULL) {
+    device->run_terminate();
+    delete device;
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+// Cocoa implementation of optional bx_gui_c methods (see gui.h)
+
+
+// // set_display_mode() changes the mode between the configuration interface
+// // and the simulation.  This is primarily intended for display libraries
+// // which have a full-screen mode such as SDL or term.  The display mode is
+// // set to DISP_MODE_CONFIG before displaying any configuration menus,
+// // for panics that requires user input, when entering the debugger, etc.  It
+// // is set to DISP_MODE_SIM when the Bochs simulation resumes.  The
+// // enum is defined in gui/siminterface.h.
+// void bx_cocoa_gui_c::set_display_mode(disp_mode_t newmode)
+// {
+//   BX_INFO(("bx_cocoa_gui_c::set_display_mode mode=%d", newmode));
+//   // // if no mode change, do nothing.
+//   // if (disp_mode == newmode) return;
+//   // // remember the display mode for next time
+//   // disp_mode = newmode;
+//   // if ((newmode == DISP_MODE_SIM) && console_running()) {
+//   //   console_cleanup();
+//   // }
+// }
+
+
+
+
+
 
 
 #endif /* if BX_WITH_COCOA */

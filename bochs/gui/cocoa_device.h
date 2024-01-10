@@ -47,8 +47,10 @@
     unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
     unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
     void show_headerbar(void);
-
     void dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp);
+    void render(void);
+    bool palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue);
+    void clear_screen(void);
 
   };
 

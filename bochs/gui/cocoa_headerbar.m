@@ -32,39 +32,7 @@ unsigned char BXPalette_ColorBW[3*2] = {
   0x00, 0x00, 0x00
 };
 
-unsigned char flip_byte(unsigned char b) {
-   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-   return b;
-}
-
-@implementation BXVGAdisplay
-
-/**
- * BXHeaderbarButtonData CTor
- */
-- (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh {
-  self = [super init];
-  if(self) {
-
-    self.width = w;
-    self.height = h;
-    self.font_width = fw;
-    self.font_height = fh;
-
-  }
-  return self;
-}
-
-/**
- * BXHeaderbarButtonData DTor
- */
-- (void)dealloc {
-  [super dealloc];
-}
-
-@end
+extern unsigned char flip_byte(unsigned char b);
 
 
 /**
@@ -161,6 +129,7 @@ unsigned last_rx;
     self.height = headerbar_y;
     self.width = w;
     self.yofs = y;
+    self.visible = NO;
     last_lx = 0;
     last_rx = self.width;
     buttons = [[NSMutableArray alloc] init];
@@ -246,6 +215,8 @@ unsigned last_rx;
     }
   }];
 
+  BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap vaild %s", image.isValid?"YES":"NO"]));
+
   [buttons addObject: [[BXHeaderbarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:y left:x image:image func:f]];
 
   BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap idx=%lu x=%d y=%d", curIdx, x, y]));
@@ -257,12 +228,18 @@ unsigned last_rx;
  */
 -(void) headerbarCreate:(NSView *) view {
 
+  if (self.visible) {
+    return;
+  }
+
   [buttons enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
     BXHeaderbarButton * btn;
-    BX_LOG(([NSString stringWithFormat:@"headerbarUpdate enable idx=%lu ", idx]));
+    BX_LOG(([NSString stringWithFormat:@"headerbarCreate enable idx=%lu ", idx]));
     btn = [buttons objectAtIndex:idx];
     [view addSubview:btn.button];
   }];
+
+  self.visible = YES;
 
 }
 
@@ -277,7 +254,7 @@ unsigned last_rx;
   last_lx = 0;
   last_rx = self.width;
 
-  BX_LOG(([NSString stringWithFormat:@"headerbarUpdate width=%lu yofs=%d", self.width, self.yofs]));
+  BX_LOG(([NSString stringWithFormat:@"headerbarUpdate width=%d yofs=%d", self.width, self.yofs]));
 
   // update positions
   [buttons enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
