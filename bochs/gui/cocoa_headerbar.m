@@ -66,8 +66,8 @@ extern unsigned char flip_byte(unsigned char b);
  * BXHeaderbarButtonData DTor
  */
 - (void)dealloc {
-  [super dealloc];
   CFRelease(self.data);
+  [super dealloc];
 }
 
 @end
@@ -100,13 +100,13 @@ extern unsigned char flip_byte(unsigned char b);
  * BXHeaderbarButton DTor
  */
 - (void)dealloc {
-  [super dealloc];
   [self.button dealloc];
+  [super dealloc];
 }
 
 - (void)mouseEvent: (NSButton*)button {
   if (self.func != nil) {
-    BX_LOG((@"Hit the Button"));
+    BXL_DEBUG((@"Mouse Event Button"));
     ((void (*)())self.func)();
   }
 }
@@ -142,16 +142,16 @@ unsigned last_rx;
  * BXHeaderbar DTor
  */
 - (void)dealloc {
-  [super dealloc];
-  [buttons dealloc];
   [button_data dealloc];
+  [buttons dealloc];
+  [super dealloc];
 }
 
 /**
  * createBXBitmap
  */
 - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y {
-  BX_LOG(([NSString stringWithFormat:@"createBXBitmap xdim=%d ydim=%d", x, y]));
+  BXL_DEBUG(([NSString stringWithFormat:@"createBXBitmap xdim=%d ydim=%d", x, y]));
 
   __block NSUInteger curIdx;
 
@@ -165,7 +165,7 @@ unsigned last_rx;
 
   [button_data addObject:[[BXHeaderbarButtonData alloc] init:bmap width:x height:y]];
 
-  BX_LOG(([NSString stringWithFormat:@"createBXBitmap idx=%lu", curIdx]));
+  BXL_DEBUG(([NSString stringWithFormat:@"createBXBitmap idx=%lu", curIdx]));
   return curIdx;
 
 }
@@ -174,7 +174,7 @@ unsigned last_rx;
  * headerbarBXBitmap
  */
 - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
-  BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d alignment=%d func:%p", bmap_id, align, f]));
+  BXL_DEBUG(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d alignment=%d func:%p", bmap_id, align, f]));
 
   CGColorSpaceRef colorspace;
   BXHeaderbarButtonData * rgbData;
@@ -215,12 +215,40 @@ unsigned last_rx;
     }
   }];
 
-  BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap vaild %s", image.isValid?"YES":"NO"]));
+  // BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap vaild %s", image.isValid?"YES":"NO"]));
 
   [buttons addObject: [[BXHeaderbarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:y left:x image:image func:f]];
 
-  BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap idx=%lu x=%d y=%d", curIdx, x, y]));
+  BXL_DEBUG(([NSString stringWithFormat:@"headerbarBXBitmap idx=%lu x=%d y=%d", curIdx, x, y]));
   return (curIdx);
+}
+
+/**
+ * headerbarBXBitmap
+ */
+- (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id {
+
+  CGColorSpaceRef colorspace;
+  BXHeaderbarButtonData * rgbData;
+  CGDataProviderRef provider;
+  CGImageRef rgbImageRef;
+  NSImage * image;
+  BXHeaderbarButton * btn;
+
+  // create colorspace BW
+  colorspace = CGColorSpaceCreateIndexed(CGColorSpaceCreateDeviceRGB(), 2, BXPalette_ColorBW);
+  // get stored pixel
+  rgbData = [button_data objectAtIndex:bmap_id];
+  provider = CGDataProviderCreateWithCFData(rgbData.data);
+  rgbImageRef = CGImageCreate(rgbData.width, rgbData.height, 1, 1, rgbData.width/8, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
+  CGDataProviderRelease(provider);
+  CGColorSpaceRelease(colorspace);
+  image = [[[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize] autorelease];
+  CGImageRelease(rgbImageRef);
+
+  btn = [buttons objectAtIndex:btn_id];
+  [btn.button setImage:image];
+
 }
 
 /**
@@ -234,7 +262,7 @@ unsigned last_rx;
 
   [buttons enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
     BXHeaderbarButton * btn;
-    BX_LOG(([NSString stringWithFormat:@"headerbarCreate enable idx=%lu ", idx]));
+    BXL_DEBUG(([NSString stringWithFormat:@"headerbarCreate enable idx=%lu ", idx]));
     btn = [buttons objectAtIndex:idx];
     [view addSubview:btn.button];
   }];
@@ -254,7 +282,7 @@ unsigned last_rx;
   last_lx = 0;
   last_rx = self.width;
 
-  BX_LOG(([NSString stringWithFormat:@"headerbarUpdate width=%d yofs=%d", self.width, self.yofs]));
+  BXL_DEBUG(([NSString stringWithFormat:@"headerbarUpdate width=%d yofs=%d", self.width, self.yofs]));
 
   // update positions
   [buttons enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {

@@ -52,10 +52,15 @@
   - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
   - (void)headerbarCreate;
   - (void)headerbarUpdate;
+  - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
   - (unsigned)getHeaderbarHeight;
   - (void)renderVGA;
   - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
   - (void)clearVGAscreen;
+  - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB;
+  - (void)charmapVGAat:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
+  - (void)paintcharVGA:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
+
 
 // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
 // -(NSArray<NSButton *> *)createToolbar;
@@ -71,7 +76,7 @@ BXHeaderbar * BXToolbar;
  */
 - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga {
 
-  BX_LOG(@"BXGuiCocoaNSWindow::init");
+  BXL_DEBUG(@"BXGuiCocoaNSWindow::init");
 
   [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
          styleMask: NSWindowStyleMaskTitled |
@@ -96,8 +101,10 @@ BXHeaderbar * BXToolbar;
   [self center];
   [self setIsVisible:YES];
   [self makeKeyAndOrderFront:self];
+  // [self makeFirstResponder: [self contentView] ];
 
-  // [self makeMainWindow];
+
+  BXL_INFO(([NSString stringWithFormat:@"keyWindow %s", self.keyWindow?"YES":"NO"]));
 
   return self;
 }
@@ -115,6 +122,25 @@ BXHeaderbar * BXToolbar;
   [NSApp terminate:sender];
   return YES;
 }
+
+- (BOOL)canBecomeKeyWindow {
+    return YES;
+}
+
+- (BOOL)canBecomeMainWindow {
+    return YES;
+}
+
+- (void)keyDown:(NSEvent *)theEvent {
+
+  BXL_INFO(([NSString stringWithFormat:@"keyDown pressed window"]));
+
+}
+
+- (void)keyUp:(NSEvent *)event {
+  BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window"]));
+}
+
 
 /**
  * createBXBitmap forwarding
@@ -145,6 +171,13 @@ BXHeaderbar * BXToolbar;
   [BXToolbar headerbarUpdate:self.BXVGA];
 }
 
+/**
+ * change image in headerbar
+ */
+- (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id {
+  [BXToolbar headerbarBXBitmap:btn_id data_id:bmap_id];
+}
+
 - (unsigned)getHeaderbarHeight {
   return (BXToolbar.height);
 }
@@ -170,103 +203,32 @@ BXHeaderbar * BXToolbar;
   [self.BXVGA clearScreen];
 }
 
+/**
+ * init charmap data
+ */
+- (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB {
+  [self.BXVGA initFonts:dataA second:dataB];
+}
+
+/**
+ * update charmap data at
+ */
+- (void)charmapVGAat:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB {
+  [self.BXVGA updateFontAt:pos first:dataA second:dataB];
+}
+
+/**
+ * paint char on VGA display
+ */
+- (void)paintcharVGA:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
+  [self.BXVGA paintChar:charpos font2:f2 bgcolor:bg fgcolor:fg position:rect];
+}
 
 
 
 
-// /**
-//  * create a Button from char data
-//  */
-// -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h {
-//
-//   NSButton * result;
-//   NSRect windowFrame;
-//   NSImage * image;
-//   CGColorSpaceRef colorspace;
-//   CFDataRef rgbData;
-//   CGDataProviderRef provider;
-//   CGImageRef rgbImageRef;
-//   unsigned char * flip_buffer;
-//   size_t buttony;
-//
-//   windowFrame = [self contentRectForFrameRect:[self frame]];
-//   // int screenHeight = [[NSScreen mainScreen] frame].size.height;
-//   // int screenHeight = [ self.screen frame].size.height;
-//   //screenHeight - y - windowHeight
-//
-//   if (VGAsize.height == 300) {
-//     buttony = VGAsize.height - BX_NAVBAR_HEIGHT;
-//   } else {
-//     buttony = 150;
-//   }
-//
-//   result = [[[NSButton alloc] initWithFrame:NSMakeRect(0, buttony, w, h)] autorelease];
-//
-//   flip_buffer = new unsigned char [(w * h)/8];
-//   for (int i=0; i<(w * h)/8;i++) {
-//     flip_buffer[i] = reverse(data[i]);
-//   }
-//
-//   colorspace = CGColorSpaceCreateIndexed(CGColorSpaceCreateDeviceRGB(), 2, BXpalette_colorBW);
-//   rgbData = CFDataCreate(NULL, flip_buffer, (w * h)/8);
-//   provider = CGDataProviderCreateWithCFData(rgbData);
-//   rgbImageRef = CGImageCreate(w, h, 1, 1, w/8, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
-//   CFRelease(rgbData);
-//   CGDataProviderRelease(provider);
-//   CGColorSpaceRelease(colorspace);
-//
-//   image = [[[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize] autorelease];
-//
-//   CGImageRelease(rgbImageRef);
-//   delete flip_buffer;
-//
-//   [result setImage:image];
-//   [result setImagePosition:NSImageOnly];
-//
-//   return result;
-// }
 
 
-
-// -(void)updateToolbar:(NSSize) size {
-//   BX_LOG(([NSString stringWithFormat:@"updateToolbar width=%d height=%d", (int)size.width, (int)size.height]));
-//   // BXbutton1.frame = NSMakeRect(0, VGAsize.height , 32, 32);
-//   // [BXbutton1 setHidden:YES];
-// }
-
-// -(NSImage *)createFromByteArray {
-//   NSImage * result;
-//   CGColorSpaceRef colorspace;
-//   CFDataRef rgbData;
-//   CGDataProviderRef provider;
-//   CGImageRef rgbImageRef;
-//
-//   unsigned char palette[3*2] = {
-//     0xFF, 0xFF, 0xFF,
-//     0x00, 0x00, 0x00
-//   };
-//
-//   unsigned char * bx_power_bmap_flip = new unsigned char [(BX_POWER_BMAP_X * BX_POWER_BMAP_Y)/8];
-//   for (int i=0; i<(BX_POWER_BMAP_X * BX_POWER_BMAP_Y)/8;i++) {
-//     bx_power_bmap_flip[i] = reverse(bx_power_bmap[i]);
-//   }
-//   // colorspace = CGColorSpaceCreateDeviceRGB();
-//   colorspace = CGColorSpaceCreateIndexed(CGColorSpaceCreateDeviceRGB(), 2, palette);
-//   rgbData = CFDataCreate(NULL, bx_power_bmap_flip, (BX_POWER_BMAP_X * BX_POWER_BMAP_Y)/8);
-//   // rgbData = CFDataCreate(NULL, bx_disk_amiga, 48 * 41 * 3);
-//   provider = CGDataProviderCreateWithCFData(rgbData);
-//   rgbImageRef = CGImageCreate(BX_POWER_BMAP_X, BX_POWER_BMAP_Y, 1, 1, BX_POWER_BMAP_X/8, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
-//   // rgbImageRef = CGImageCreate(48, 41, 8, 24, 48*3, colorspace, kCGBitmapByteOrderDefault, provider, NULL, true, kCGRenderingIntentDefault);
-//   CFRelease(rgbData);
-//   CGDataProviderRelease(provider);
-//   CGColorSpaceRelease(colorspace);
-//
-//   // use the created CGImage
-//   result = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
-//
-//   CGImageRelease(rgbImageRef);
-//   return result;
-// }
 
 
 
@@ -286,14 +248,19 @@ struct BXGuiCocoaWindowImpl {
  */
 BXGuiCocoaWindow::BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y) : BXCocoaWindow(new BXGuiCocoaWindowImpl) {
   BXCocoaWindow->BXWindow = [[[BXGuiCocoaNSWindow alloc] init:headerbar_y VGAsize:NSMakeSize(x, y)] autorelease];
+  // [BXCocoaWindow->BXWindow makeKeyWindow];
+  // [self makeMainWindow];
+
 }
 
 /**
  * BXGuiCocoaWindow DTor
  */
 BXGuiCocoaWindow::~BXGuiCocoaWindow() {
-  if (BXCocoaWindow)
-    [BXCocoaWindow->BXWindow release];
+  if (BXCocoaWindow) {
+    // [BXCocoaWindow->BXWindow release];
+    [BXCocoaWindow->BXWindow performClose:nil];
+  }
 }
 
 /**
@@ -361,7 +328,35 @@ void BXGuiCocoaWindow::clear_screen(void) {
   [BXCocoaWindow->BXWindow clearVGAscreen];
 }
 
+/**
+ * replace_bitmap
+ */
+void BXGuiCocoaWindow::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
+  [BXCocoaWindow->BXWindow headerbarSwitchBXBitmap:hbar_id data_id:bmap_id];
+}
 
+/**
+ * setup_charmap
+ */
+void BXGuiCocoaWindow::setup_charmap(unsigned char *charmapA, unsigned char *charmapB) {
+  [BXCocoaWindow->BXWindow charmapVGA:charmapA charmap:charmapB];
+}
+
+/**
+ * set_font
+ */
+void BXGuiCocoaWindow::set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB) {
+  [BXCocoaWindow->BXWindow charmapVGAat:pos first:charmapA second:charmapB];
+}
+
+
+/**
+ * draw_char
+ */
+void BXGuiCocoaWindow::draw_char(bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
+  // BXL_INFO(([NSString stringWithFormat:@"draw_char x=%d y=%d Rx=%f Ry=%f", x, y, (NSMakeRect(x, y, w, h).origin.x), (NSMakeRect(x, y, w, h).origin.y)]));
+  [BXCocoaWindow->BXWindow paintcharVGA:charpos font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
+}
 
 
 

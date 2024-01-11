@@ -45,6 +45,10 @@
     void render(void);
     bool palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue);
     void clear_screen(void);
+    void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
+    void setup_charmap(unsigned char *charmapA, unsigned char *charmapB);
+    void set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB);
+    void draw_char(bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
 
   };
 

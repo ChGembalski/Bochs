@@ -64,6 +64,7 @@
     - (void)dealloc;
     -(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
     -(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
+    - (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
     -(void) headerbarCreate:(NSView *) view;
     -(void) headerbarUpdate:(BXVGAdisplay *) vga;
   @end

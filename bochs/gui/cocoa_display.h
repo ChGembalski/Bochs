@@ -27,6 +27,13 @@
 
   #define BX_GUI_COCOA_DISPLAY_H
 
+  @interface BXVGAImageView : NSImageView
+
+    - (instancetype)initWithFrame:(NSRect)frameRect;
+    - (void)dealloc;
+
+  @end
+
   @interface BXVGAdisplay : NSObject
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned height;
@@ -35,16 +42,22 @@
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
-    @property (nonatomic, readwrite) const unsigned char * screen;
+    @property (nonatomic, readwrite) unsigned char * screen;
     @property (nonatomic, readwrite) unsigned char * palette;
     @property (nonatomic, readwrite) unsigned palette_size;
     @property (nonatomic, readwrite) BOOL dirty;
+    @property (nonatomic, readwrite) unsigned char *FontA;
+    @property (nonatomic, readwrite) unsigned char *FontB;
+
     - (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh view:(NSView *) v;
     - (void)dealloc;
     - (void)changeBPP:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh;
     - (void)render;
-    - (BOOL)setPaletteRGB:(unsigned)index red:(char) r green:(char) g blue:(char) b;
+    - (BOOL)setPaletteRGB:(unsigned) index red:(char) r green:(char) g blue:(char) b;
     - (void)clearScreen;
+    - (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB;
+    - (void)updateFontAt:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
+    - (void)paintChar:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
   @end
 
 #endif /* BX_GUI_COCOA_DISPLAY_H */

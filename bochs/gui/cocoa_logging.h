@@ -31,8 +31,17 @@
     extern "C" {
   #endif
 
-  extern void bx_cocoa_gui_c_log(const char *data);
-  #define BX_LOG(x) bx_cocoa_gui_c_log([x UTF8String])
+  extern void bx_cocoa_gui_c_log_info(const char *data);
+  extern void bx_cocoa_gui_c_log_debug(const char *data);
+  extern void bx_cocoa_gui_c_log_error(const char *data);
+  extern void bx_cocoa_gui_c_log_panic(const char *data);
+  extern void bx_cocoa_gui_c_log_fatal(const char *data);
+
+  #define BXL_INFO(x) bx_cocoa_gui_c_log_info([x UTF8String])
+  #define BXL_DEBUG(x) bx_cocoa_gui_c_log_debug([x UTF8String])
+  #define BXL_ERROR(x) bx_cocoa_gui_c_log_error([x UTF8String])
+  #define BXL_PANIC(x) bx_cocoa_gui_c_log_panic([x UTF8String])
+  #define BXL_FATAL(x) bx_cocoa_gui_c_log_fatal([x UTF8String])
 
   #if __cplusplus
     }   // Extern C

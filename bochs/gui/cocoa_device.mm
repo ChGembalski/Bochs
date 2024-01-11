@@ -24,6 +24,7 @@
 // written by Christoph Gembalski <christoph@gembalski.de>
 
 #include <Cocoa/Cocoa.h>
+#include "cocoa_logging.h"
 #include "cocoa_device.h"
 
 // C++ Wrapper for NSApplication
@@ -42,7 +43,26 @@ BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y)
   BXCocoaDevice->BXNSApp = [NSApplication sharedApplication];
   // create main window
   BXwindow = new BXGuiCocoaWindow(x, y, headerbar_y);
-  //[BXCocoaDevice->BXNSApp setDelegate:BXwindow->getWindow()];
+  BXL_DEBUG((@"NSApp Window created"));
+
+  [BXCocoaDevice->BXNSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+
+  id menubar = [[NSMenu new] autorelease];
+  id appMenuItem = [[NSMenuItem new] autorelease];
+  [menubar addItem:appMenuItem];
+  [BXCocoaDevice->BXNSApp setMainMenu:menubar];
+
+  // Then we add the quit item to the menu. Fortunately the action is simple since terminate: is
+  // already implemented in NSApplication and the NSApplication is always in the responder chain.
+  id appMenu = [[NSMenu new] autorelease];
+  id appName = [[NSProcessInfo processInfo] processName];
+  id quitTitle = [@"Quit " stringByAppendingString:appName];
+  id quitMenuItem = [[[NSMenuItem alloc] initWithTitle:quitTitle
+                                                action:@selector(terminate:) keyEquivalent:@"q"] autorelease];
+  [appMenu addItem:quitMenuItem];
+  [appMenuItem setSubmenu:appMenu];
+
+  // TODO : need a icon ...
 }
 
 /**
@@ -50,6 +70,9 @@ BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y)
  */
 BXGuiCocoaDevice::~BXGuiCocoaDevice() {
 
+  if (BXwindow) {
+    delete BXwindow;
+  }
   if (BXCocoaDevice) {
     [BXCocoaDevice->BXNSApp release];
   }
@@ -66,16 +89,16 @@ void BXGuiCocoaDevice::handle_events() {
     NSEvent* ev;
 
     do {
-      ev = [NSApp nextEventMatchingMask: NSEventMaskAny
+      ev = [BXCocoaDevice->BXNSApp nextEventMatchingMask: NSEventMaskAny
                               untilDate: nil
                                  inMode: NSDefaultRunLoopMode
                                 dequeue: YES];
 
       if (ev) {
         // handle events here
-        [NSApp sendEvent: ev];
+        [BXCocoaDevice->BXNSApp sendEvent: ev];
       }
-      [NSApp updateWindows];
+      [BXCocoaDevice->BXNSApp updateWindows];
     } while (ev);
 
   }
@@ -86,6 +109,12 @@ void BXGuiCocoaDevice::handle_events() {
  * hopefully cleanup
  */
 void BXGuiCocoaDevice::run_terminate() {
+  BXL_DEBUG((@"NSApp terminate"));
+  // close all windows
+  if (BXwindow) {
+    delete BXwindow;
+    BXwindow = NULL;
+  }
   [BXCocoaDevice->BXNSApp terminate:nil];
 }
 
@@ -137,3 +166,41 @@ bool BXGuiCocoaDevice::palette_change(unsigned char index, unsigned char red, un
 void BXGuiCocoaDevice::clear_screen(void) {
   BXwindow->clear_screen();
 }
+
+/**
+ * replace_bitmap forwarding
+ */
+void BXGuiCocoaDevice::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
+  BXwindow->replace_bitmap(hbar_id, bmap_id);
+}
+
+/**
+ * setup_charmap forwarding
+ */
+void BXGuiCocoaDevice::setup_charmap(unsigned char *charmapA, unsigned char *charmapB) {
+  BXwindow->setup_charmap(charmapA, charmapB);
+}
+
+/**
+ * set_font
+ */
+void BXGuiCocoaDevice::set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB) {
+  BXwindow->set_font(pos, charmapA, charmapB);
+}
+
+/**
+ * draw_char forwarding
+ */
+void BXGuiCocoaDevice::draw_char(bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
+  BXwindow->draw_char(font2, fgcolor, bgcolor, charpos, x, y, w, h);
+}
+
+
+
+
+
+
+
+
+
+//
