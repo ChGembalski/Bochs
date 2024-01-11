@@ -248,6 +248,7 @@ void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 void bx_cocoa_gui_c::handle_events(void)
 {
     device->handle_events();
+    // DEV_kbd_gen_scancode(Bit32u key_event)
 }
 
 
