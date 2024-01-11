@@ -4,7 +4,6 @@ The Bochs source tree is transitioning from SVN to GIT hosted on github (https:/
 We welcome every new contributor !
 
 Brief summary :
-  - Macos X Cocoa GUI
   - Bugfixes for CPU emulation correctness (MONITOR/MWAIT, VMX/SVM, AVX-512, CET, SHA, GFNI fixes)
   ! Implemented VMX MBE (Mode Based Execution Control) emulation required for Windows 11 guest
   ! Implemented Posted-Interrupt Processing VMX extension emulation
