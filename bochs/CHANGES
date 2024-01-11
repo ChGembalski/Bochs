@@ -10,8 +10,8 @@ Brief summary :
   ! Implemented Linear Address Separation (LASS) extension
   ! Implemented 57-bit Linear Address and 5-Level Paging support
   ! Implemented User-Level Interrupt (UINTR) extension
-  ! Implemented recently published Intel instruction sets:
-    - MOVDIRI/MOVDIR64B, AVX512 BF16, AVX IFMA52, AVX-VNNI/VNNI-INT8/VNNI-INT16, AVX-NE-CONVERT, CMPCCXADD, SM3/SM4, SHA512, WRMSRNS, MSRLIST, WAITPKG, SERIALIZE
+  ! Implemented Intel instruction sets:
+    - MOVDIRI/MOVDIR64B, AMX, AVX512 BF16, AVX IFMA52, AVX-VNNI/VNNI-INT8/VNNI-INT16, AVX-NE-CONVERT, CMPCCXADD, SM3/SM4, SHA512, WRMSRNS, MSRLIST, WAITPKG, SERIALIZE
   ! CPUID: Added Xeon Sapphire Rapids CPU definition
   - Improved 64-bit guest support in Bochs internal debugger, added new internal debugger commands
   - Bochs debugger enhanced with new commands (setpmem, loadmem, deref, ...)
@@ -40,11 +40,11 @@ Detailed change log :
   - Implemented Linear Address Separation (LASS) extension
   - Implemented 57-bit Linear Address and 5-Level Paging support
   - Implemented User-Level Interrupt (UINTR) extension
-  - Implemented recently published Intel instruction sets:
-    - MOVDIRI/MOVDIR64B, AVX512 BF16, AVX IFMA52, AVX-VNNI/VNNI-INT8/VNNI-INT16, AVX-NE-CONVERT, CMPCCXADD, SM3/SM4, SHA512, WRMSRNS, MSRLIST, WAITPKG, SERIALIZE
+  - Implemented Intel instruction sets:
+    - MOVDIRI/MOVDIR64B, AMX, AVX512 BF16, AVX IFMA52, AVX-VNNI/VNNI-INT8/VNNI-INT16, AVX-NE-CONVERT, CMPCCXADD, SM3/SM4, SHA512, WRMSRNS, MSRLIST, WAITPKG, SERIALIZE
   - CPUID: Added Xeon Sapphire Rapids CPU definition
     - Features PKS, WAITPKG, UINTR, AVX-VNNI, AVX512_BF16, MOVDIRI/MOVDIR64, LA57, SERIALIZE and more
-      Not yet supported but will be added in future: AVX512_FP16, AMX, VMX Extensions (HLAT, IPI Virtualization)
+      Not yet supported but will be added in future: AVX512_FP16, VMX Extensions (HLAT, IPI Virtualization)
 
 - Bochs Debugger and Instrumentation
   - Updated Bochs instrumentation examples for new disassembler introduced in Bochs 2.7 release.
@@ -187,11 +187,8 @@ Detailed change log :
     - Align SB16 DMA buffer size to 4 to avoid crash in 16-bit stereo mode
     - Added 16-bit write support for even i/o addresses
 
-  - Keyboard/Mouse
+   - Keyboard/Mouse
     - Reduce default keyboard serial delay to 150 to avoid timeouts
-
-- GUI and display libraries
-  - Added Macos X Cocoa as default GUI
 
 -BIOS / VGABIOS
   - Added capability to enter keycode with ALT + numeric keypad
@@ -2772,7 +2769,7 @@ Detailed change log :
  [1021758] GNU/k*BSD host support by Robert Millan
   [969967] int 15/ah=87h clearing cr0 by Ben Lunt
  [1048327] Russian Keymap by Dmitry Soshnikov
-  [851332] DESTDIR support for install_dlx by Ville Skytt�
+  [851332] DESTDIR support for install_dlx by Ville Skyttä
   [970929] gdbstub support for MinGW tool chains by Muranaka Masaki
  [1021740] Turn gdb stub into a runtime option by Charles Duffy
  [1063329] RFB key press/release bug fix by Remko van der Vossen
