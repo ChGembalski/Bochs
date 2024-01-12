@@ -142,8 +142,8 @@ void BXGuiCocoaDevice::show_headerbar(void) {
 /**
  * dimension_update forwarding
  */
-void BXGuiCocoaDevice::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp) {
-  BXwindow->dimension_update(x, y, fheight, fwidth, bpp);
+void BXGuiCocoaDevice::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
+  BXwindow->dimension_update(x, y, fwidth, fheight, bpp);
 }
 
 /**
@@ -177,8 +177,8 @@ void BXGuiCocoaDevice::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
 /**
  * setup_charmap forwarding
  */
-void BXGuiCocoaDevice::setup_charmap(unsigned char *charmapA, unsigned char *charmapB) {
-  BXwindow->setup_charmap(charmapA, charmapB);
+void BXGuiCocoaDevice::setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h) {
+  BXwindow->setup_charmap(charmapA, charmapB, w, h);
 }
 
 /**
@@ -195,7 +195,19 @@ void BXGuiCocoaDevice::draw_char(bool font2, unsigned char fgcolor, unsigned cha
   BXwindow->draw_char(font2, fgcolor, bgcolor, charpos, x, y, w, h);
 }
 
+/**
+ * hasKeyEvent forwarding
+ */
+bool BXGuiCocoaDevice::hasKeyEvent() {
+  return (BXwindow->hasKeyEvent());
+}
 
+/**
+ * getKeyEvent forwarding
+ */
+unsigned BXGuiCocoaDevice::getKeyEvent() {
+  return (BXwindow->getKeyEvent());
+}
 
 
 

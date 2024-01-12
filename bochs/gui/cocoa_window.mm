@@ -29,22 +29,79 @@
 #include "cocoa_headerbar.h"
 
 
-// #define BX_NAVBAR_HEIGHT 32
-//
-// unsigned char BXpalette_colorBW[3*2] = {
-//   0xFF, 0xFF, 0xFF,
-//   0x00, 0x00, 0x00
-// };
+@interface BXNSEventQueue : NSObject
 
-// unsigned char reverse(unsigned char b) {
-//    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-//    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-//    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-//    return b;
-// }
+  @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
+
+  - (instancetype)init;
+  - (void)dealloc;
+
+  - (void)enqueue:(UInt32) value;
+  - (UInt32)dequeue;
+  - (BOOL)isEmpty;
+
+@end
+
+@implementation BXNSEventQueue
+
+  NSMutableArray<NSNumber *> * queue;
+
+  /**
+   * BXNSEventQueue
+   */
+  - (instancetype)init {
+    self = [super init];
+    if(self) {
+
+      queue = [[NSMutableArray alloc] init];
+
+    }
+    return self;
+  }
+
+  /**
+   * BXNSEventQueue DTor
+   */
+  - (void)dealloc {
+    [queue dealloc];
+    [super dealloc];
+  }
+
+  - (void)enqueue:(UInt32) value {
+    NSNumber *obj;
+
+    obj = [[NSNumber alloc] initWithUnsignedInteger:value];
+    [queue addObject:obj];
+  }
+
+  - (UInt32)dequeue {
+    NSNumber *obj;
+
+    if ([queue count] == 0) {
+      return (0);
+    }
+    obj = [queue objectAtIndex:0];
+    if (obj == nil) {
+      return (0);
+    }
+
+    [[obj retain] autorelease];
+    [queue removeObjectAtIndex:0];
+
+    return obj.unsignedIntValue;
+
+  }
+
+  - (BOOL)isEmpty {
+    return [queue count] == 0;
+  }
+
+@end
+
 
 @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
   @property (nonatomic, readwrite, assign) BXVGAdisplay * BXVGA;
+  @property (nonatomic, readonly, getter=hasKeyEvent) BOOL hasKeyEvent;
   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
   - (void)dealloc;
 
@@ -57,10 +114,11 @@
   - (void)renderVGA;
   - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
   - (void)clearVGAscreen;
-  - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB;
+  - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
   - (void)charmapVGAat:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
   - (void)paintcharVGA:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
-
+  - (BOOL)hasKeyEvent;
+  - (unsigned)getKeyEvent;
 
 // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
 // -(NSArray<NSButton *> *)createToolbar;
@@ -70,6 +128,7 @@
 @implementation BXGuiCocoaNSWindow
 
 BXHeaderbar * BXToolbar;
+BXNSEventQueue * BXEventQueue;
 
 /**
  * BXGuiCocoaNSWindow CTor
@@ -89,6 +148,8 @@ BXHeaderbar * BXToolbar;
   [NSApp setDelegate:self];
   [NSApp setDelegate:[self contentView]];
   [self setTitle:@"Bochs for MacOsX"];
+
+  BXEventQueue = [[BXNSEventQueue alloc] init];
 
   // Setup VGA display
   self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga.width height:vga.height font_width:0 font_height:0 view:[self contentView]];
@@ -113,6 +174,7 @@ BXHeaderbar * BXToolbar;
  * BXGuiCocoaNSWindow DTor
  */
 - (void)dealloc {
+  [BXEventQueue dealloc];
   [self.BXVGA dealloc];
   [BXToolbar dealloc];
   [super dealloc];
@@ -131,14 +193,45 @@ BXHeaderbar * BXToolbar;
     return YES;
 }
 
-- (void)keyDown:(NSEvent *)theEvent {
+- (void)keyDown:(NSEvent *)event {
+  // NSString *chars;
+  //
+  // chars = event.charactersIgnoringModifiers;
+  // if (chars != nil) {
+  //   if (chars.length >0) {
+  //     unichar c = [event.characters characterAtIndex:0];
+      [BXEventQueue enqueue:event.keyCode];
+  //   }
+  // }
 
-  BXL_INFO(([NSString stringWithFormat:@"keyDown pressed window"]));
+  // BXL_INFO(([NSString stringWithFormat:@"keyDown pressed window event.keyCode=%x char=%s", event.keyCode, event.charactersIgnoringModifiers]));
+  // unichar c = [event.characters characterAtIndex:0];
+  //
+  // [BXEventQueue enqueue:c];
 
 }
 
 - (void)keyUp:(NSEvent *)event {
-  BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window"]));
+  // NSString *chars;
+  //
+  // chars = event.charactersIgnoringModifiers;
+  // if (chars != nil) {
+  //   if (chars.length >0) {
+  //     unichar c = [event.characters characterAtIndex:0];
+      // BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%c ascii=%x fake=%x", event.keyCode, c, c, (c-77)]));
+      BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%c",
+      event.keyCode, event.charactersIgnoringModifiers==nil?' ':event.charactersIgnoringModifiers.length ==0?' ':[event.characters characterAtIndex:0]]));
+      [BXEventQueue enqueue:BX_KEY_RELEASED | event.keyCode];
+    // }
+  // }
+
+
+
+  // BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%s", event.keyCode, event.characters]));
+  // unichar c = [event.characters characterAtIndex:0];
+  //
+  // [BXEventQueue enqueue:BX_KEY_RELEASED | c];
+
 }
 
 
@@ -206,8 +299,8 @@ BXHeaderbar * BXToolbar;
 /**
  * init charmap data
  */
-- (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB {
-  [self.BXVGA initFonts:dataA second:dataB];
+- (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h {
+  [self.BXVGA initFonts:dataA second:dataB width:w height:h];
 }
 
 /**
@@ -224,9 +317,20 @@ BXHeaderbar * BXToolbar;
   [self.BXVGA paintChar:charpos font2:f2 bgcolor:bg fgcolor:fg position:rect];
 }
 
+/**
+ * getter hasKeyEvent
+ */
+- (BOOL)hasKeyEvent {
+  return !BXEventQueue.isEmpty;
+}
 
-
-
+/**
+ * return the keyEvent
+ * if none exist return 0
+ */
+- (unsigned)getKeyEvent {
+  return [BXEventQueue dequeue];
+}
 
 
 
@@ -287,13 +391,13 @@ void BXGuiCocoaWindow::show_headerbar(void) {
 /**
  * dimension_update
  */
-void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp) {
+void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
 
   NSRect windowFrame;
   NSRect newWindowFrame;
 
   // Change VGA display
-  [BXCocoaWindow->BXWindow.BXVGA changeBPP:bpp width:x height:y font_width:fheight font_height:fwidth];
+  [BXCocoaWindow->BXWindow.BXVGA changeBPP:bpp width:x height:y font_width:fwidth font_height:fheight];
 
   // prepare window
   windowFrame = [BXCocoaWindow->BXWindow contentRectForFrameRect:[BXCocoaWindow->BXWindow frame]];
@@ -338,8 +442,8 @@ void BXGuiCocoaWindow::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
 /**
  * setup_charmap
  */
-void BXGuiCocoaWindow::setup_charmap(unsigned char *charmapA, unsigned char *charmapB) {
-  [BXCocoaWindow->BXWindow charmapVGA:charmapA charmap:charmapB];
+void BXGuiCocoaWindow::setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h) {
+  [BXCocoaWindow->BXWindow charmapVGA:charmapA charmap:charmapB width:w height:h];
 }
 
 /**
@@ -358,8 +462,19 @@ void BXGuiCocoaWindow::draw_char(bool font2, unsigned char fgcolor, unsigned cha
   [BXCocoaWindow->BXWindow paintcharVGA:charpos font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
 }
 
+/**
+ * hasKeyEvent
+ */
+bool BXGuiCocoaWindow::hasKeyEvent() {
+  return (BXCocoaWindow->BXWindow.hasKeyEvent);
+}
 
-
+/**
+ * getKeyEvent
+ */
+unsigned BXGuiCocoaWindow::getKeyEvent() {
+  return ([BXCocoaWindow->BXWindow getKeyEvent]);
+}
 
 
 

@@ -55,7 +55,7 @@
     - (void)render;
     - (BOOL)setPaletteRGB:(unsigned) index red:(char) r green:(char) g blue:(char) b;
     - (void)clearScreen;
-    - (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB;
+    - (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
     - (void)updateFontAt:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
     - (void)paintChar:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
   @end

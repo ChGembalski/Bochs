@@ -27,7 +27,9 @@
 #include "cocoa_logging.h"
 #include "cocoa_display.h"
 
+// buffer fits 16bits x 16bytes of char data
 #define FONT_DATA_SIZE 0x2000
+#define CHARACTER_BYTES 32
 
 extern unsigned char flip_byte(unsigned char b);
 
@@ -43,6 +45,30 @@ static void print_buf(const unsigned char *buf, size_t buf_len)
       lout = [NSString stringWithFormat:@"%@%02X%s", lout, buf[i], ( i + 1 ) % 16 == 0 ? "\r\n" : " " ];
     }
     BXL_INFO((lout));
+}
+
+static void print_buf_bits(const unsigned char *buf, size_t buf_len) {
+
+  NSString *lout;
+  unsigned char mask;
+
+    size_t i = 0;
+    lout = @"\n";
+
+    for(i = 0; i < buf_len; ++i) {
+
+      for (mask = 0x80; mask != 0; mask >>=1) {
+        if (buf[i] & mask) {
+          lout = [NSString stringWithFormat:@"%@1", lout];
+        } else {
+          lout = [NSString stringWithFormat:@"%@0", lout];
+        }
+      }
+
+      lout = [NSString stringWithFormat:@"%@\r\n", lout];
+    }
+    BXL_INFO((lout));
+
 }
 
 
@@ -133,6 +159,7 @@ static void print_buf(const unsigned char *buf, size_t buf_len)
 
 BXVGAImageView * imgview;
 
+
 /**
  * BXVGAdisplay CTor
  */
@@ -152,14 +179,20 @@ BXVGAImageView * imgview;
 
     // allocate screen buffer
     self.screen = (unsigned char *)malloc((self.stride * h) * sizeof(unsigned char));
+    NSAssert(self.screen != NULL, @"screen [%p]: allocate memory failed.", self.screen);
     // allocate palette buffer
     self.palette_size = pow(2, bpp);
+    NSAssert(self.palette_size != 0, @"palette_size [%d]: invalid palette size.", self.palette_size);
     self.palette = (unsigned char *)malloc((self.palette_size * 3) * sizeof(unsigned char));
+    NSAssert(self.palette != NULL, @"palette [%p]: allocate memory failed.", self.palette);
 
     // allocate font memory
     self.FontA = (unsigned char *)malloc(FONT_DATA_SIZE * sizeof(unsigned char));
+    NSAssert(self.FontA != NULL, @"FontA [%p]: allocate memory failed.", self.FontA);
+    memset((void *)self.FontA, 0, FONT_DATA_SIZE * sizeof(unsigned char));
     self.FontB = (unsigned char *)malloc(FONT_DATA_SIZE * sizeof(unsigned char));
-
+    NSAssert(self.FontB != NULL, @"FontB [%p]: allocate memory failed.", self.FontB);
+    memset((void *)self.FontB, 0, FONT_DATA_SIZE * sizeof(unsigned char));
 
 
 
@@ -168,7 +201,9 @@ BXVGAImageView * imgview;
     imgview = [[BXVGAImageView alloc] initWithFrame:NSMakeRect(0, 0, self.width, self.height)];
     [v addSubview:imgview];
 
-    BXL_DEBUG(([NSString stringWithFormat:@"init bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d", bpp, self.palette_size, w, h, fw, fh, self.stride, self.bitsPerComponent]));
+    BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",
+    self.bpp, self.palette_size, self.width, self.height, self.font_width, self.font_height, self.stride, self.bitsPerComponent, self.dirty?"YES":"NO"]));
+
   }
   return self;
 }
@@ -191,34 +226,44 @@ BXVGAImageView * imgview;
  */
 - (void)changeBPP:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh {
 
-  self.palette_size = pow(2, bpp);
-
   if (self.bpp != bpp) {
+    self.bpp = bpp;
+    // calculate the number of bits for each component in a source pixel
+    self.bitsPerComponent = bpp < 16 ? bpp : 8;
+    self.palette_size = pow(2, bpp);
+    NSAssert(self.palette_size != 0, @"palette_size [%d]: invalid palette size.", self.palette_size);
     // recreate palette buffer
     free((void *)self.palette);
     self.palette = (unsigned char *)malloc((self.palette_size * 3) * sizeof(unsigned char));
+    NSAssert(self.palette != NULL, @"palette [%p]: allocate memory failed.", self.palette);
   }
   // calculate the number of bytes of memory for each horizontal row of the bitmap
   self.stride = w * bpp / 8;
-  if ((self.bpp != bpp) && (self.width != w) && (self.height != h)) {
+  if ((self.bpp != bpp) | (self.width != w) | (self.height != h)) {
+    self.width = w;
+    self.height = h;
+
     // recreate screen buffer
     free((void *)self.screen);
     self.screen = (unsigned char *)malloc((self.stride * h) * sizeof(unsigned char));
+    NSAssert(self.screen != NULL, @"screen [%p]: allocate memory failed.", self.screen);
   }
-  self.bpp = bpp;
-  self.width = w;
-  self.height = h;
-  self.font_width = fw;
-  self.font_height = fh;
 
-  // calculate the number of bits for each component in a source pixel
-  self.bitsPerComponent = bpp < 16 ? bpp : 8;
-  // self.screen = (const unsigned char *)malloc((w*h/bpp) * sizeof(unsigned char));
+  if ((self.font_width != fw) | (self.font_height != fh)) {
+    self.font_width = fw;
+    self.font_height = fh;
+    NSAssert(((self.font_width * self.font_height * 256)/8) < FONT_DATA_SIZE, @"font [%d]: fontbuffer overflow.", ((self.font_width * self.font_height * 256)/8));
+  }
+
+
+
+
   self.dirty = YES;
 
   [imgview setFrameSize:NSMakeSize(w, h)];
 
-  BXL_DEBUG(([NSString stringWithFormat:@"changeBPP bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d", bpp, self.palette_size, w, h, fw, fh, self.stride, self.bitsPerComponent]));
+  BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",
+  self.bpp, self.palette_size, self.width, self.height, self.font_width, self.font_height, self.stride, self.bitsPerComponent, self.dirty?"YES":"NO"]));
 
 }
 
@@ -279,6 +324,8 @@ BXVGAImageView * imgview;
     return NO;
   }
 
+  BXL_INFO(([NSString stringWithFormat:@"setPaletteRGB index=%d red=%d green=%d blue=%d", index, r, g, b]));
+
   // calc ofs
   ofs = index * 3;
   self.palette[ofs] = r;
@@ -299,17 +346,21 @@ BXVGAImageView * imgview;
 /**
  * init FontA & FontB with default values
  */
-- (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB {
+- (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h {
 
-  BXL_INFO(([NSString stringWithFormat:@"initFonts data1=%p data2=%p", dataA, dataB]));
+  BXL_INFO(([NSString stringWithFormat:@"initFonts data1=%p data2=%p width=%d height=%d", dataA, dataB, w, h]));
+
+  NSAssert(w==8, @"unsupported initial font size %d", w);
   if (dataA != NULL) {
-    for (unsigned c = 0; c<256*self.font_height; c++) {
-      self.FontA[c] = flip_byte(dataA[c]);
-    }
-  }
-  if (dataB != NULL) {
-    for (unsigned c = 0; c<256*self.font_height; c++) {
-      self.FontB[c] = flip_byte(dataA[c]);
+    for (unsigned c = 0; c<256; c++) {
+      for (unsigned cr=0; cr<h; cr++) {
+        self.FontA[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = flip_byte(dataA[c*h+cr]);
+        if (dataB == dataA) {
+          self.FontB[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = self.FontA[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr];
+        } else {
+          self.FontB[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = flip_byte(dataA[c*h+cr]);
+        }
+      }
     }
   }
 
@@ -323,11 +374,15 @@ BXVGAImageView * imgview;
   unsigned ofs;
 
 
-  // BXL_INFO(([NSString stringWithFormat:@"updateFontAt pos=%d data1=%p data2=%p", pos, dataA, dataB]));
+  BXL_INFO(([NSString stringWithFormat:@"updateFontAt pos=%d data1=%p data2=%p font_width=%d font_height=%d", pos, dataA, dataB, self.font_width, self.font_height]));
 
   ofs = pos * (self.font_width / 8) * self.font_height;
   // uintptr_t fa;
   // fa = ((uintptr_t)self.FontA + ofs);
+
+  // print_buf_bits(dataA+ofs, self.font_width * self.font_height/8);
+
+
 
   NSAssert((self.FontA + ofs) < (self.FontA + FONT_DATA_SIZE), @"update FontA %p min %p max %p pos %d fw %d fh %d ofs %d",
     self.FontA, (self.FontA + ofs), (self.FontA + FONT_DATA_SIZE), pos, (self.font_width / 8), self.font_height, ofs);
@@ -336,63 +391,93 @@ BXVGAImageView * imgview;
 
   // this currently destroys the font ...
 
-  // for (unsigned p = 0; p<self.font_height; p++) {
-  //   (self.FontA + ofs)[p] = flip_byte((dataA + ofs)[p]);
-  //   (self.FontB + ofs)[p] = flip_byte((dataB + ofs)[p]);
-  // }
+  for (unsigned p = 0; p<self.font_height; p++) {
+    // (self.FontA + ofs)[p] = flip_byte((dataA + ofs)[p]);
+    // (self.FontB + ofs)[p] = flip_byte((dataB + ofs)[p]);
+  }
 
 }
-
+// int stop = 0;
 /**
  * paint char with FontA or FontB with fg and bg colors at position
  */
 - (void)paintChar:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
 
-  unsigned char * chardata;
-  unsigned char * screenofs;
-  unsigned char * screencharofs;
-  unsigned char mask;
+  unsigned char * selectedFont;
+  unsigned char * selectedChar;
+  unsigned char * screenStart;
+  unsigned char * currentScreenOfs;
 
-  // do not allow write outside screen
+
+  NSAssert(charpos < 256 , @"charpos out of range %d", charpos);
+
+  // do not allow write outside screen (must be a bug in gui.cc sending one more x and y as is should)
   if ((unsigned)rect.origin.x >= self.width) {
-    // BXL_ERROR(([NSString stringWithFormat:@"invalid x=%d max=%d", (unsigned)rect.origin.x, self.width]));
+    NSAssert(true, @"x out of range");
     return;
   }
   if ((unsigned)rect.origin.y >= self.height) {
-    // BXL_ERROR(([NSString stringWithFormat:@"invalid y=%d max=%d", (unsigned)rect.origin.y, self.height]));
     return;
   }
 
-  chardata = f2 ? &self.FontB[charpos] : &self.FontA[charpos];
-  screenofs = self.screen + ((unsigned)(rect.origin.y) * self.stride) + ((unsigned)rect.origin.x);
-  screencharofs = screenofs;
-  //print_buf(chardata, rect.size.width * rect.size.height*4);
+  // if (stop<1000)
+  // BXL_INFO(([NSString stringWithFormat:@"rect x=%d y=%d w=%d h=%d", (unsigned)rect.origin.x, (unsigned)rect.origin.y, (unsigned)rect.size.width, (unsigned)rect.size.height] ));
+  // if (stop>1000)
+  // BXL_FATAL((@""));
+  // stop++;
 
-  NSAssert(charpos < 255 * self.font_height, @"charpos out of range %d", charpos);
-  NSAssert(screenofs < self.screen + self.stride * self.height, @"screenofs out of range %p min %p max %p x %d y %d",
-    screenofs, self.screen, self.screen + self.stride * self.height, (unsigned)rect.origin.x, (unsigned)rect.origin.y);
+  selectedFont = f2 ? self.FontB : self.FontA;
+  selectedChar = &selectedFont[charpos * (sizeof(unsigned char) * CHARACTER_BYTES)];
+  screenStart = self.screen + ((unsigned)(rect.origin.y) * self.stride) + ((unsigned)rect.origin.x);
+  NSAssert(screenStart < self.screen + self.stride * self.height, @"screenStart out of range %p min %p max %p x %d y %d",
+    screenStart, self.screen, self.screen + self.stride * self.height, (unsigned)rect.origin.x, (unsigned)rect.origin.y);
+  currentScreenOfs = screenStart;
 
-  // each row
-  for (unsigned y=0; y<(unsigned)rect.size.height; y++) {
+  // font_width > 8
+  if (self.font_width > 8) {
+    selectedChar += CHARACTER_BYTES/2;
+  } else {
+    selectedChar += CHARACTER_BYTES/2;
+  }
+
+  // font_width <= 8
+
+  for (unsigned crow=0; crow<(unsigned)rect.size.height; crow++) {
+
+    unsigned char mask;
+
+    // speedup if all 0 or 1
+    if (*selectedChar == 0x00) {
+      memset(currentScreenOfs, bg, 8 * sizeof(unsigned char));
+      selectedChar++;
+      currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
+      continue;
+    }
+    if (*selectedChar == 0xFF) {
+      memset(currentScreenOfs, fg, 8 * sizeof(unsigned char));
+      selectedChar++;
+      currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
+      continue;
+    }
+
     // each bit of chardata
     for (mask = 0x80; mask != 0; mask >>=1) {
-      if (*chardata & mask) {
-        *screencharofs = fg;
+      if (*selectedChar & mask) {
+        *currentScreenOfs = fg;
       } else {
-        *screencharofs = bg;
+        *currentScreenOfs = bg;
       }
-      screencharofs++;
+      currentScreenOfs++;
     }
-    chardata++;
-    screencharofs = screenofs + ((unsigned)self.stride * y);
+
+    selectedChar++;
+    currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
+
   }
 
 
-  self.dirty = YES;// maybe define as atomic?
-  // BXL_INFO(([NSString stringWithFormat:@"paintChar charpos=%d font2=%s fgcolor=%d bgcolor=%d", charpos, f2?"YES":"NO", fg, bg]));
-  // BXL_INFO(([NSString stringWithFormat:@"paintChar chardata=%p screenofs=%p fgcolor=%d bgcolor=%d", chardata, screenofs, fg, bg]));
-  // BXL_INFO(([NSString stringWithFormat:@"paintChar screenofs=%p x=%d y=%d", chardata, (unsigned)rect.origin.x, (unsigned)rect.origin.y]));
-  // BXL_INFO(([NSString stringWithFormat:@"paintChar chardata=%p screenofs=%p rect.origin.x=%f", chardata, screenofs, rect.origin.x]));
+
+  self.dirty = YES;
 
 }
 

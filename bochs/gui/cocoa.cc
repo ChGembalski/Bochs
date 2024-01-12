@@ -30,9 +30,14 @@
 
 // BOCHS INCLUDES
 #include "bochs.h"
-#include "gui.h"
-#include "plugin.h"
 #include "param_names.h"
+#include "iodev.h"
+
+
+// #include "gui.h"
+// #include "plugin.h"
+// #include "param_names.h"
+// #include "iodev.h"
 
 #if BX_WITH_COCOA
 #include "icon_bochs.h"
@@ -40,8 +45,80 @@
 
 #include "cocoa_device.h"
 
-#define BX_GUI_STARTUP_X 640
-#define BX_GUI_STARTUP_Y 64
+
+Bit32s scancode_tbl[] = {
+  // 00 ...
+  BX_KEY_A,
+  BX_KEY_S,
+  BX_KEY_D,
+  BX_KEY_F,
+  BX_KEY_H,
+  BX_KEY_G,
+  BX_KEY_Y,
+  BX_KEY_X,
+  BX_KEY_C,
+  BX_KEY_V,
+  // 0a...
+  -1,
+  BX_KEY_B,
+  BX_KEY_Q,
+  BX_KEY_W,
+  BX_KEY_E,
+  BX_KEY_R,
+  BX_KEY_Z,
+  BX_KEY_T,
+  -1,
+  -1,
+  // 14...
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  // 1e...
+  -1,
+  BX_KEY_O,
+  BX_KEY_U,
+  -1,
+  BX_KEY_I,
+  BX_KEY_P,
+  BX_KEY_ENTER,
+  BX_KEY_L,
+  BX_KEY_J,
+  -1,
+  // 28...
+  BX_KEY_K,
+  -1,
+  -1,
+  -1,
+  -1,
+  BX_KEY_N,
+  BX_KEY_M,
+  -1,
+  -1,
+  -1,
+  // 32...
+  -1,
+  BX_KEY_DELETE,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+
+};
+
+
+
+
 
 BXGuiCocoaDevice * device;
 
@@ -146,19 +223,23 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   put("COCOA");
   UNUSED(argc);
   UNUSED(argv);
-  UNUSED(headerbar_y);
+  // UNUSED(headerbar_y);
 
   UNUSED(bochs_icon_bits);  // global variable of bochs icon
 
-  BX_INFO(("bx_cocoa_gui_c::specific_init() headerbar_y=%d", headerbar_y));
+  BX_INFO(("bx_cocoa_gui_c::specific_init headerbar_y=%d", headerbar_y));
+
+  BX_INFO(("bx_cocoa_gui_c::specific_init guest_textmode=%s guest_xres=%d guest_yres=%d guest_bpp=%d",
+    guest_textmode?"YES":"NO", guest_xres, guest_yres, guest_bpp));
 
   // use BOCHS_WINDOW_NAME as DLG Name
 
   // init device
-  device = new BXGuiCocoaDevice(BX_GUI_STARTUP_X, BX_GUI_STARTUP_Y, headerbar_y);
+  device = new BXGuiCocoaDevice(guest_xres, guest_yres, headerbar_y);
 
-  // init startup
-  device->dimension_update(640, 480, 8, 16, 8);
+  // init startup - use current guest settings
+  device->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
+  // device->dimension_update(640, 480, 8, 16, 8);
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() running some events now ..."));
 
@@ -169,7 +250,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   BX_INFO(("bx_cocoa_gui_c::specific_init() done running some events now ..."));
 
   // device->setup_charmap((unsigned char *)&vga_charmap[0], (unsigned char *)&vga_charmap[1]);
-  device->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont);
+  device->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont, 8, 16);
 
   if (SIM->get_param_bool(BXPN_PRIVATE_COLORMAP)->get()) {
     BX_INFO(("private_colormap option ignored."));
@@ -177,6 +258,8 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   // new_gfx_api = 1;
   new_text_api = 1;
+
+  // dialog_caps = BX_GUI_DLG_ALL;
 
 }
 
@@ -248,7 +331,25 @@ void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 void bx_cocoa_gui_c::handle_events(void)
 {
     device->handle_events();
-    // DEV_kbd_gen_scancode(Bit32u key_event)
+    if (device->hasKeyEvent()) {
+      Bit32u event;
+      Bit32u scancode;
+
+      event = device->getKeyEvent();
+      scancode = event & ~BX_KEY_RELEASED;
+      if (scancode <0x32) {
+        BX_INFO(("scancode %x", scancode));
+        scancode = scancode_tbl[scancode];
+        BX_INFO(("scancode %x", scancode));
+        if (scancode != -1) {
+          event = (event & BX_KEY_RELEASED) | scancode;
+
+          // TODO : identify what to send
+          BX_INFO(("send event %x", event));
+          DEV_kbd_gen_scancode(event);
+        }
+      }
+    }
 }
 
 
@@ -302,14 +403,28 @@ bool bx_cocoa_gui_c::palette_change(Bit8u index, Bit8u red, Bit8u green, Bit8u b
 
 void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp)
 {
+
+  BX_INFO(("bx_cocoa_gui_c::dimension_update guest_xres=%d guest_yres=%d guest_bpp=%d", guest_xres, guest_yres, guest_bpp));
+
+  // setting this corrupt screen output
   // guest_textmode = (fheight > 0);
   // guest_xres = x;
   // guest_yres = y;
+  // guest_fwidth = fwidth;
+  // guest_fheight = fheight;
   // guest_bpp = bpp;
-  UNUSED(fwidth);
+
+  // BX_INFO(("bx_cocoa_gui_c::dimension_update guest_textmode=%s guest_xres=%d guest_yres=%d guest_bpp=%d",
+  //   guest_textmode?"YES":"NO", guest_xres, guest_yres, guest_bpp));
+  //
+  // BX_INFO(("bx_cocoa_gui_c::dimension_update new_gfx_api=%s host_xres=%d host_yres=%d host_bpp=%d host_pitch=%d framebuffer=%p",
+  //   new_gfx_api?"YES":"NO", host_xres, host_yres, host_bpp, host_pitch, framebuffer));
+  //
+  // BX_INFO(("bx_cocoa_gui_c::dimension_update new_text_api=%s cursor_address=%d ",
+  //   new_text_api?"YES":"NO", cursor_address));
 
   BX_INFO(("bx_cocoa_gui_c::dimension_update x=%d y=%d fheight=%d fwidth=%d bpp=%d", x, y, fheight, fwidth, bpp));
-  device->dimension_update(x, y, fheight, fwidth, bpp);
+  device->dimension_update(x, y, fwidth, fheight, bpp);
 
   host_xres = x;
   host_yres = y;
@@ -470,7 +585,8 @@ void bx_cocoa_gui_c::set_font(bool lg) {
         // bool gfxchar = lg && ((c & 0xE0) == 0xC0);
         // if (!gfxchar) {
 
-        // display knows about size from dimension_update call
+        // display knows about font size from dimension_update call
+        // font pixel space 16x16
         device->set_font(c, (unsigned char *)&vga_charmap[0], (unsigned char *)&vga_charmap[1]);
         char_changed[m][c] = 0;
       // }
@@ -481,7 +597,7 @@ void bx_cocoa_gui_c::set_font(bool lg) {
 }
 
 
-int maxshow=200;
+// int maxshow=0;
 void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u yc,
                        Bit8u fw, Bit8u fh, Bit8u fx, Bit8u fy,
                        bool gfxcharw9, Bit8u cs, Bit8u ce, bool curs, bool font2) {
@@ -490,15 +606,22 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
 
   charpos = ch * fh;
 
+  // BX_ERROR(("bx_cocoa_gui_c::tm_info start_address=%x cs_start=%d cs_end=%d line_offset=%d line_compare=%d h_panning=%d v_panning=%d",
+  //   tm_info.start_address, tm_info.cs_start, tm_info.cs_end, tm_info.line_offset, tm_info.line_compare, tm_info.h_panning, tm_info.v_panning));
+  // BX_INFO(("bx_cocoa_gui_c::draw_char cd=%d fc=%d bc=%d xc=%d yc=%d fw=%d fh=%d fx=%d fy=%d gfxcharw9=%s cs=%d ce=%d curs=%s font2=%s",
+  //   ch, fc, bc, xc, yc, fw, fh, fx, fy, gfxcharw9?"YES":"NO", cs, ce, curs?"YES":"NO", font2?"YES":"NO"));
+  // device->handle_events();
 
 
-  device->draw_char(font2, fc, bc, charpos, xc, yc, fw, fh);
 
-  if (maxshow <200) {
-  BX_INFO(("bx_cocoa_gui_c::draw_char cd=%d fc=%d bc=%d xc=%d yc=%d fw=%d fh=%d fx=%d fy=%d gfxcharw9=%s cs=%d ce=%d curs=%s font2=%s",
-    ch, fc, bc, xc, yc, fw, fh, fx, fy, gfxcharw9?"YES":"NO", cs, ce, curs?"YES":"NO", font2?"YES":"NO"));
-  maxshow++;
-  }
+
+  device->draw_char(font2, fc, bc, ch, xc, yc, fw+fx, fh);
+
+  // if (maxshow <100) {
+  // BX_INFO(("bx_cocoa_gui_c::draw_char cd=%d fc=%d bc=%d xc=%d yc=%d fw=%d fh=%d fx=%d fy=%d gfxcharw9=%s cs=%d ce=%d curs=%s font2=%s",
+  //   ch, fc, bc, xc, yc, fw, fh, fx, fy, gfxcharw9?"YES":"NO", cs, ce, curs?"YES":"NO", font2?"YES":"NO"));
+  // maxshow++;
+  // }
 }
 
 
