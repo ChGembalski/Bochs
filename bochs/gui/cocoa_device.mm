@@ -191,8 +191,8 @@ void BXGuiCocoaDevice::set_font(unsigned pos, unsigned char *charmapA, unsigned 
 /**
  * draw_char forwarding
  */
-void BXGuiCocoaDevice::draw_char(bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
-  BXwindow->draw_char(font2, fgcolor, bgcolor, charpos, x, y, w, h);
+void BXGuiCocoaDevice::draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
+  BXwindow->draw_char(crsr, font2, fgcolor, bgcolor, charpos, x, y, w, h);
 }
 
 /**

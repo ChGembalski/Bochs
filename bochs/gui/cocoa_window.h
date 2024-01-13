@@ -50,7 +50,7 @@
     void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
     void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
     void set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB);
-    void draw_char(bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
+    void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
     bool hasKeyEvent();
     unsigned getKeyEvent();
 

@@ -28,8 +28,12 @@
 #include "cocoa_display.h"
 
 // buffer fits 16bits x 16bytes of char data
-#define FONT_DATA_SIZE 0x2000
-#define CHARACTER_BYTES 32
+#define FONT_DATA_SIZE 0x1000
+#define CHARACTER_WORDS 16
+#define VGA_ACCESS_MODE_BYTE  1
+#define VGA_ACCESS_MODE_WORD  2
+#define VGA_ACCESS_MODE_DWORD 4
+#define VGA_WORD_BIT_MASK 0x8000
 
 extern unsigned char flip_byte(unsigned char b);
 
@@ -152,11 +156,6 @@ static void print_buf_bits(const unsigned char *buf, size_t buf_len) {
 
 @implementation BXVGAdisplay
 
-@synthesize width;
-@synthesize height;
-@synthesize font_width;
-
-
 BXVGAImageView * imgview;
 
 
@@ -187,12 +186,12 @@ BXVGAImageView * imgview;
     NSAssert(self.palette != NULL, @"palette [%p]: allocate memory failed.", self.palette);
 
     // allocate font memory
-    self.FontA = (unsigned char *)malloc(FONT_DATA_SIZE * sizeof(unsigned char));
+    self.FontA = (unsigned short int *)malloc(FONT_DATA_SIZE * sizeof(unsigned short int));
     NSAssert(self.FontA != NULL, @"FontA [%p]: allocate memory failed.", self.FontA);
-    memset((void *)self.FontA, 0, FONT_DATA_SIZE * sizeof(unsigned char));
-    self.FontB = (unsigned char *)malloc(FONT_DATA_SIZE * sizeof(unsigned char));
+    memset((void *)self.FontA, 0, FONT_DATA_SIZE * sizeof(unsigned short int));
+    self.FontB = (unsigned short int *)malloc(FONT_DATA_SIZE * sizeof(unsigned short int));
     NSAssert(self.FontB != NULL, @"FontB [%p]: allocate memory failed.", self.FontB);
-    memset((void *)self.FontB, 0, FONT_DATA_SIZE * sizeof(unsigned char));
+    memset((void *)self.FontB, 0, FONT_DATA_SIZE * sizeof(unsigned short int));
 
 
 
@@ -252,7 +251,8 @@ BXVGAImageView * imgview;
   if ((self.font_width != fw) | (self.font_height != fh)) {
     self.font_width = fw;
     self.font_height = fh;
-    NSAssert(((self.font_width * self.font_height * 256)/8) < FONT_DATA_SIZE, @"font [%d]: fontbuffer overflow.", ((self.font_width * self.font_height * 256)/8));
+    NSAssert(((self.font_width * self.font_height * 256)/CHARACTER_WORDS) <= (FONT_DATA_SIZE * sizeof(unsigned short int)), @"font [%d,%d,%d,%d]: fontbuffer overflow.",
+    ((self.font_width * self.font_height * 256)/CHARACTER_WORDS), (unsigned)(FONT_DATA_SIZE * sizeof(unsigned short int)), self.font_width, self.font_height);
   }
 
 
@@ -350,16 +350,25 @@ BXVGAImageView * imgview;
 
   BXL_INFO(([NSString stringWithFormat:@"initFonts data1=%p data2=%p width=%d height=%d", dataA, dataB, w, h]));
 
+  // Font format
+  // 8bit hi 8bit lo - repeated h times
+
   NSAssert(w==8, @"unsupported initial font size %d", w);
   if (dataA != NULL) {
     for (unsigned c = 0; c<256; c++) {
       for (unsigned cr=0; cr<h; cr++) {
-        self.FontA[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = flip_byte(dataA[c*h+cr]);
+        self.FontA[(c * CHARACTER_WORDS) + cr] = flip_byte(dataA[c*h+cr])<<8;
         if (dataB == dataA) {
-          self.FontB[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = self.FontA[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr];
+          self.FontB[(c * CHARACTER_WORDS) + cr] = self.FontA[(c * CHARACTER_WORDS) + cr];
         } else {
-          self.FontB[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = flip_byte(dataA[c*h+cr]);
+          self.FontB[(c * CHARACTER_WORDS) + cr] = flip_byte(dataA[c*h+cr])<<8;
         }
+        // self.FontA[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = flip_byte(dataA[c*h+cr]);
+        // if (dataB == dataA) {
+        //   self.FontB[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = self.FontA[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr];
+        // } else {
+        //   self.FontB[(c * CHARACTER_BYTES) + (CHARACTER_BYTES/2) + cr] = flip_byte(dataA[c*h+cr]);
+        // }
       }
     }
   }
@@ -397,83 +406,156 @@ BXVGAImageView * imgview;
   }
 
 }
-// int stop = 0;
+
 /**
  * paint char with FontA or FontB with fg and bg colors at position
  */
-- (void)paintChar:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
+- (void)paintChar:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
 
-  unsigned char * selectedFont;
-  unsigned char * selectedChar;
+  unsigned short int * selectedFont;
+  unsigned short int * selectedChar;
   unsigned char * screenStart;
+  unsigned screenStartY;
+  unsigned screenStartXbytes;
+  unsigned screenStartXbits;
+  unsigned char noOfComponents;
+  unsigned char vgaAccessMode;
+  unsigned charMaxHeight;
+
   unsigned char * currentScreenOfs;
+
+  // Font format
+  // 8bit hi 8bit lo - repeated h times
+
 
 
   NSAssert(charpos < 256 , @"charpos out of range %d", charpos);
 
   // do not allow write outside screen (must be a bug in gui.cc sending one more x and y as is should)
-  if ((unsigned)rect.origin.x >= self.width) {
-    NSAssert(true, @"x out of range");
-    return;
-  }
-  if ((unsigned)rect.origin.y >= self.height) {
-    return;
-  }
-
-  // if (stop<1000)
-  // BXL_INFO(([NSString stringWithFormat:@"rect x=%d y=%d w=%d h=%d", (unsigned)rect.origin.x, (unsigned)rect.origin.y, (unsigned)rect.size.width, (unsigned)rect.size.height] ));
-  // if (stop>1000)
-  // BXL_FATAL((@""));
-  // stop++;
+  NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"paintChar x out of range [%d]", ((unsigned)rect.origin.x + (unsigned)rect.size.width));
+  NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"paintChar y out of range [%d]", ((unsigned)rect.origin.y + (unsigned)rect.size.height));
 
   selectedFont = f2 ? self.FontB : self.FontA;
-  selectedChar = &selectedFont[charpos * (sizeof(unsigned char) * CHARACTER_BYTES)];
-  screenStart = self.screen + ((unsigned)(rect.origin.y) * self.stride) + ((unsigned)rect.origin.x);
-  NSAssert(screenStart < self.screen + self.stride * self.height, @"screenStart out of range %p min %p max %p x %d y %d",
-    screenStart, self.screen, self.screen + self.stride * self.height, (unsigned)rect.origin.x, (unsigned)rect.origin.y);
-  currentScreenOfs = screenStart;
+  selectedChar = &selectedFont[charpos * CHARACTER_WORDS];
+  NSAssert(selectedChar < (selectedFont + (FONT_DATA_SIZE * sizeof(unsigned short int))), @"paintChar char out of range [%d]", charpos);
 
-  // font_width > 8
-  if (self.font_width > 8) {
-    selectedChar += CHARACTER_BYTES/2;
+
+  // screenStartY not affected by bpp
+  // screenStartY = ((unsigned)(rect.origin.y) * self.stride);
+
+
+
+  if (self.bitsPerComponent == 8) {
+    noOfComponents = self.bpp / self.bitsPerComponent;
+    screenStartXbytes = ((unsigned)rect.origin.x) * noOfComponents;
+    screenStartXbits = 0;
+    vgaAccessMode = noOfComponents >= 3 ? VGA_ACCESS_MODE_DWORD : noOfComponents;
   } else {
-    selectedChar += CHARACTER_BYTES/2;
+    noOfComponents = 0;
+    screenStartXbits = 0;
+    NSAssert(NO, @"Not yet implemented.");
   }
 
-  // font_width <= 8
+  // screenStart = self.screen + screenStartY + screenStartXbytes;
+  // NSAssert(screenStart < self.screen + self.stride * self.height, @"screenStart out of range %p min %p max %p x %d y %d",
+  //   screenStart, self.screen, self.screen + self.stride * self.height, (unsigned)rect.origin.x, (unsigned)rect.origin.y);
 
-  for (unsigned crow=0; crow<(unsigned)rect.size.height; crow++) {
+  charMaxHeight = ((unsigned)rect.size.height > self.font_height) ? self.font_height : (unsigned)rect.size.height;
 
-    unsigned char mask;
+  // depending on bpp <=8 <=16 <=32 - different access to screen memory
+  switch (vgaAccessMode) {
+    case VGA_ACCESS_MODE_BYTE: {
 
-    // speedup if all 0 or 1
-    if (*selectedChar == 0x00) {
-      memset(currentScreenOfs, bg, 8 * sizeof(unsigned char));
-      selectedChar++;
-      currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
-      continue;
-    }
-    if (*selectedChar == 0xFF) {
-      memset(currentScreenOfs, fg, 8 * sizeof(unsigned char));
-      selectedChar++;
-      currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
-      continue;
-    }
+      unsigned short int maskend;
+      unsigned char * screenMemory;
 
-    // each bit of chardata
-    for (mask = 0x80; mask != 0; mask >>=1) {
-      if (*selectedChar & mask) {
-        *currentScreenOfs = fg;
-      } else {
-        *currentScreenOfs = bg;
+      maskend = VGA_WORD_BIT_MASK>>(unsigned)rect.size.width;
+
+      for (unsigned charRow=0; charRow<charMaxHeight; charRow++) {
+
+        unsigned short int mask;
+
+        screenStartY = (((unsigned)(rect.origin.y) + charRow) * self.stride);
+        screenMemory = (unsigned char *)(self.screen + screenStartY + screenStartXbytes);
+
+        // each bit of selectedChar
+        for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {
+          if ((*selectedChar & mask) | crsr) {
+            *screenMemory = fg;
+          } else {
+            *screenMemory = bg;
+          }
+          screenMemory++;
+        }
+
+        selectedChar++;
+
       }
-      currentScreenOfs++;
+
+      break;
     }
-
-    selectedChar++;
-    currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
-
+    case VGA_ACCESS_MODE_WORD: {
+      NSAssert(NO, @"Not yet implemented.");
+      break;
+    }
+    case VGA_ACCESS_MODE_DWORD: {
+      NSAssert(NO, @"Not yet implemented.");
+      break;
+    }
   }
+
+
+
+
+
+
+
+  // screenStart = self.screen + ((unsigned)(rect.origin.y) * self.stride) + ((unsigned)rect.origin.x);
+  // NSAssert(screenStart < self.screen + self.stride * self.height, @"screenStart out of range %p min %p max %p x %d y %d",
+  //   screenStart, self.screen, self.screen + self.stride * self.height, (unsigned)rect.origin.x, (unsigned)rect.origin.y);
+  // currentScreenOfs = screenStart;
+  //
+  // // font_width > 8
+  // if (self.font_width > 8) {
+  //   selectedChar += CHARACTER_BYTES/2;
+  // } else {
+  //   selectedChar += CHARACTER_BYTES/2;
+  // }
+  //
+  // // font_width <= 8
+  //
+  // for (unsigned crow=0; crow<(unsigned)rect.size.height; crow++) {
+  //
+  //   unsigned char mask;
+  //
+  //   // speedup if all 0 or 1
+  //   if (*selectedChar == 0x00) {
+  //     memset(currentScreenOfs, bg, 8 * sizeof(unsigned char));
+  //     selectedChar++;
+  //     currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
+  //     continue;
+  //   }
+  //   if (*selectedChar == 0xFF) {
+  //     memset(currentScreenOfs, fg, 8 * sizeof(unsigned char));
+  //     selectedChar++;
+  //     currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
+  //     continue;
+  //   }
+  //
+  //   // each bit of chardata
+  //   for (mask = 0x80; mask != 0; mask >>=1) {
+  //     if (*selectedChar & mask) {
+  //       *currentScreenOfs = fg;
+  //     } else {
+  //       *currentScreenOfs = bg;
+  //     }
+  //     currentScreenOfs++;
+  //   }
+  //
+  //   selectedChar++;
+  //   currentScreenOfs = screenStart + ((unsigned)self.stride * crow);
+  //
+  // }
 
 
 

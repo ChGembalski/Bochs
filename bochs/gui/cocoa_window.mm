@@ -44,62 +44,63 @@
 
 @implementation BXNSEventQueue
 
-  NSMutableArray<NSNumber *> * queue;
+NSMutableArray<NSNumber *> * queue;
 
-  /**
-   * BXNSEventQueue
-   */
-  - (instancetype)init {
-    self = [super init];
-    if(self) {
+/**
+ * BXNSEventQueue
+ */
+- (instancetype)init {
+  self = [super init];
+  if(self) {
 
-      queue = [[NSMutableArray alloc] init];
-
-    }
-    return self;
-  }
-
-  /**
-   * BXNSEventQueue DTor
-   */
-  - (void)dealloc {
-    [queue dealloc];
-    [super dealloc];
-  }
-
-  - (void)enqueue:(UInt32) value {
-    NSNumber *obj;
-
-    obj = [[NSNumber alloc] initWithUnsignedInteger:value];
-    [queue addObject:obj];
-  }
-
-  - (UInt32)dequeue {
-    NSNumber *obj;
-
-    if ([queue count] == 0) {
-      return (0);
-    }
-    obj = [queue objectAtIndex:0];
-    if (obj == nil) {
-      return (0);
-    }
-
-    [[obj retain] autorelease];
-    [queue removeObjectAtIndex:0];
-
-    return obj.unsignedIntValue;
+    queue = [[NSMutableArray alloc] init];
 
   }
+  return self;
+}
 
-  - (BOOL)isEmpty {
-    return [queue count] == 0;
+/**
+ * BXNSEventQueue DTor
+ */
+- (void)dealloc {
+  [queue dealloc];
+  [super dealloc];
+}
+
+- (void)enqueue:(UInt32) value {
+  NSNumber *obj;
+
+  obj = [[NSNumber alloc] initWithUnsignedInteger:value];
+  [queue addObject:obj];
+}
+
+- (UInt32)dequeue {
+  NSNumber *obj;
+
+  if ([queue count] == 0) {
+    return (0);
   }
+  obj = [queue objectAtIndex:0];
+  if (obj == nil) {
+    return (0);
+  }
+
+  [[obj retain] autorelease];
+  [queue removeObjectAtIndex:0];
+
+  return obj.unsignedIntValue;
+
+}
+
+- (BOOL)isEmpty {
+  return [queue count] == 0;
+}
 
 @end
 
 
 @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
+
   @property (nonatomic, readwrite, assign) BXVGAdisplay * BXVGA;
   @property (nonatomic, readonly, getter=hasKeyEvent) BOOL hasKeyEvent;
   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
@@ -116,7 +117,7 @@
   - (void)clearVGAscreen;
   - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
   - (void)charmapVGAat:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
-  - (void)paintcharVGA:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
+  - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
   - (BOOL)hasKeyEvent;
   - (unsigned)getKeyEvent;
 
@@ -313,8 +314,8 @@ BXNSEventQueue * BXEventQueue;
 /**
  * paint char on VGA display
  */
-- (void)paintcharVGA:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
-  [self.BXVGA paintChar:charpos font2:f2 bgcolor:bg fgcolor:fg position:rect];
+- (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
+  [self.BXVGA paintChar:charpos isCrsr:crsr font2:f2 bgcolor:bg fgcolor:fg position:rect];
 }
 
 /**
@@ -457,9 +458,8 @@ void BXGuiCocoaWindow::set_font(unsigned pos, unsigned char *charmapA, unsigned 
 /**
  * draw_char
  */
-void BXGuiCocoaWindow::draw_char(bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
-  // BXL_INFO(([NSString stringWithFormat:@"draw_char x=%d y=%d Rx=%f Ry=%f", x, y, (NSMakeRect(x, y, w, h).origin.x), (NSMakeRect(x, y, w, h).origin.y)]));
-  [BXCocoaWindow->BXWindow paintcharVGA:charpos font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
+void BXGuiCocoaWindow::draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
+  [BXCocoaWindow->BXWindow paintcharVGA:charpos isCrsr:crsr font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
 }
 
 /**

@@ -47,7 +47,7 @@
 
 
 Bit32s scancode_tbl[] = {
-  // 00 ...
+  // 00 ... 0F
   BX_KEY_A,
   BX_KEY_S,
   BX_KEY_D,
@@ -58,18 +58,17 @@ Bit32s scancode_tbl[] = {
   BX_KEY_X,
   BX_KEY_C,
   BX_KEY_V,
-  // 0a...
   -1,
   BX_KEY_B,
   BX_KEY_Q,
   BX_KEY_W,
   BX_KEY_E,
   BX_KEY_R,
+  // 10 ... 1F
   BX_KEY_Z,
   BX_KEY_T,
   -1,
   -1,
-  // 14...
   -1,
   -1,
   -1,
@@ -80,9 +79,9 @@ Bit32s scancode_tbl[] = {
   -1,
   -1,
   -1,
-  // 1e...
   -1,
   BX_KEY_O,
+  // 20 ... 2F
   BX_KEY_U,
   -1,
   BX_KEY_I,
@@ -91,7 +90,6 @@ Bit32s scancode_tbl[] = {
   BX_KEY_L,
   BX_KEY_J,
   -1,
-  // 28...
   BX_KEY_K,
   -1,
   -1,
@@ -100,12 +98,13 @@ Bit32s scancode_tbl[] = {
   BX_KEY_N,
   BX_KEY_M,
   BX_KEY_PERIOD,
+  // 30 ... 3F
   -1,
   BX_KEY_SPACE,
-  // 32...
   -1,
   BX_KEY_DELETE,
   -1,
+  BX_KEY_ESC,
   -1,
   -1,
   -1,
@@ -113,6 +112,78 @@ Bit32s scancode_tbl[] = {
   -1,
   -1,
   -1,
+  -1,
+  -1,
+  -1,
+  // 40 ... 4F
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  // 50 ... 5F
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  // 60 ... 5F
+  BX_KEY_F5,
+  BX_KEY_F6,
+  BX_KEY_F7,
+  BX_KEY_F3,
+  BX_KEY_F8,
+  BX_KEY_F9,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  BX_KEY_F10,
+  -1,
+  BX_KEY_F11,
+  // 70 ... 7F
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  BX_KEY_F4,
+  -1,
+  BX_KEY_F2,
+  -1,
+  BX_KEY_F1,
+  BX_KEY_LEFT,
+  BX_KEY_RIGHT,
+  BX_KEY_DOWN,
+  BX_KEY_UP,
+  -1,
+  // 80 ... 8F
 
 };
 
@@ -337,7 +408,7 @@ void bx_cocoa_gui_c::handle_events(void)
 
       event = device->getKeyEvent();
       scancode = event & ~BX_KEY_RELEASED;
-      if (scancode <0x32) {
+      if (scancode <0x80) {
         BX_INFO(("scancode %x", scancode));
         scancode = scancode_tbl[scancode];
         BX_INFO(("scancode %x", scancode));
@@ -596,31 +667,12 @@ void bx_cocoa_gui_c::set_font(bool lg) {
 }
 
 
-// int maxshow=0;
 void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u yc,
                        Bit8u fw, Bit8u fh, Bit8u fx, Bit8u fy,
                        bool gfxcharw9, Bit8u cs, Bit8u ce, bool curs, bool font2) {
 
-  unsigned short int charpos;
+  device->draw_char(curs, font2, fc, bc, ch, xc, yc, fw+fx, fh);
 
-  charpos = ch * fh;
-
-  // BX_ERROR(("bx_cocoa_gui_c::tm_info start_address=%x cs_start=%d cs_end=%d line_offset=%d line_compare=%d h_panning=%d v_panning=%d",
-  //   tm_info.start_address, tm_info.cs_start, tm_info.cs_end, tm_info.line_offset, tm_info.line_compare, tm_info.h_panning, tm_info.v_panning));
-  // BX_INFO(("bx_cocoa_gui_c::draw_char cd=%d fc=%d bc=%d xc=%d yc=%d fw=%d fh=%d fx=%d fy=%d gfxcharw9=%s cs=%d ce=%d curs=%s font2=%s",
-  //   ch, fc, bc, xc, yc, fw, fh, fx, fy, gfxcharw9?"YES":"NO", cs, ce, curs?"YES":"NO", font2?"YES":"NO"));
-  // device->handle_events();
-
-
-
-
-  device->draw_char(font2, fc, bc, ch, xc, yc, fw+fx, fh);
-
-  // if (maxshow <100) {
-  // BX_INFO(("bx_cocoa_gui_c::draw_char cd=%d fc=%d bc=%d xc=%d yc=%d fw=%d fh=%d fx=%d fy=%d gfxcharw9=%s cs=%d ce=%d curs=%s font2=%s",
-  //   ch, fc, bc, xc, yc, fw, fh, fx, fy, gfxcharw9?"YES":"NO", cs, ce, curs?"YES":"NO", font2?"YES":"NO"));
-  // maxshow++;
-  // }
 }
 
 

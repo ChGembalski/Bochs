@@ -46,8 +46,8 @@
     @property (nonatomic, readwrite) unsigned char * palette;
     @property (nonatomic, readwrite) unsigned palette_size;
     @property (nonatomic, readwrite) BOOL dirty;
-    @property (nonatomic, readwrite) unsigned char *FontA;
-    @property (nonatomic, readwrite) unsigned char *FontB;
+    @property (nonatomic, readwrite) unsigned short int *FontA;
+    @property (nonatomic, readwrite) unsigned short int *FontB;
 
     - (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh view:(NSView *) v;
     - (void)dealloc;
@@ -57,7 +57,7 @@
     - (void)clearScreen;
     - (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
     - (void)updateFontAt:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
-    - (void)paintChar:(unsigned short int) charpos font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
+    - (void)paintChar:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
   @end
 
 #endif /* BX_GUI_COCOA_DISPLAY_H */
