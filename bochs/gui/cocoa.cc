@@ -95,13 +95,13 @@ Bit32s scancode_tbl[] = {
   BX_KEY_K,
   -1,
   -1,
-  -1,
+  BX_KEY_COMMA,
   -1,
   BX_KEY_N,
   BX_KEY_M,
+  BX_KEY_PERIOD,
   -1,
-  -1,
-  -1,
+  BX_KEY_SPACE,
   // 32...
   -1,
   BX_KEY_DELETE,
@@ -406,13 +406,12 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
 
   BX_INFO(("bx_cocoa_gui_c::dimension_update guest_xres=%d guest_yres=%d guest_bpp=%d", guest_xres, guest_yres, guest_bpp));
 
-  // setting this corrupt screen output
-  // guest_textmode = (fheight > 0);
-  // guest_xres = x;
-  // guest_yres = y;
-  // guest_fwidth = fwidth;
-  // guest_fheight = fheight;
-  // guest_bpp = bpp;
+  // inform client about changes?
+  guest_textmode = (fheight > 0);
+  guest_fwidth = fwidth;
+  guest_fheight = fheight;
+  guest_xres = x;
+  guest_yres = y;
 
   // BX_INFO(("bx_cocoa_gui_c::dimension_update guest_textmode=%s guest_xres=%d guest_yres=%d guest_bpp=%d",
   //   guest_textmode?"YES":"NO", guest_xres, guest_yres, guest_bpp));
