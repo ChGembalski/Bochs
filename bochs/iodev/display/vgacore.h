@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2023  The Bochs Project
+//  Copyright (C) 2001-2024  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -73,6 +73,7 @@ public:
                            unsigned width, unsigned height) {}
   virtual void refresh_display(void *this_ptr, bool redraw) {}
   virtual void update(void) {}
+  virtual Bit32u get_vtotal_usec(void) {return 0;}
 };
 #endif
 
@@ -103,6 +104,8 @@ public:
   virtual bool   init_vga_extension(void) {return 0;}
   virtual void   get_crtc_params(bx_crtc_params_t *crtcp, Bit32u *vclock);
 
+  virtual bool   get_update_mode(void) {return update_mode_vsync;}
+  virtual void   set_update_timer(Bit32u usec);
   static void    vga_timer_handler(void *);
   static Bit64s  vga_param_handler(bx_param_c *param, bool set, Bit64s val);
 
@@ -242,6 +245,7 @@ protected:
     Bit32u vblank_usec;
     Bit32u vrstart_usec;
     Bit32u vrend_usec;
+    Bit64u display_start_usec;
     // shift values for extensions
     Bit8u  plane_shift;
     Bit8u  dac_shift;
@@ -266,6 +270,8 @@ protected:
   } s;  // state information
 
   int timer_id;
+  Bit32u vga_update_interval;
+  bool update_mode_vsync;
   bool update_realtime;
   bool vsync_realtime;
   bx_param_enum_c *vga_ext;

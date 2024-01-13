@@ -286,6 +286,15 @@ void BX_CPU_C::VMexit_Event(unsigned type, unsigned vector, Bit16u errcode, bool
     BX_CPU_THIS_PTR debug_trap = 0;
   }
 
+  // interruption info:
+  // -----------------
+  // [7 : 0] vector
+  // [10: 8] interruption type
+  // [11:11] error code delivered
+  // [12:12] NMI unblocking due to IRET
+  // [30:13] reserved
+  // [31:31] valid
+
   Bit32u interruption_info = vector | (type << 8);
   if (errcode_valid)
     interruption_info |= (1 << 11); // error code delivered
@@ -774,7 +783,7 @@ void BX_CPU_C::vmx_page_modification_logging(Bit64u guest_paddr, unsigned dirty_
 
   if (dirty_update) {
     Bit64u pAddr = vm->pml_address + 8 * vm->pml_index;
-    write_physical_qword(pAddr, guest_paddr, MEMTYPE(resolve_memtype(pAddr)), BX_VMX_PML_WRITE);
+    write_physical_qword(pAddr, LPFOf(guest_paddr), MEMTYPE(resolve_memtype(pAddr)), BX_VMX_PML_WRITE);
     vm->pml_index--;
   }
 }

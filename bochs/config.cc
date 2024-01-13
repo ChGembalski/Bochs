@@ -1142,11 +1142,12 @@ void bx_init_options()
       "If enabled, the VGA timer is based on realtime",
       1);
 
+  // The value 0 enables support for using vertical frequency
   bx_param_num_c *vga_update_freq = new bx_param_num_c(display,
       "vga_update_frequency",
       "VGA Update Frequency",
       "Number of VGA updates per emulated second",
-      1, 75,
+      0, 75,
       10);
   vga_update_freq->set_ask_format ("Type a new value for VGA update frequency: [%d] ");
 
