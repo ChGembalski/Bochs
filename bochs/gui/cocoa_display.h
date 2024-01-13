@@ -56,8 +56,9 @@
     - (BOOL)setPaletteRGB:(unsigned) index red:(char) r green:(char) g blue:(char) b;
     - (void)clearScreen;
     - (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
-    - (void)updateFontAt:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
+    - (void)updateFontAt:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
     - (void)paintChar:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
+    - (void)clipRegion:(unsigned char *) src position:(NSRect) rect;
   @end
 
 #endif /* BX_GUI_COCOA_DISPLAY_H */

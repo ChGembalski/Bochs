@@ -184,8 +184,8 @@ void BXGuiCocoaDevice::setup_charmap(unsigned char *charmapA, unsigned char *cha
 /**
  * set_font
  */
-void BXGuiCocoaDevice::set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB) {
-  BXwindow->set_font(pos, charmapA, charmapB);
+void BXGuiCocoaDevice::set_font(bool font2, unsigned pos, unsigned char *charmap) {
+  BXwindow->set_font(font2, pos, charmap);
 }
 
 /**
@@ -207,6 +207,13 @@ bool BXGuiCocoaDevice::hasKeyEvent() {
  */
 unsigned BXGuiCocoaDevice::getKeyEvent() {
   return (BXwindow->getKeyEvent());
+}
+
+/**
+ * graphics_tile_update forwarding
+ */
+void BXGuiCocoaDevice::graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h) {
+  BXwindow->graphics_tile_update(tile, x, y, w, h);
 }
 
 

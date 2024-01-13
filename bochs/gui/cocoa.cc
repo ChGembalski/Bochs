@@ -67,74 +67,74 @@ Bit32s scancode_tbl[] = {
   // 10 ... 1F
   BX_KEY_Z,
   BX_KEY_T,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
+  BX_KEY_1,
+  BX_KEY_2,
+  BX_KEY_3,
+  BX_KEY_4,
+  BX_KEY_6,
+  BX_KEY_5,
+  BX_KEY_EQUALS,
+  BX_KEY_9,
+  BX_KEY_7,
+  BX_KEY_MINUS,
+  BX_KEY_8,
+  BX_KEY_0,
+  BX_KEY_RIGHT_BRACKET,
   BX_KEY_O,
   // 20 ... 2F
   BX_KEY_U,
-  -1,
+  BX_KEY_LEFT_BRACKET,
   BX_KEY_I,
   BX_KEY_P,
-  BX_KEY_ENTER,
+    BX_KEY_ENTER,
   BX_KEY_L,
   BX_KEY_J,
-  -1,
+  BX_KEY_SINGLE_QUOTE,
   BX_KEY_K,
-  -1,
-  -1,
+  BX_KEY_SEMICOLON,
+  BX_KEY_BACKSLASH,
   BX_KEY_COMMA,
-  -1,
+  BX_KEY_SLASH,
   BX_KEY_N,
   BX_KEY_M,
   BX_KEY_PERIOD,
   // 30 ... 3F
+    BX_KEY_TAB,
+    BX_KEY_SPACE,
+  BX_KEY_GRAVE,
+    BX_KEY_BACKSPACE,
   -1,
-  BX_KEY_SPACE,
-  -1,
-  BX_KEY_DELETE,
-  -1,
-  BX_KEY_ESC,
-  -1,
-  -1,
+    BX_KEY_ESC,
   -1,
   -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
+    BX_KEY_SHIFT_L, // shift
+    BX_KEY_CAPS_LOCK,
+    BX_KEY_ALT_L, // option
+    BX_KEY_CTRL_L,  // control
+    BX_KEY_SHIFT_R, // shift r
+    BX_KEY_ALT_R, // option r
+    BX_KEY_CTRL_R,  // control
+  -1, // function
   // 40 ... 4F
+  -1, // F17
   -1,
   -1,
+  BX_KEY_KP_MULTIPLY,
+  -1,
+  BX_KEY_KP_ADD,
   -1,
   -1,
+  -1,// volume up
+  -1,// volume down
+  -1,// mute
+  BX_KEY_KP_DIVIDE,
+  BX_KEY_KP_ENTER,
   -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
+  BX_KEY_KP_SUBTRACT,
+  -1,// F18
   // 50 ... 5F
-  -1,
-  -1,
+  -1,// F19
+  -1,// F20
   -1,
   -1,
   -1,
@@ -150,44 +150,54 @@ Bit32s scancode_tbl[] = {
   -1,
   -1,
   // 60 ... 5F
-  BX_KEY_F5,
-  BX_KEY_F6,
-  BX_KEY_F7,
-  BX_KEY_F3,
-  BX_KEY_F8,
-  BX_KEY_F9,
+    BX_KEY_F5,
+    BX_KEY_F6,
+    BX_KEY_F7,
+    BX_KEY_F3,
+    BX_KEY_F8,
+    BX_KEY_F9,
   -1,
+    BX_KEY_F11,
   -1,
+  -1,//F13
+  -1,// F16
+  -1,// F14
   -1,
+    BX_KEY_F10,
   -1,
-  -1,
-  -1,
-  -1,
-  BX_KEY_F10,
-  -1,
-  BX_KEY_F11,
+    BX_KEY_F12,
   // 70 ... 7F
   -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  -1,
-  BX_KEY_F4,
-  -1,
-  BX_KEY_F2,
-  -1,
-  BX_KEY_F1,
-  BX_KEY_LEFT,
-  BX_KEY_RIGHT,
-  BX_KEY_DOWN,
-  BX_KEY_UP,
+  -1,// F15
+  -1,// help
+    BX_KEY_HOME,
+    BX_KEY_PAGE_UP,
+    BX_KEY_DELETE,
+    BX_KEY_F4,
+    BX_KEY_END,
+    BX_KEY_F2,
+    BX_KEY_PAGE_DOWN,
+    BX_KEY_F1,
+    BX_KEY_LEFT,
+    BX_KEY_RIGHT,
+    BX_KEY_DOWN,
+    BX_KEY_UP,
   -1,
   // 80 ... 8F
 
 };
 
 
+#define MACOS_NSEventModifierFlagKeyUp      0x80000000
+#define MACOS_NSEventModifierFlagMask       0x7FFF0000
+#define MACOS_NSEventModifierFlagCapsLock   1 << 16
+#define MACOS_NSEventModifierFlagShift      1 << 17
+#define MACOS_NSEventModifierFlagControl    1 << 18
+#define MACOS_NSEventModifierFlagOption     1 << 19
+#define MACOS_NSEventModifierFlagCommand    1 << 20
+#define MACOS_NSEventModifierFlagNumericPad 1 << 21
+#define MACOS_NSEventModifierFlagHelp       1 << 22
+#define MACOS_NSEventModifierFlagFunction   1 << 23
 
 
 
@@ -386,10 +396,11 @@ void bx_cocoa_gui_c::text_update(Bit8u *old_text, Bit8u *new_text,
 
 void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 {
-  UNUSED(tile);
-  UNUSED(x0);
-  UNUSED(y0);
-  BX_INFO(("bx_cocoa_gui_c::graphics_tile_update x0=%d y0=%d", x0, y0));
+  // UNUSED(tile);
+  // UNUSED(x0);
+  // UNUSED(y0);
+  // BX_INFO(("bx_cocoa_gui_c::graphics_tile_update x0=%d y0=%d x_tilesize=%d y_tilesize=%d", x0, y0, x_tilesize, y_tilesize));
+  device->graphics_tile_update(tile, x0, y0, x_tilesize, y_tilesize);
 }
 
 
@@ -405,19 +416,53 @@ void bx_cocoa_gui_c::handle_events(void)
     if (device->hasKeyEvent()) {
       Bit32u event;
       Bit32u scancode;
+      Bit32u scanflags;
+      Bit32u released;
 
       event = device->getKeyEvent();
-      scancode = event & ~BX_KEY_RELEASED;
-      if (scancode <0x80) {
-        BX_INFO(("scancode %x", scancode));
-        scancode = scancode_tbl[scancode];
-        BX_INFO(("scancode %x", scancode));
-        if (scancode != -1) {
-          event = (event & BX_KEY_RELEASED) | scancode;
+      scanflags = event & MACOS_NSEventModifierFlagMask;
+      scancode = event & ~MACOS_NSEventModifierFlagMask;
+      released = event & MACOS_NSEventModifierFlagKeyUp;
 
-          // TODO : identify what to send
-          BX_INFO(("send event %x", event));
-          DEV_kbd_gen_scancode(event);
+      if (scancode < 0x80) {
+        BX_INFO(("scancode %x scanflags %x released %x", scancode, scanflags, released));
+        scancode = scancode_tbl[scancode];
+        BX_INFO(("resolved scancode %x scanflags %x released %x", scancode, scanflags, released));
+        if (scancode != -1) {
+
+          // resolve scanflags (seems each must be send one after one)
+          if ((scanflags & MACOS_NSEventModifierFlagCapsLock) > 0) {
+            set_modifier_keys(BX_KEY_CAPS_LOCK, released==0);
+            BX_INFO(("BX_KEY_CAPS_LOCK %d", released==0));
+          }
+          if ((scanflags & MACOS_NSEventModifierFlagShift) > 0) {
+            set_modifier_keys(BX_KEY_SHIFT_L, released==0);
+            BX_INFO(("BX_KEY_SHIFT_L %d", released==0));
+          }
+          if ((scanflags & MACOS_NSEventModifierFlagControl) > 0) {
+            set_modifier_keys(BX_KEY_CTRL_L, released==0);
+            BX_INFO(("BX_KEY_CTRL_L %d", released==0));
+          }
+          if ((scanflags & MACOS_NSEventModifierFlagOption) > 0) {
+            set_modifier_keys(BX_KEY_ALT_L, released==0);
+            BX_INFO(("BX_KEY_ALT_L %d", released==0));
+          }
+          if ((scanflags & MACOS_NSEventModifierFlagCommand) > 0) {
+            set_modifier_keys(BX_KEY_WIN_L, released==0);
+            BX_INFO(("BX_KEY_WIN_L %d", released==0));
+          }
+          // if ((scanflags & MACOS_NSEventModifierFlagNumericPad) > 0) {
+          //
+          // }
+          // if ((scanflags & MACOS_NSEventModifierFlagHelp) > 0) {
+          //
+          // }
+          // if ((scanflags & MACOS_NSEventModifierFlagFunction) > 0) {
+          //
+          // }
+
+          // Send keycode
+          DEV_kbd_gen_scancode(released | scancode);
         }
       }
     }
@@ -657,7 +702,7 @@ void bx_cocoa_gui_c::set_font(bool lg) {
 
         // display knows about font size from dimension_update call
         // font pixel space 16x16
-        device->set_font(c, (unsigned char *)&vga_charmap[0], (unsigned char *)&vga_charmap[1]);
+        device->set_font(c, m==1, m==0 ? (unsigned char *)&vga_charmap[0] : (unsigned char *)&vga_charmap[1]);
         char_changed[m][c] = 0;
       // }
       }

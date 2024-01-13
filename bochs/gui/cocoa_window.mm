@@ -29,6 +29,13 @@
 #include "cocoa_headerbar.h"
 
 
+#if BX_SUPPORT_X86_64
+  #define BOCHS_WINDOW_NAME @"Bochs x86-64 emulator MacOS X"
+#else
+  #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
+#endif
+
+
 @interface BXNSEventQueue : NSObject
 
   @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
@@ -36,8 +43,8 @@
   - (instancetype)init;
   - (void)dealloc;
 
-  - (void)enqueue:(UInt32) value;
-  - (UInt32)dequeue;
+  - (void)enqueue:(UInt64) value;
+  - (UInt64)dequeue;
   - (BOOL)isEmpty;
 
 @end
@@ -67,14 +74,14 @@ NSMutableArray<NSNumber *> * queue;
   [super dealloc];
 }
 
-- (void)enqueue:(UInt32) value {
+- (void)enqueue:(UInt64) value {
   NSNumber *obj;
 
-  obj = [[NSNumber alloc] initWithUnsignedInteger:value];
+  obj = [NSNumber initWithUnsignedLong:value];
   [queue addObject:obj];
 }
 
-- (UInt32)dequeue {
+- (UInt64)dequeue {
   NSNumber *obj;
 
   if ([queue count] == 0) {
@@ -88,7 +95,7 @@ NSMutableArray<NSNumber *> * queue;
   [[obj retain] autorelease];
   [queue removeObjectAtIndex:0];
 
-  return obj.unsignedIntValue;
+  return obj.unsignedLongValue;
 
 }
 
@@ -116,10 +123,11 @@ NSMutableArray<NSNumber *> * queue;
   - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
   - (void)clearVGAscreen;
   - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
-  - (void)charmapVGAat:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB;
+  - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
   - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
   - (BOOL)hasKeyEvent;
   - (unsigned)getKeyEvent;
+  - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
 
 // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
 // -(NSArray<NSButton *> *)createToolbar;
@@ -137,7 +145,7 @@ BXNSEventQueue * BXEventQueue;
 - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga {
 
   BXL_DEBUG(@"BXGuiCocoaNSWindow::init");
-
+  
   [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
@@ -148,7 +156,7 @@ BXNSEventQueue * BXEventQueue;
 // |                    NSWindowStyleMaskResizable
   [NSApp setDelegate:self];
   [NSApp setDelegate:[self contentView]];
-  [self setTitle:@"Bochs for MacOsX"];
+  [self setTitle:BOCHS_WINDOW_NAME];
 
   BXEventQueue = [[BXNSEventQueue alloc] init];
 
@@ -195,13 +203,33 @@ BXNSEventQueue * BXEventQueue;
 }
 
 - (void)keyDown:(NSEvent *)event {
+
+  // modifiers
+  BXL_INFO(([NSString stringWithFormat:@"keyDown window event.keyCode=%x char=%c event.modifierFlags=%lx",
+    event.keyCode,
+    event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+    (unsigned long)event.modifierFlags
+  ]));
+  [BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+
+
+
+
+
+
+  // UInt32 mdf;
+  //
+  // mdf = event.modifierFlags;
+  // BXL_INFO((@"event.modifierFlags"));
+  // print_buf_bits(&mdf, 1);
+
   // NSString *chars;
   //
   // chars = event.charactersIgnoringModifiers;
   // if (chars != nil) {
   //   if (chars.length >0) {
   //     unichar c = [event.characters characterAtIndex:0];
-      [BXEventQueue enqueue:event.keyCode];
+      // [BXEventQueue enqueue:event.keyCode];
   //   }
   // }
 
@@ -220,9 +248,13 @@ BXNSEventQueue * BXEventQueue;
   //   if (chars.length >0) {
   //     unichar c = [event.characters characterAtIndex:0];
       // BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%c ascii=%x fake=%x", event.keyCode, c, c, (c-77)]));
-      BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%c",
-      event.keyCode, event.charactersIgnoringModifiers==nil?' ':event.charactersIgnoringModifiers.length ==0?' ':[event.characters characterAtIndex:0]]));
-      [BXEventQueue enqueue:BX_KEY_RELEASED | event.keyCode];
+      BXL_INFO(([NSString stringWithFormat:@"keyUp window event.keyCode=%x char=%c event.modifierFlags=%lx",
+        event.keyCode,
+        event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+        (unsigned long)event.modifierFlags
+      ]));
+      [BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+      // [BXEventQueue enqueue:BX_KEY_RELEASED | event.keyCode];
     // }
   // }
 
@@ -307,8 +339,8 @@ BXNSEventQueue * BXEventQueue;
 /**
  * update charmap data at
  */
-- (void)charmapVGAat:(unsigned) pos first:(unsigned char *) dataA second:(unsigned char *) dataB {
-  [self.BXVGA updateFontAt:pos first:dataA second:dataB];
+- (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data {
+  [self.BXVGA updateFontAt:pos isFont2:font2 map:data];
 }
 
 /**
@@ -333,7 +365,12 @@ BXNSEventQueue * BXEventQueue;
   return [BXEventQueue dequeue];
 }
 
-
+/**
+ * clip bitmap region into VGA display
+ */
+- (void)clipRegionVGA:(unsigned char *)src position:(NSRect) rect {
+  [self.BXVGA clipRegion:src position:rect];
+}
 
 
 
@@ -450,8 +487,8 @@ void BXGuiCocoaWindow::setup_charmap(unsigned char *charmapA, unsigned char *cha
 /**
  * set_font
  */
-void BXGuiCocoaWindow::set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB) {
-  [BXCocoaWindow->BXWindow charmapVGAat:pos first:charmapA second:charmapB];
+void BXGuiCocoaWindow::set_font(bool font2, unsigned pos, unsigned char *charmap) {
+  [BXCocoaWindow->BXWindow charmapVGAat:pos isFont2:font2 map:charmap];
 }
 
 
@@ -476,7 +513,12 @@ unsigned BXGuiCocoaWindow::getKeyEvent() {
   return ([BXCocoaWindow->BXWindow getKeyEvent]);
 }
 
-
+/**
+ * graphics_tile_update
+ */
+void BXGuiCocoaWindow::graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h) {
+  [BXCocoaWindow->BXWindow clipRegionVGA:tile position:NSMakeRect(x, y, w, h)];
+}
 
 
 

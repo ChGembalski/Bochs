@@ -53,10 +53,11 @@
     void clear_screen(void);
     void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
     void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
-    void set_font(unsigned pos, unsigned char *charmapA, unsigned char *charmapB);
+    void set_font(bool font2, unsigned pos, unsigned char *charmap);
     void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
     bool hasKeyEvent();
     unsigned getKeyEvent();
+    void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
 
   };
 
