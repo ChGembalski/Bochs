@@ -43,8 +43,8 @@
   - (instancetype)init;
   - (void)dealloc;
 
-  - (void)enqueue:(UInt64) value;
-  - (UInt64)dequeue;
+  - (void)enqueue:(UInt32) value;
+  - (UInt32)dequeue;
   - (BOOL)isEmpty;
 
 @end
@@ -74,14 +74,14 @@ NSMutableArray<NSNumber *> * queue;
   [super dealloc];
 }
 
-- (void)enqueue:(UInt64) value {
+- (void)enqueue:(UInt32) value {
   NSNumber *obj;
 
-  obj = [NSNumber initWithUnsignedLong:value];
+  obj = [NSNumber numberWithUnsignedInteger:value];
   [queue addObject:obj];
 }
 
-- (UInt64)dequeue {
+- (UInt32)dequeue {
   NSNumber *obj;
 
   if ([queue count] == 0) {
@@ -95,8 +95,7 @@ NSMutableArray<NSNumber *> * queue;
   [[obj retain] autorelease];
   [queue removeObjectAtIndex:0];
 
-  return obj.unsignedLongValue;
-
+  return obj.unsignedIntValue;
 }
 
 - (BOOL)isEmpty {
@@ -145,7 +144,7 @@ BXNSEventQueue * BXEventQueue;
 - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga {
 
   BXL_DEBUG(@"BXGuiCocoaNSWindow::init");
-  
+
   [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |

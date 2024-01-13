@@ -417,12 +417,13 @@ void bx_cocoa_gui_c::handle_events(void)
       Bit32u event;
       Bit32u scancode;
       Bit32u scanflags;
-      Bit32u released;
+      bool released;
 
       event = device->getKeyEvent();
       scanflags = event & MACOS_NSEventModifierFlagMask;
-      scancode = event & ~MACOS_NSEventModifierFlagMask;
-      released = event & MACOS_NSEventModifierFlagKeyUp;
+      scancode = event & ~(MACOS_NSEventModifierFlagMask | MACOS_NSEventModifierFlagKeyUp);
+      released = (event & MACOS_NSEventModifierFlagKeyUp) == 0;
+      BX_INFO((">>> event %x scancode %x scanflags %x released %x", event, scancode, scanflags, released));
 
       if (scancode < 0x80) {
         BX_INFO(("scancode %x scanflags %x released %x", scancode, scanflags, released));
@@ -432,25 +433,28 @@ void bx_cocoa_gui_c::handle_events(void)
 
           // resolve scanflags (seems each must be send one after one)
           if ((scanflags & MACOS_NSEventModifierFlagCapsLock) > 0) {
-            set_modifier_keys(BX_KEY_CAPS_LOCK, released==0);
-            BX_INFO(("BX_KEY_CAPS_LOCK %d", released==0));
+            bx_gui->set_modifier_keys(BX_MOD_KEY_CAPS, released);
+            BX_INFO(("BX_KEY_CAPS_LOCK %d", released));
+            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CAPS_LOCK);
           }
           if ((scanflags & MACOS_NSEventModifierFlagShift) > 0) {
-            set_modifier_keys(BX_KEY_SHIFT_L, released==0);
-            BX_INFO(("BX_KEY_SHIFT_L %d", released==0));
+            bx_gui->set_modifier_keys(BX_MOD_KEY_SHIFT, released);
+            BX_INFO(("BX_KEY_SHIFT_L %d", released));
+            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_SHIFT_L);
           }
           if ((scanflags & MACOS_NSEventModifierFlagControl) > 0) {
-            set_modifier_keys(BX_KEY_CTRL_L, released==0);
-            BX_INFO(("BX_KEY_CTRL_L %d", released==0));
+            set_modifier_keys(BX_MOD_KEY_CTRL, released);
+            BX_INFO(("BX_KEY_CTRL_L %d", released));
+            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CTRL_L);
           }
           if ((scanflags & MACOS_NSEventModifierFlagOption) > 0) {
-            set_modifier_keys(BX_KEY_ALT_L, released==0);
-            BX_INFO(("BX_KEY_ALT_L %d", released==0));
+            set_modifier_keys(BX_MOD_KEY_ALT, released);
+            BX_INFO(("BX_KEY_ALT_L %d", released));
+            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_ALT_L);
           }
-          if ((scanflags & MACOS_NSEventModifierFlagCommand) > 0) {
-            set_modifier_keys(BX_KEY_WIN_L, released==0);
-            BX_INFO(("BX_KEY_WIN_L %d", released==0));
-          }
+          // if ((scanflags & MACOS_NSEventModifierFlagCommand) > 0) {
+          //
+          // }
           // if ((scanflags & MACOS_NSEventModifierFlagNumericPad) > 0) {
           //
           // }
@@ -460,10 +464,12 @@ void bx_cocoa_gui_c::handle_events(void)
           // if ((scanflags & MACOS_NSEventModifierFlagFunction) > 0) {
           //
           // }
-
           // Send keycode
-          DEV_kbd_gen_scancode(released | scancode);
+          DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | scancode);
+
         }
+      } else {
+        BX_ERROR((">>> event dropped"));
       }
     }
 }
