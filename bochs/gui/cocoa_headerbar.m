@@ -26,6 +26,7 @@
 #include <Cocoa/Cocoa.h>
 #include "cocoa_logging.h"
 #include "cocoa_headerbar.h"
+#include "icon_bochs.xpm"
 
 unsigned char BXPalette_ColorBW[3*2] = {
   0xFF, 0xFF, 0xFF,
@@ -33,6 +34,27 @@ unsigned char BXPalette_ColorBW[3*2] = {
 };
 
 extern unsigned char flip_byte(unsigned char b);
+
+void print_buf(const unsigned char *buf, size_t buf_len)
+{
+  NSString *lout;
+
+  // BXL_INFO(([NSString stringWithFormat:@"size%d", buf_len]));
+
+    size_t i = 0;
+    lout = @"\n";
+
+    for(i = 0; i < buf_len; ++i) {
+      lout = [NSString stringWithFormat:@"%@%02X%s", lout, buf[i], ( i + 1 ) % (16) == 0 ? "\r\n" : " " ];
+      if ((i+1)%(16*4)==0) {
+        BXL_INFO((lout));
+        lout = @"\n";
+      }
+    }
+    BXL_INFO((lout));
+
+}
+
 
 
 /**
@@ -145,6 +167,109 @@ unsigned last_rx;
   [button_data dealloc];
   [buttons dealloc];
   [super dealloc];
+}
+
+/**
+ * createIcon
+ */
+- (NSImage *)createIconXPM {
+
+  unsigned char ColorIcon[32*32*4*sizeof(unsigned char)];
+  NSData *imageData;
+
+  // icon_bochs_xpm
+  // maybe implement parsing ... now we just skip the headers
+  // first string is X Y colorcount images
+
+  // print_buf(icon_bochs_xpm[0], 32);
+
+  for (int row=8;row<32+8;row++) {
+    const char * rowdata;
+    rowdata = icon_bochs_xpm[row];
+    BXL_INFO(([NSString stringWithFormat:@"data row[%s]", rowdata]));
+    for(int col=0;col<32;col++) {
+      UInt32 rgba;
+      unsigned char c;
+
+      c = rowdata[col];
+      BXL_INFO(([NSString stringWithFormat:@"data col[%c]", c]));
+      switch(c) {
+        case ' ': {
+          rgba = 0x000000FF;
+          break;
+        }
+        case '.': {
+          rgba = 0x800000FF;
+          break;
+        }
+        case 'X': {
+          rgba = 0x808000FF;
+          break;
+        }
+        case 'o': {
+          rgba = 0xFFFF00FF;
+          break;
+        }
+        case 'O': {
+          rgba = 0x808080FF;
+          break;
+        }
+        case '+': {
+          rgba = 0xc0c0c0FF;
+          break;
+        }
+        default: {
+          rgba = 0xFFFFFFFF;
+        }
+      }
+
+      // print_buf(&icon_bochs_xpm[row], 32);
+
+      BXL_INFO(([NSString stringWithFormat:@"IMAGE convert org y=%d x=%d c=%02x image y=%d x=%d ofs=%d col=%08x", row, col, c, (row-8), col, ((row-8)*32)+col, rgba]));
+
+      ColorIcon[((row-8)*32)+col+1] = rgba >>24;
+      ColorIcon[((row-8)*32)+col+2] = (rgba >>16) & 0xFF;
+      ColorIcon[((row-8)*32)+col+3] = (rgba >>8) & 0xFF;
+      // ColorIcon[((row-8)*32)+col+3] = 0x00;//rgba & 0xFF;
+    }
+  }
+
+  // print_buf((const unsigned char *)ColorIcon, ((32*4)*32*sizeof(unsigned char)));
+
+  imageData = [NSData dataWithBytes:ColorIcon length:32*32*sizeof(UInt32)];
+
+  // NSBitmapImageRep *bitmap;
+  // // bitmap = [[NSBitmapImageRep alloc] initWithData:imageData];
+  // bitmap = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:(unsigned char *)ColorIcon
+  //   pixelsWide:32 pixelsHigh:32
+  //   bitsPerSample:8 samplesPerPixel:4
+  //   hasAlpha:NO isPlanar:NO
+  //   colorSpaceName:NSDeviceRGBColorSpace
+  //   bitmapFormat:NSBitmapFormatThirtyTwoBitBigEndian bytesPerRow:32*4 bitsPerPixel:32
+  // ];
+
+  NSImage * image;
+  // image = [[NSImage alloc] initWithSize:NSMakeSize(32, 32)];
+  image =[[[NSImage alloc] initWithData:imageData] autorelease];
+  // [image addRepresentation:bitmap];
+  // image.size = NSMakeSize(32,32);
+  // image.prefersColorMatch = YES;
+
+  BXL_INFO(([NSString stringWithFormat:@"IMAGE Valid %s", image.valid?"YES":"NO"]));
+
+
+
+  // [image setName:NSImageNameApplicationIcon];
+  // NSApp.applicationIconImage = image;
+  // [NSApp setApplicationIconImage:image];
+  // // [NSApp.dockTile display];
+  //
+  // NSAlert *alert = [[[NSAlert alloc] init] autorelease];
+  //     [alert setMessageText:@"Shazam!"];
+  //     [alert runModal];
+
+
+  return image;
 }
 
 /**

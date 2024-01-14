@@ -27,7 +27,8 @@
 
   #define BX_GUI_COCOA_WINDOW_H
 
-  #define MACOS_NSEventModifierFlagKeyUp  0x80000000
+  #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
+  #define MACOS_NSEventModifierFlagMouse      0x4000000000000000
 
   struct BXGuiCocoaWindowImpl;
 
@@ -40,6 +41,7 @@
     BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y);
     ~BXGuiCocoaWindow();
 
+    void * createIconXPM(void);
     unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
     unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
     void show_headerbar(void);
@@ -52,7 +54,7 @@
     void set_font(bool font2, unsigned pos, unsigned char *charmap);
     void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
     bool hasKeyEvent();
-    unsigned getKeyEvent();
+    unsigned long getKeyEvent();
     void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
 
   };

@@ -533,7 +533,11 @@ BXVGAImageView * imgview;
     NSAssert(NO, @"Not yet implemented.");
   }
 
-  blitMaxHeight = ((unsigned)rect.size.height > self.font_height) ? self.font_height : (unsigned)rect.size.height;
+  // font height only set in text mode !!!
+  blitMaxHeight = (unsigned)rect.size.height;
+  //((unsigned)rect.size.height > self.font_height) ? self.font_height : (unsigned)rect.size.height;
+
+  BXL_INFO(([NSString stringWithFormat:@"clipRegion vgaAccessMode=%d blitMaxHeight=%d font_height=%d", vgaAccessMode, blitMaxHeight, self.font_height]));
 
   // depending on bpp <=8 <=16 <=32 - different access to screen memory
   switch (vgaAccessMode) {
@@ -557,6 +561,8 @@ BXVGAImageView * imgview;
 
         // first try memcopy
         memcpy((void *)screenMemory, srcMemory, (unsigned)rect.size.width * sizeof(unsigned char));
+        // memset((void *)screenMemory, 0x34, (unsigned)rect.size.width * sizeof(unsigned char));
+
       //
       //   // each bit of selectedChar
       //   for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {

@@ -47,6 +47,10 @@ BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y)
 
   [BXCocoaDevice->BXNSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
+  // update NSApp Icon
+  BXCocoaDevice->BXNSApp.applicationIconImage = (NSImage *) BXwindow->createIconXPM();
+
+
   id menubar = [[NSMenu new] autorelease];
   id appMenuItem = [[NSMenuItem new] autorelease];
   [menubar addItem:appMenuItem];
@@ -205,7 +209,7 @@ bool BXGuiCocoaDevice::hasKeyEvent() {
 /**
  * getKeyEvent forwarding
  */
-unsigned BXGuiCocoaDevice::getKeyEvent() {
+unsigned long BXGuiCocoaDevice::getKeyEvent() {
   return (BXwindow->getKeyEvent());
 }
 

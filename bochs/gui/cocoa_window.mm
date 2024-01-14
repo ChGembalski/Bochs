@@ -43,8 +43,8 @@
   - (instancetype)init;
   - (void)dealloc;
 
-  - (void)enqueue:(UInt32) value;
-  - (UInt32)dequeue;
+  - (void)enqueue:(UInt64) value;
+  - (UInt64)dequeue;
   - (BOOL)isEmpty;
 
 @end
@@ -74,14 +74,14 @@ NSMutableArray<NSNumber *> * queue;
   [super dealloc];
 }
 
-- (void)enqueue:(UInt32) value {
+- (void)enqueue:(UInt64) value {
   NSNumber *obj;
 
-  obj = [NSNumber numberWithUnsignedInteger:value];
+  obj = [NSNumber numberWithUnsignedLong:value];
   [queue addObject:obj];
 }
 
-- (UInt32)dequeue {
+- (UInt64)dequeue {
   NSNumber *obj;
 
   if ([queue count] == 0) {
@@ -95,7 +95,7 @@ NSMutableArray<NSNumber *> * queue;
   [[obj retain] autorelease];
   [queue removeObjectAtIndex:0];
 
-  return obj.unsignedIntValue;
+  return obj.unsignedLongValue;
 }
 
 - (BOOL)isEmpty {
@@ -112,6 +112,7 @@ NSMutableArray<NSNumber *> * queue;
   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
   - (void)dealloc;
 
+  - (NSImage *)createIconXPM;
   - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
   - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
   - (void)headerbarCreate;
@@ -125,7 +126,8 @@ NSMutableArray<NSNumber *> * queue;
   - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
   - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
   - (BOOL)hasKeyEvent;
-  - (unsigned)getKeyEvent;
+  - (UInt64)getKeyEvent;
+  - (void)mouseMoved:(NSEvent *)event;
   - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
 
 // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
@@ -170,6 +172,7 @@ BXNSEventQueue * BXEventQueue;
   [self center];
   [self setIsVisible:YES];
   [self makeKeyAndOrderFront:self];
+  [self setAcceptsMouseMovedEvents:YES];
   // [self makeFirstResponder: [self contentView] ];
 
 
@@ -203,7 +206,6 @@ BXNSEventQueue * BXEventQueue;
 
 - (void)keyDown:(NSEvent *)event {
 
-  // modifiers
   BXL_INFO(([NSString stringWithFormat:@"keyDown window event.keyCode=%x char=%c event.modifierFlags=%lx",
     event.keyCode,
     event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
@@ -211,59 +213,44 @@ BXNSEventQueue * BXEventQueue;
   ]));
   [BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
 
-
-
-
-
-
-  // UInt32 mdf;
-  //
-  // mdf = event.modifierFlags;
-  // BXL_INFO((@"event.modifierFlags"));
-  // print_buf_bits(&mdf, 1);
-
-  // NSString *chars;
-  //
-  // chars = event.charactersIgnoringModifiers;
-  // if (chars != nil) {
-  //   if (chars.length >0) {
-  //     unichar c = [event.characters characterAtIndex:0];
-      // [BXEventQueue enqueue:event.keyCode];
-  //   }
-  // }
-
-  // BXL_INFO(([NSString stringWithFormat:@"keyDown pressed window event.keyCode=%x char=%s", event.keyCode, event.charactersIgnoringModifiers]));
-  // unichar c = [event.characters characterAtIndex:0];
-  //
-  // [BXEventQueue enqueue:c];
-
 }
 
 - (void)keyUp:(NSEvent *)event {
-  // NSString *chars;
-  //
-  // chars = event.charactersIgnoringModifiers;
-  // if (chars != nil) {
-  //   if (chars.length >0) {
-  //     unichar c = [event.characters characterAtIndex:0];
-      // BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%c ascii=%x fake=%x", event.keyCode, c, c, (c-77)]));
-      BXL_INFO(([NSString stringWithFormat:@"keyUp window event.keyCode=%x char=%c event.modifierFlags=%lx",
-        event.keyCode,
-        event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
-        (unsigned long)event.modifierFlags
-      ]));
-      [BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
-      // [BXEventQueue enqueue:BX_KEY_RELEASED | event.keyCode];
-    // }
-  // }
+
+  BXL_INFO(([NSString stringWithFormat:@"keyUp window event.keyCode=%x char=%c event.modifierFlags=%lx",
+    event.keyCode,
+    event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+    (unsigned long)event.modifierFlags
+  ]));
+  [BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+
+}
+
+- (void)mouseMoved:(NSEvent *)event {
+  NSPoint mouseXY;
+  UInt64 evt;
+  NSUInteger mouseBTN;
+
+  mouseXY = event.locationInWindow;
+  mouseXY.y = self.BXVGA.height - (unsigned)mouseXY.y;
+  if (mouseXY.y < 0) {
+    return;
+  }
+  mouseBTN = [NSEvent pressedMouseButtons];
 
 
+  evt = (MACOS_NSEventModifierFlagMouse | ((mouseBTN & 0xFF) << 47) | ((UInt32)mouseXY.x << 24)) | (UInt32)mouseXY.y;
 
-  // BXL_INFO(([NSString stringWithFormat:@"keyUp pressed window event.keyCode=%x char=%s", event.keyCode, event.characters]));
-  // unichar c = [event.characters characterAtIndex:0];
-  //
-  // [BXEventQueue enqueue:BX_KEY_RELEASED | c];
+  BXL_INFO(([NSString stringWithFormat:@"mouseMoved x=%d y=%d btn=%x evt=%llx", (unsigned)mouseXY.x, (unsigned)mouseXY.y, ((unsigned int)mouseBTN & 0xFF), evt]));
+  [BXEventQueue enqueue:evt];
+}
 
+
+/**
+ * createIconXPM forwarding
+ */
+- (NSImage *)createIconXPM {
+  return [BXToolbar createIconXPM];
 }
 
 
@@ -360,7 +347,7 @@ BXNSEventQueue * BXEventQueue;
  * return the keyEvent
  * if none exist return 0
  */
-- (unsigned)getKeyEvent {
+- (UInt64)getKeyEvent {
   return [BXEventQueue dequeue];
 }
 
@@ -404,6 +391,9 @@ BXGuiCocoaWindow::~BXGuiCocoaWindow() {
   }
 }
 
+void * BXGuiCocoaWindow::createIconXPM(void) {
+  return (void *)[BXCocoaWindow->BXWindow createIconXPM];
+}
 /**
  * create_bitmap
  */
@@ -508,7 +498,7 @@ bool BXGuiCocoaWindow::hasKeyEvent() {
 /**
  * getKeyEvent
  */
-unsigned BXGuiCocoaWindow::getKeyEvent() {
+unsigned long BXGuiCocoaWindow::getKeyEvent() {
   return ([BXCocoaWindow->BXWindow getKeyEvent]);
 }
 

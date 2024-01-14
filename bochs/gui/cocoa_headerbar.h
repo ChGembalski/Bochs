@@ -62,6 +62,7 @@
     @property (nonatomic, readwrite) BOOL visible;
     - (instancetype)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
     - (void)dealloc;
+    - (NSImage *)createIconXPM;
     -(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
     -(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
     - (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;

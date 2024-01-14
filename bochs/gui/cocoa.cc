@@ -40,7 +40,6 @@
 // #include "iodev.h"
 
 #if BX_WITH_COCOA
-#include "icon_bochs.h"
 #include "font/vga.bitmap.h"
 
 #include "cocoa_device.h"
@@ -188,8 +187,9 @@ Bit32s scancode_tbl[] = {
 };
 
 
-#define MACOS_NSEventModifierFlagKeyUp      0x80000000
-#define MACOS_NSEventModifierFlagMask       0x7FFF0000
+#define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
+#define MACOS_NSEventModifierFlagMouse      0x4000000000000000
+#define MACOS_NSEventModifierFlagMask       0xFFFF0000
 #define MACOS_NSEventModifierFlagCapsLock   1 << 16
 #define MACOS_NSEventModifierFlagShift      1 << 17
 #define MACOS_NSEventModifierFlagControl    1 << 18
@@ -304,16 +304,11 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   put("COCOA");
   UNUSED(argc);
   UNUSED(argv);
-  // UNUSED(headerbar_y);
-
-  UNUSED(bochs_icon_bits);  // global variable of bochs icon
 
   BX_INFO(("bx_cocoa_gui_c::specific_init headerbar_y=%d", headerbar_y));
 
   BX_INFO(("bx_cocoa_gui_c::specific_init guest_textmode=%s guest_xres=%d guest_yres=%d guest_bpp=%d",
     guest_textmode?"YES":"NO", guest_xres, guest_yres, guest_bpp));
-
-  // use BOCHS_WINDOW_NAME as DLG Name
 
   // init device
   device = new BXGuiCocoaDevice(guest_xres, guest_yres, headerbar_y);
@@ -414,16 +409,30 @@ void bx_cocoa_gui_c::handle_events(void)
 {
     device->handle_events();
     if (device->hasKeyEvent()) {
-      Bit32u event;
+      Bit64u event;
       Bit32u scancode;
       Bit32u scanflags;
       bool released;
+      bool mouse;
 
       event = device->getKeyEvent();
+      mouse = (event & MACOS_NSEventModifierFlagMouse) == MACOS_NSEventModifierFlagMouse;
+      if (mouse) {
+        Bit32u mx;
+        Bit32u my;
+        Bit8u  mb;
+
+        mb = (event >> 47) & 0xFF;
+        mx = (event >> 24) & 0xFFFFFF;
+        my = event & 0xFFFFFF;
+        BX_INFO((">>> event mouse event=%lx x=%d y=%d", event, mx, my));
+        DEV_mouse_motion(mx, my, 0, mb, 1);
+        return;
+      }
       scanflags = event & MACOS_NSEventModifierFlagMask;
-      scancode = event & ~(MACOS_NSEventModifierFlagMask | MACOS_NSEventModifierFlagKeyUp);
+      scancode = event & ~MACOS_NSEventModifierFlagMask;
       released = (event & MACOS_NSEventModifierFlagKeyUp) == 0;
-      BX_INFO((">>> event %x scancode %x scanflags %x released %x", event, scancode, scanflags, released));
+      BX_INFO((">>> event %lx mouse %s scancode %x scanflags %x released %x", event, mouse?"YES":"NO", scancode, scanflags, released));
 
       if (scancode < 0x80) {
         BX_INFO(("scancode %x scanflags %x released %x", scancode, scanflags, released));
