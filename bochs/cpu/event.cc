@@ -182,7 +182,7 @@ void BX_CPU_C::HandleExtInterrupt(void)
 }
 
 #if BX_SUPPORT_SVM
-void BX_CPU_C::VirtualInterruptAcknowledge(void)
+void BX_CPU_C::SvmVirtualInterruptAcknowledge(void)
 {
   Bit8u vector = SVM_V_INTR_VECTOR;
 
@@ -262,12 +262,12 @@ bool BX_CPU_C::handleAsyncEvent(void)
   }
 
   if (is_unmasked_event_pending(BX_EVENT_INIT) && SVM_GIF) {
-    clear_event(BX_EVENT_INIT);
 #if BX_SUPPORT_SVM
     if (BX_CPU_THIS_PTR in_svm_guest) {
-      if (SVM_INTERCEPT(SVM_INTERCEPT0_INIT)) Svm_Vmexit(SVM_VMEXIT_INIT);
+      if (SVM_INTERCEPT(SVM_INTERCEPT0_INIT)) Svm_Vmexit(SVM_VMEXIT_INIT); // INIT is still pending
     }
 #endif
+    clear_event(BX_EVENT_INIT);
 #if BX_SUPPORT_VMX
     if (BX_CPU_THIS_PTR in_vmx_guest) {
       VMexit(VMX_VMEXIT_INIT, 0);
@@ -378,7 +378,7 @@ bool BX_CPU_C::handleAsyncEvent(void)
   else if (is_unmasked_event_pending(BX_EVENT_SVM_VIRQ_PENDING))
   {
     // virtual interrupt acknowledge
-    VirtualInterruptAcknowledge();
+    SvmVirtualInterruptAcknowledge();
   }
 #endif
   else if (BX_HRQ && BX_DBG_ASYNC_DMA) {
