@@ -186,13 +186,13 @@ unsigned last_rx;
   for (int row=8;row<32+8;row++) {
     const char * rowdata;
     rowdata = icon_bochs_xpm[row];
-    BXL_INFO(([NSString stringWithFormat:@"data row[%s]", rowdata]));
+    // BXL_INFO(([NSString stringWithFormat:@"data row[%s]", rowdata]));
     for(int col=0;col<32;col++) {
       UInt32 rgba;
       unsigned char c;
 
       c = rowdata[col];
-      BXL_INFO(([NSString stringWithFormat:@"data col[%c]", c]));
+      // BXL_INFO(([NSString stringWithFormat:@"data col[%c]", c]));
       switch(c) {
         case ' ': {
           rgba = 0x000000FF;
@@ -225,7 +225,7 @@ unsigned last_rx;
 
       // print_buf(&icon_bochs_xpm[row], 32);
 
-      BXL_INFO(([NSString stringWithFormat:@"IMAGE convert org y=%d x=%d c=%02x image y=%d x=%d ofs=%d col=%08x", row, col, c, (row-8), col, ((row-8)*32)+col, rgba]));
+      // BXL_INFO(([NSString stringWithFormat:@"IMAGE convert org y=%d x=%d c=%02x image y=%d x=%d ofs=%d col=%08x", row, col, c, (row-8), col, ((row-8)*32)+col, rgba]));
 
       ColorIcon[((row-8)*32)+col+1] = rgba >>24;
       ColorIcon[((row-8)*32)+col+2] = (rgba >>16) & 0xFF;

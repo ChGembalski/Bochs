@@ -96,34 +96,28 @@ static void print_buf_bits(const unsigned char *buf, size_t buf_len) {
   [super dealloc];
 }
 
-- (BOOL)acceptsFirstResponder
-{
-    return YES;
-};
+/**
+ * disable the mouse events on this view
+ * now window has control over the events
+ */
+- (NSView *)hitTest:(NSPoint)point {
+  return nil;
+}
 
-// - (void)keyDown:(NSEvent *)theEvent {
-//
-//   BXL_INFO(([NSString stringWithFormat:@"keyDown pressed VGA"]));
-//
+
+// - (void)mouseEvent: (NSButton*)button {
+//   BXL_INFO(([NSString stringWithFormat:@"mouseEvent pressed VGA"]));
 // }
 //
-// - (void)keyUp:(NSEvent *)event {
-//   BXL_INFO(([NSString stringWithFormat:@"keyUp pressed VGA"]));
+// - (void) mouseDown:(NSEvent*)event {
+//   BXL_INFO(([NSString stringWithFormat:@"mouseDown pressed VGA"]));
 // }
-
-- (void)mouseEvent: (NSButton*)button {
-  BXL_INFO(([NSString stringWithFormat:@"mouseEvent pressed VGA"]));
-}
-
-- (void) mouseDown:(NSEvent*)event {
-  BXL_INFO(([NSString stringWithFormat:@"mouseDown pressed VGA"]));
-}
-- (void) mouseDragged:(NSEvent*)event {
-  BXL_INFO(([NSString stringWithFormat:@"mouseDragged pressed VGA"]));
-}
-- (void) mouseUp:(NSEvent*)event {
-  BXL_INFO(([NSString stringWithFormat:@"mouseUp pressed VGA"]));
-}
+// - (void) mouseDragged:(NSEvent*)event {
+//   BXL_INFO(([NSString stringWithFormat:@"mouseDragged pressed VGA"]));
+// }
+// - (void) mouseUp:(NSEvent*)event {
+//   BXL_INFO(([NSString stringWithFormat:@"mouseUp pressed VGA"]));
+// }
 
 // -(void)mouseEntered:(NSEvent *)theEvent {
 //     BXL_INFO((@"Mouse entered"));
@@ -387,7 +381,7 @@ BXVGAImageView * imgview;
   // Font format
   // 8bit hi 8bit lo - repeated h times
 
-  BXL_INFO(([NSString stringWithFormat:@"updateFontAt pos=%d data=%p font_width=%d font_height=%d", pos, data, self.font_width, self.font_height]));
+  BXL_DEBUG(([NSString stringWithFormat:@"updateFontAt pos=%d data=%p font_width=%d font_height=%d", pos, data, self.font_width, self.font_height]));
 
   selectedFont = font2 ? self.FontB : self.FontA;
   selectedChar = &selectedFont[pos * CHARACTER_WORDS];

@@ -44,6 +44,12 @@
     void handle_events();
     void run_terminate();
 
+    void showAlertMessage(const char *msg, const char type);
+
+    void captureMouse(bool cap, unsigned x, unsigned y);
+    void captureMouse(unsigned x, unsigned y);
+    bool hasMouseCapture();
+
     unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
     unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
     void show_headerbar(void);
@@ -55,8 +61,9 @@
     void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
     void set_font(bool font2, unsigned pos, unsigned char *charmap);
     void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
-    bool hasKeyEvent();
-    unsigned long getKeyEvent();
+    bool hasEvent();
+    void setEventMouseABS(bool abs);
+    unsigned long getEvent();
     void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
 
   };

@@ -373,8 +373,8 @@
 // Roland Mainz's idle hack is presently specific to X11. If people try to
 // enable it elsewhere, give a compile error so that they don't waste their
 // time trying.
-#if (BX_USE_IDLE_HACK && !BX_WITH_X11 && !BX_WITH_TERM)
-#  error IDLE_HACK will only work with the X11 or term gui. Correct configure args and retry.
+#if (BX_USE_IDLE_HACK && !BX_WITH_X11 && !BX_WITH_TERM && !BX_WITH_COCOA)
+#  error IDLE_HACK will only work with the X11, term or Cocoa gui. Correct configure args and retry.
 #endif
 
 #define WORDS_BIGENDIAN 0

@@ -40,6 +40,7 @@ struct BXGuiCocoaDeviceImpl {
  * BXGuiCocoaDevice CTor
  */
 BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y) : BXCocoaDevice(new BXGuiCocoaDeviceImpl) {
+
   BXCocoaDevice->BXNSApp = [NSApplication sharedApplication];
   // create main window
   BXwindow = new BXGuiCocoaWindow(x, y, headerbar_y);
@@ -48,7 +49,7 @@ BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y)
   [BXCocoaDevice->BXNSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
   // update NSApp Icon
-  BXCocoaDevice->BXNSApp.applicationIconImage = (NSImage *) BXwindow->createIconXPM();
+  BXCocoaDevice->BXNSApp.applicationIconImage = nil;//(NSImage *) BXwindow->createIconXPM();
 
 
   id menubar = [[NSMenu new] autorelease];
@@ -67,6 +68,10 @@ BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y)
   [appMenuItem setSubmenu:appMenu];
 
   // TODO : need a icon ...
+
+
+
+
 }
 
 /**
@@ -121,6 +126,37 @@ void BXGuiCocoaDevice::run_terminate() {
   }
   [BXCocoaDevice->BXNSApp terminate:nil];
 }
+
+/**
+ * showAlertMessage forwarding
+ */
+void BXGuiCocoaDevice::showAlertMessage(const char *msg, const char type) {
+  BXwindow->showAlertMessage(msg, type);
+}
+
+/**
+ * captureMouse forwarding
+ */
+void BXGuiCocoaDevice::captureMouse(bool cap, unsigned x, unsigned y) {
+  BXwindow->captureMouse(cap, x, y);
+}
+
+/**
+ * captureMouse forwarding
+ */
+void BXGuiCocoaDevice::captureMouse(unsigned x, unsigned y) {
+  BXwindow->captureMouse(x, y);
+}
+
+/**
+ * hasMouseCapture forwarding
+ */
+bool BXGuiCocoaDevice::hasMouseCapture() {
+  return (BXwindow->hasMouseCapture());
+}
+
+
+
 
 /**
  * create_bitmap forwarding
@@ -200,17 +236,24 @@ void BXGuiCocoaDevice::draw_char(bool crsr, bool font2, unsigned char fgcolor, u
 }
 
 /**
- * hasKeyEvent forwarding
+ * hasEvent forwarding
  */
-bool BXGuiCocoaDevice::hasKeyEvent() {
-  return (BXwindow->hasKeyEvent());
+bool BXGuiCocoaDevice::hasEvent() {
+  return (BXwindow->hasEvent());
 }
 
 /**
- * getKeyEvent forwarding
+ * setEventMouseABS forwarding
  */
-unsigned long BXGuiCocoaDevice::getKeyEvent() {
-  return (BXwindow->getKeyEvent());
+void BXGuiCocoaDevice::setEventMouseABS(bool abs) {
+  BXwindow->setEventMouseABS(abs);
+}
+
+/**
+ * getEvent forwarding
+ */
+unsigned long BXGuiCocoaDevice::getEvent() {
+  return (BXwindow->getEvent());
 }
 
 /**

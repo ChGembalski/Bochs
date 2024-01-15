@@ -30,6 +30,10 @@
   #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
   #define MACOS_NSEventModifierFlagMouse      0x4000000000000000
 
+  #define BX_ALERT_MSG_STYLE_INFO             1
+  #define BX_ALERT_MSG_STYLE_WARN             2
+  #define BX_ALERT_MSG_STYLE_CRIT             3
+
   struct BXGuiCocoaWindowImpl;
 
   class BXGuiCocoaWindow {
@@ -40,6 +44,12 @@
   public:
     BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y);
     ~BXGuiCocoaWindow();
+
+    void showAlertMessage(const char *msg, const char type);
+
+    void captureMouse(bool cap, unsigned x, unsigned y);
+    void captureMouse(unsigned x, unsigned y);
+    bool hasMouseCapture();
 
     void * createIconXPM(void);
     unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
@@ -53,8 +63,9 @@
     void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
     void set_font(bool font2, unsigned pos, unsigned char *charmap);
     void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
-    bool hasKeyEvent();
-    unsigned long getKeyEvent();
+    bool hasEvent();
+    void setEventMouseABS(bool abs);
+    unsigned long getEvent();
     void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
 
   };
