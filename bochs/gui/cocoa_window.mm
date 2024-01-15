@@ -114,6 +114,8 @@ NSMutableArray<NSNumber *> * queue;
   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
   - (void)dealloc;
 
+  - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
+
   - (void)showAlertMessage:(const char *) msg style:(const char) type;
 
   - (void)captureMouse:(BOOL) grab;
@@ -384,8 +386,36 @@ BXNSEventQueue * BXEventQueue;
 
 }
 
+/**
+ * getMaxScreenResolution
+ */
+- (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h {
 
+  NSArray * screens;
 
+  screens = [NSScreen screens];
+
+  [screens enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
+
+    NSScreen * screen;
+    NSRect frame;
+    NSInteger sBpp;
+
+    screen = [screens objectAtIndex: idx];
+    frame = [screen visibleFrame];
+    sBpp = NSBitsPerPixelFromDepth(screen.depth);
+
+    if (((unsigned int)frame.size.width > *w) | ((unsigned int)frame.size.height > *h) | (sBpp > *bpp)) {
+      *bpp = (unsigned char)sBpp;
+      *w = (unsigned int)frame.size.width;
+      *h = (unsigned int)frame.size.height;
+    }
+
+  }];
+
+  BXL_DEBUG(([NSString stringWithFormat:@"ScreenResolution bpp=%d width=%d height=%d", *bpp, *w, *h]));
+
+}
 
 
 
@@ -524,9 +554,6 @@ struct BXGuiCocoaWindowImpl {
  */
 BXGuiCocoaWindow::BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y) : BXCocoaWindow(new BXGuiCocoaWindowImpl) {
   BXCocoaWindow->BXWindow = [[[BXGuiCocoaNSWindow alloc] init:headerbar_y VGAsize:NSMakeSize(x, y)] autorelease];
-  // [BXCocoaWindow->BXWindow makeKeyWindow];
-  // [self makeMainWindow];
-
 }
 
 /**
@@ -534,10 +561,17 @@ BXGuiCocoaWindow::BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y)
  */
 BXGuiCocoaWindow::~BXGuiCocoaWindow() {
   if (BXCocoaWindow) {
-    // [BXCocoaWindow->BXWindow release];
     [BXCocoaWindow->BXWindow performClose:nil];
   }
 }
+
+/**
+ * getScreenConfiguration
+ */
+void BXGuiCocoaWindow::getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp) {
+  [BXCocoaWindow->BXWindow getMaxScreenResolution:bpp width:width height:height];
+}
+
 
 /**
  * showAlertMessage

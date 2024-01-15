@@ -313,6 +313,8 @@ static BxEvent * notify_callback_xtd(void *unused, BxEvent *event) {
 
 void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 {
+  Bit8u max_bpp;
+
   put("COCOA");
   UNUSED(argc);
   UNUSED(argv);
@@ -328,6 +330,9 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   // init device
   device = new BXGuiCocoaDevice(guest_xres, guest_yres, headerbar_y);
+
+  // setup screen
+  device->getScreenConfiguration(&max_xres, &max_yres, &max_bpp);
 
   // setup mouse handling
   device->setEventMouseABS(cocoa_mouse_mode_absxy);

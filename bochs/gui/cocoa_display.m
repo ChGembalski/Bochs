@@ -512,8 +512,14 @@ BXVGAImageView * imgview;
   unsigned char * srcMemory;
 
   // do not allow write outside screen
-  NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"clipRegion x out of range [%d]", ((unsigned)rect.origin.x + (unsigned)rect.size.width));
-  NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"clipRegion y out of range [%d]", ((unsigned)rect.origin.y + (unsigned)rect.size.height));
+  if (((unsigned)rect.origin.x + (unsigned)rect.size.width) > self.width) {
+    return;
+  }
+  if (((unsigned)rect.origin.y + (unsigned)rect.size.height) > self.height) {
+    return;
+  }
+  NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"clipRegion x out of range max[%d] is[%d]", self.width, ((unsigned)rect.origin.x + (unsigned)rect.size.width));
+  NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"clipRegion y out of range max[%d] is[%d]", self.height, ((unsigned)rect.origin.y + (unsigned)rect.size.height));
 
 
   if (self.bitsPerComponent == 8) {

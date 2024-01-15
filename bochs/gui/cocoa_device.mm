@@ -127,6 +127,17 @@ void BXGuiCocoaDevice::run_terminate() {
   [BXCocoaDevice->BXNSApp terminate:nil];
 }
 
+
+/**
+ * getScreenConfiguration
+ */
+void BXGuiCocoaDevice::getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp) {
+  BXwindow->getScreenConfiguration(width, height, bpp);
+}
+
+
+
+
 /**
  * showAlertMessage forwarding
  */

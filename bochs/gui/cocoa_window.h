@@ -45,6 +45,8 @@
     BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y);
     ~BXGuiCocoaWindow();
 
+    void getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp);
+
     void showAlertMessage(const char *msg, const char type);
 
     void captureMouse(bool cap, unsigned x, unsigned y);
