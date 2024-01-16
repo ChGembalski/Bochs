@@ -27,10 +27,37 @@
 
   #define BX_GUI_COCOA_DISPLAY_H
 
-  @interface BXVGAImageView : NSImageView
+  @interface BXVGATile : NSImage
+    @property (nonatomic, readwrite) BOOL isDirty;
+    @property (nonatomic, readwrite) NSPoint XY;
+    @property (nonatomic, readwrite) UInt32 crc;
 
-    - (instancetype)initWithFrame:(NSRect)frameRect;
+    - (instancetype)initWithSize:(NSSize)size;
+    - (instancetype)initWithCGImage:(CGImageRef)cgImage size:(NSSize)size crc:(UInt32) crc32;
     - (void)dealloc;
+
+  @end
+
+  @interface BXVGAImageView : NSView
+    @property (nonatomic, readwrite) unsigned columns;
+    @property (nonatomic, readwrite) unsigned rows;
+    @property (nonatomic, readwrite) NSSize tileSize;
+    @property (nonatomic, readwrite) BOOL fullRedraw;
+    @property (nonatomic, readwrite, assign) NSColor *fullRedrawColor;
+    @property (nonatomic, readwrite) unsigned bpp;
+    @property (nonatomic, readwrite) unsigned stride;
+    @property (nonatomic, readwrite) unsigned bitsPerComponent;
+    @property (nonatomic, readonly, getter=hasUpdate) BOOL hasUpdate;
+
+    - (instancetype)initWithFrame:(NSRect) frameRect col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
+    - (void)dealloc;
+    - (BOOL)hasUpdate;
+    - (void)updateWithFrame:(NSSize) frameSize col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
+    - (void)constructArray:(unsigned)h width:(unsigned) w;
+    - (void)clearCache;
+    - (void)cacheFullRedraw;
+    - (void)updateTile:(BXVGATile *) tile x:(unsigned) col y:(unsigned) row;
+    - (void)updateTileCFData:(CFMutableDataRef) cfRef colorspace:(CGColorSpaceRef) csRef xpos:(unsigned) x ypos:(unsigned) y;
 
   @end
 
@@ -42,7 +69,7 @@
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
-    @property (nonatomic, readwrite) unsigned char * screen;
+    // @property (nonatomic, readwrite) unsigned char * screen;
     @property (nonatomic, readwrite) unsigned char * palette;
     @property (nonatomic, readwrite) unsigned palette_size;
     @property (nonatomic, readwrite) BOOL dirty;

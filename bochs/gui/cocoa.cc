@@ -365,7 +365,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
     BX_INFO(("private_colormap option ignored."));
   }
 
-  // new_gfx_api = 1;
+  new_gfx_api = 0;
   new_text_api = 1;
 
   // dialog_caps = BX_GUI_DLG_ALL;
@@ -734,12 +734,42 @@ void bx_cocoa_gui_c::exit(void)
 bx_svga_tileinfo_t * bx_cocoa_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info) {
   BX_INFO(("bx_cocoa_gui_c::graphics_tile_info"));
 
-  return NULL;
+  // info->bpp = ximage->bits_per_pixel;
+  // info->pitch = ximage->bytes_per_line;
+  // info->red_shift = 0;
+  // info->green_shift = 0;
+  // info->blue_shift = 0;
+  // info->red_mask = ximage->red_mask;
+  // info->green_mask = ximage->green_mask;
+  // info->blue_mask = ximage->blue_mask;
+  // info->is_indexed = (default_visual->c_class != TrueColor) &&
+  //                    (default_visual->c_class != DirectColor);
+  // info->is_little_endian = (ximage->byte_order == LSBFirst);
+
+
+  return info;
 }
 
 
 Bit8u * bx_cocoa_gui_c::graphics_tile_get(unsigned x, unsigned y, unsigned *w, unsigned *h) {
   BX_INFO(("bx_cocoa_gui_c::graphics_tile_get x=%d y=%d w=%d h=%d", x, y, *w, *h));
+
+  // if (x0+x_tilesize > dimension_x) {
+  //   *w = dimension_x - x0;
+  // }
+  // else {
+  //   *w = x_tilesize;
+  // }
+  //
+  // if (y0+y_tilesize > dimension_y) {
+  //   *h = dimension_y - y0;
+  // }
+  // else {
+  //   *h = y_tilesize;
+  // }
+  //
+  // return (Bit8u *)ximage->data + ximage->xoffset*ximage->bits_per_pixel/8;
+
 
   return NULL;
 }
@@ -747,6 +777,8 @@ Bit8u * bx_cocoa_gui_c::graphics_tile_get(unsigned x, unsigned y, unsigned *w, u
 
 void bx_cocoa_gui_c::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
   BX_INFO(("bx_cocoa_gui_c::graphics_tile_update_in_place x=%d y=%d w=%d h=%d", x, y, w, h));
+  // XPutImage(bx_x_display, win, gc, ximage, 0, 0,
+  //           x0, y0+bx_headerbar_y, w, h);
 }
 
 
