@@ -78,14 +78,14 @@ BXGuiCocoaDevice::BXGuiCocoaDevice(unsigned x, unsigned y, unsigned headerbar_y)
  * BXGuiCocoaDevice DTor
  */
 BXGuiCocoaDevice::~BXGuiCocoaDevice() {
-
-  if (BXwindow) {
-    delete BXwindow;
+  @autoreleasepool {
+    if (BXwindow) {
+      delete BXwindow;
+    }
+    if (BXCocoaDevice) {
+      [BXCocoaDevice->BXNSApp release];
+    }
   }
-  if (BXCocoaDevice) {
-    [BXCocoaDevice->BXNSApp release];
-  }
-
 }
 
 /**
@@ -118,13 +118,15 @@ void BXGuiCocoaDevice::handle_events() {
  * hopefully cleanup
  */
 void BXGuiCocoaDevice::run_terminate() {
-  BXL_DEBUG((@"NSApp terminate"));
-  // close all windows
-  if (BXwindow) {
-    delete BXwindow;
-    BXwindow = NULL;
+  @autoreleasepool {
+    BXL_DEBUG((@"NSApp terminate"));
+    // close all windows
+    if (BXwindow) {
+      delete BXwindow;
+      BXwindow = NULL;
+    }
+    [BXCocoaDevice->BXNSApp terminate:nil];
   }
-  [BXCocoaDevice->BXNSApp terminate:nil];
 }
 
 
@@ -201,7 +203,9 @@ void BXGuiCocoaDevice::dimension_update(unsigned x, unsigned y, unsigned fwidth,
  * render forwarding
  */
 void BXGuiCocoaDevice::render(void) {
-  BXwindow->render();
+  @autoreleasepool {
+    BXwindow->render();
+  }
 }
 
 /**
@@ -243,7 +247,9 @@ void BXGuiCocoaDevice::set_font(bool font2, unsigned pos, unsigned char *charmap
  * draw_char forwarding
  */
 void BXGuiCocoaDevice::draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
-  BXwindow->draw_char(crsr, font2, fgcolor, bgcolor, charpos, x, y, w, h);
+  @autoreleasepool {
+    BXwindow->draw_char(crsr, font2, fgcolor, bgcolor, charpos, x, y, w, h);
+  }
 }
 
 /**

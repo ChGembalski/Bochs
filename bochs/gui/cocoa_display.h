@@ -42,8 +42,8 @@
     @property (nonatomic, readwrite) unsigned columns;
     @property (nonatomic, readwrite) unsigned rows;
     @property (nonatomic, readwrite) NSSize tileSize;
-    @property (nonatomic, readwrite) BOOL fullRedraw;
-    @property (nonatomic, readwrite, assign) NSColor *fullRedrawColor;
+    // @property (nonatomic, readwrite) BOOL fullRedraw;
+    // @property (nonatomic, readwrite, assign) NSColor *fullRedrawColor;
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
@@ -56,8 +56,9 @@
     - (void)constructArray:(unsigned)h width:(unsigned) w;
     - (void)clearCache;
     - (void)cacheFullRedraw;
+    - (void)cacheRender;
     - (void)updateTile:(BXVGATile *) tile x:(unsigned) col y:(unsigned) row;
-    - (void)updateTileCFData:(CFMutableDataRef) cfRef colorspace:(CGColorSpaceRef) csRef xpos:(unsigned) x ypos:(unsigned) y;
+    - (void)updateTileCFData:(CFMutableDataRef) cfRef DataRefSize:(unsigned) cfSize colorspace:(CGColorSpaceRef) csRef xpos:(unsigned) x ypos:(unsigned) y;
 
   @end
 
