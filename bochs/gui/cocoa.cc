@@ -201,6 +201,8 @@ Bit32s scancode_tbl[] = {
 #define MACOS_NSEventModifierFlagFunction   1 << 23
 
 
+#define LOG_THIS theGui->
+
 
 BXGuiCocoaDevice * device;
 
@@ -248,8 +250,6 @@ public:
 // plugin code
 static bx_cocoa_gui_c *theGui = NULL;
 IMPLEMENT_GUI_PLUGIN_CODE(cocoa)
-
-#define LOG_THIS theGui->
 
 // This file defines stubs for the GUI interface, which is a
 // place to start if you want to port bochs to a platform, for
@@ -426,10 +426,6 @@ void bx_cocoa_gui_c::text_update(Bit8u *old_text, Bit8u *new_text,
 
 void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 {
-  // UNUSED(tile);
-  // UNUSED(x0);
-  // UNUSED(y0);
-  // BX_INFO(("bx_cocoa_gui_c::graphics_tile_update x0=%d y0=%d x_tilesize=%d y_tilesize=%d", x0, y0, x_tilesize, y_tilesize));
   device->graphics_tile_update(tile, x0, y0, x_tilesize, y_tilesize);
 }
 

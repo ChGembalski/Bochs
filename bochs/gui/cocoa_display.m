@@ -191,6 +191,7 @@ BOOL VGAdisplayBufferChanged;
   CGColorSpaceRelease(colorspace);
 
   VGAdisplayBufferChanged = YES;
+  [self setNeedsDisplay:YES];
 
 }
 
@@ -336,8 +337,6 @@ BXVGAImageView * imgview;
   }
 
   [imgview renderVGAdisplay:self.palette size:self.palette_size];
-
-  [imgview setNeedsDisplay:YES];
 
   self.dirty = NO;
 
@@ -529,95 +528,94 @@ BXVGAImageView * imgview;
  */
 - (void)clipRegion:(unsigned char *) src position:(NSRect) rect {
 
-BXL_INFO(([NSString stringWithFormat:@"clipRegion src=%p x=%d y=%d w=%d h=%d", src, (unsigned)rect.origin.x, (unsigned)rect.origin.y, (unsigned)rect.size.width, (unsigned)rect.size.height]));
-  // unsigned screenStartY;
-  // unsigned screenStartXbytes;
-  // unsigned screenStartXbits;
-  // unsigned char noOfComponents;
-  // unsigned char vgaAccessMode;
-  // unsigned blitMaxHeight;
-  // unsigned char * srcMemory;
-  //
-  // // do not allow write outside screen
-  // if (((unsigned)rect.origin.x + (unsigned)rect.size.width) > self.width) {
-  //   return;
-  // }
-  // if (((unsigned)rect.origin.y + (unsigned)rect.size.height) > self.height) {
-  //   return;
-  // }
-  // NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"clipRegion x out of range max[%d] is[%d]", self.width, ((unsigned)rect.origin.x + (unsigned)rect.size.width));
-  // NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"clipRegion y out of range max[%d] is[%d]", self.height, ((unsigned)rect.origin.y + (unsigned)rect.size.height));
-  //
-  //
-  // if (self.bitsPerComponent == 8) {
-  //   noOfComponents = self.bpp / self.bitsPerComponent;
-  //   screenStartXbytes = ((unsigned)rect.origin.x) * noOfComponents;
-  //   screenStartXbits = 0;
-  //   vgaAccessMode = noOfComponents >= 3 ? VGA_ACCESS_MODE_DWORD : noOfComponents;
-  // } else {
-  //   noOfComponents = 0;
-  //   screenStartXbits = 0;
-  //   NSAssert(NO, @"Not yet implemented.");
-  // }
-  //
-  // // font height only set in text mode !!!
-  // blitMaxHeight = (unsigned)rect.size.height;
-  // //((unsigned)rect.size.height > self.font_height) ? self.font_height : (unsigned)rect.size.height;
-  //
-  // BXL_DEBUG(([NSString stringWithFormat:@"clipRegion vgaAccessMode=%d blitMaxHeight=%d font_height=%d", vgaAccessMode, blitMaxHeight, self.font_height]));
-  //
-  // // depending on bpp <=8 <=16 <=32 - different access to screen memory
-  // switch (vgaAccessMode) {
-  //   case VGA_ACCESS_MODE_BYTE: {
-  //
-  //     // print_buf(src, ((unsigned)rect.size.width * (unsigned)rect.size.height));
-  //     // NSAssert(NO, @"Not yet implemented.");
-  //
-  //     // unsigned short int maskend;
-  //     unsigned char * screenMemory;
-  //     //
-  //     // maskend = VGA_WORD_BIT_MASK>>(unsigned)rect.size.width;
-  //     srcMemory = src;
-  //     //
-  //     for (unsigned blitRow=0; blitRow<blitMaxHeight; blitRow++) {
-  //     //
-  //     //   unsigned short int mask;
-  //     //
-  //       screenStartY = (((unsigned)(rect.origin.y) + blitRow) * self.stride);
-  //       screenMemory = (unsigned char *)(self.screen + screenStartY + screenStartXbytes);
-  //
-  //       // first try memcopy
-  //       memcpy((void *)screenMemory, srcMemory, (unsigned)rect.size.width * sizeof(unsigned char));
-  //       // memset((void *)screenMemory, 0x34, (unsigned)rect.size.width * sizeof(unsigned char));
-  //
-  //     //
-  //     //   // each bit of selectedChar
-  //     //   for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {
-  //     //     if ((*selectedChar & mask) | crsr) {
-  //     //       *screenMemory = fg;
-  //     //     } else {
-  //     //       *screenMemory = bg;
-  //     //     }
-  //     //     screenMemory++;
-  //     //   }
-  //     //
-  //       srcMemory += (unsigned)rect.size.width;
-  //     //
-  //     }
-  //
-  //     break;
-  //   }
-  //   case VGA_ACCESS_MODE_WORD: {
-  //     NSAssert(NO, @"Not yet implemented.");
-  //     break;
-  //   }
-  //   case VGA_ACCESS_MODE_DWORD: {
-  //     NSAssert(NO, @"Not yet implemented.");
-  //     break;
-  //   }
-  // }
-  //
-  // self.dirty = YES;
+// BXL_INFO(([NSString stringWithFormat:@"clipRegion src=%p x=%d y=%d w=%d h=%d", src, (unsigned)rect.origin.x, (unsigned)rect.origin.y, (unsigned)rect.size.width, (unsigned)rect.size.height]));
+  unsigned screenStartY;
+  unsigned screenStartXbytes;
+  unsigned screenStartXbits;
+  unsigned char noOfComponents;
+  unsigned char vgaAccessMode;
+  unsigned blitMaxHeight;
+  unsigned char * srcMemory;
+
+  // do not allow write outside screen
+  if (((unsigned)rect.origin.x + (unsigned)rect.size.width) > self.width) {
+    return;
+  }
+  if (((unsigned)rect.origin.y + (unsigned)rect.size.height) > self.height) {
+    return;
+  }
+  NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"clipRegion x out of range max[%d] is[%d]", self.width, ((unsigned)rect.origin.x + (unsigned)rect.size.width));
+  NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"clipRegion y out of range max[%d] is[%d]", self.height, ((unsigned)rect.origin.y + (unsigned)rect.size.height));
+
+
+  if (self.bitsPerComponent == 8) {
+    noOfComponents = self.bpp / self.bitsPerComponent;
+    screenStartXbytes = ((unsigned)rect.origin.x) * noOfComponents;
+    screenStartXbits = 0;
+    vgaAccessMode = noOfComponents >= 3 ? VGA_ACCESS_MODE_DWORD : noOfComponents;
+  } else {
+    noOfComponents = 0;
+    screenStartXbits = 0;
+    NSAssert(NO, @"Not yet implemented.");
+  }
+
+  // font height only set in text mode !!!
+  blitMaxHeight = (unsigned)rect.size.height;
+
+  BXL_DEBUG(([NSString stringWithFormat:@"clipRegion vgaAccessMode=%d blitMaxHeight=%d font_height=%d", vgaAccessMode, blitMaxHeight, self.font_height]));
+
+  // depending on bpp <=8 <=16 <=32 - different access to screen memory
+  switch (vgaAccessMode) {
+    case VGA_ACCESS_MODE_BYTE: {
+
+      // print_buf(src, ((unsigned)rect.size.width * (unsigned)rect.size.height));
+      // NSAssert(NO, @"Not yet implemented.");
+
+      // unsigned short int maskend;
+      unsigned char * screenMemory;
+      //
+      // maskend = VGA_WORD_BIT_MASK>>(unsigned)rect.size.width;
+      srcMemory = src;
+      //
+      for (unsigned blitRow=0; blitRow<blitMaxHeight; blitRow++) {
+      //
+      //   unsigned short int mask;
+      //
+        screenStartY = (((unsigned)(rect.origin.y) + blitRow) * self.stride);
+        screenMemory = (unsigned char *)(imgview.VGAdisplay + screenStartY + screenStartXbytes);
+
+        // first try memcopy
+        memcpy((void *)screenMemory, srcMemory, (unsigned)rect.size.width * sizeof(unsigned char));
+        // memset((void *)screenMemory, 0x34, (unsigned)rect.size.width * sizeof(unsigned char));
+
+      //
+      //   // each bit of selectedChar
+      //   for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {
+      //     if ((*selectedChar & mask) | crsr) {
+      //       *screenMemory = fg;
+      //     } else {
+      //       *screenMemory = bg;
+      //     }
+      //     screenMemory++;
+      //   }
+      //
+        srcMemory += (unsigned)rect.size.width;
+      //
+      }
+
+      break;
+    }
+    case VGA_ACCESS_MODE_WORD: {
+      NSAssert(NO, @"Not yet implemented.");
+      break;
+    }
+    case VGA_ACCESS_MODE_DWORD: {
+      NSAssert(NO, @"Not yet implemented.");
+      break;
+    }
+  }
+
+  self.dirty = YES;
 
 
 }

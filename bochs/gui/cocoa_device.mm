@@ -291,7 +291,9 @@ unsigned long BXGuiCocoaDevice::getEvent() {
  * graphics_tile_update forwarding
  */
 void BXGuiCocoaDevice::graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h) {
-  BXwindow->graphics_tile_update(tile, x, y, w, h);
+  @autoreleasepool {
+    BXwindow->graphics_tile_update(tile, x, y, w, h);
+  }
 }
 
 
