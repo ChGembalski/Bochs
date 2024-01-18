@@ -1222,8 +1222,6 @@ void bx_gui_c::text_update_common(Bit8u *old_text, Bit8u *new_text,
       blink_mode = (tm_info->blink_flags & BX_TEXT_BLINK_MODE) > 0;
       blink_state = (tm_info->blink_flags & BX_TEXT_BLINK_STATE) > 0;
       if (blink_mode) {
-        if (tm_info->blink_flags & BX_TEXT_BLINK_TOGGLE)
-          forceUpdate = 1;
         if (!blink_state) cursor_visible = 0;
       }
       if (BX_GUI_THIS charmap_updated) {
@@ -1253,8 +1251,10 @@ void bx_gui_c::text_update_common(Bit8u *old_text, Bit8u *new_text,
     text_cols = BX_GUI_THIS guest_xres / BX_GUI_THIS guest_fwidth;
     if (cursor_visible) {
       curs = cursor_address;
+      cursor_off_address = 0xffff;
     } else {
       curs = 0xffff;
+      cursor_off_address = cursor_address;
     }
     if (tm_info->line_compare < 0x3ff) {
       split_textrow = (tm_info->line_compare + tm_info->v_panning) / BX_GUI_THIS guest_fheight;
@@ -1308,7 +1308,9 @@ void bx_gui_c::text_update_common(Bit8u *old_text, Bit8u *new_text,
           }
         }
         // check if char needs to be updated
-        if (forceUpdate || (new_text[0] != old_text[0]) ||
+        if (forceUpdate ||
+            (offset == curs) || (offset == cursor_off_address) ||
+            (new_text[0] != old_text[0]) ||
             (new_text[1] != old_text[1])) {
           fgcolor = tm_info->actl_palette[new_text[1] & 0x0f];
           if (blink_mode) {

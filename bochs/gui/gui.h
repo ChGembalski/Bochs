@@ -306,6 +306,7 @@ protected:
   // new text update API
   bool new_text_api;
   Bit16u cursor_address;
+  Bit16u cursor_off_address;
   bx_vga_tminfo_t tm_info;
   // maximum guest display size and tile size
   unsigned max_xres;
