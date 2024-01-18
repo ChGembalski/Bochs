@@ -134,7 +134,9 @@ void BXGuiCocoaDevice::run_terminate() {
  * getScreenConfiguration
  */
 void BXGuiCocoaDevice::getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp) {
-  BXwindow->getScreenConfiguration(width, height, bpp);
+  @autoreleasepool {
+    BXwindow->getScreenConfiguration(width, height, bpp);
+  }
 }
 
 
@@ -196,7 +198,9 @@ void BXGuiCocoaDevice::show_headerbar(void) {
  * dimension_update forwarding
  */
 void BXGuiCocoaDevice::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
-  BXwindow->dimension_update(x, y, fwidth, fheight, bpp);
+  @autoreleasepool {
+    BXwindow->dimension_update(x, y, fwidth, fheight, bpp);
+  }
 }
 
 /**
@@ -212,35 +216,45 @@ void BXGuiCocoaDevice::render(void) {
  * palette_change forwarding
  */
 bool BXGuiCocoaDevice::palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue) {
-  return (BXwindow->palette_change(index, red, green, blue));
+  @autoreleasepool {
+    return (BXwindow->palette_change(index, red, green, blue));
+  }
 }
 
 /**
  * clear_screen forwarding
  */
 void BXGuiCocoaDevice::clear_screen(void) {
-  BXwindow->clear_screen();
+  @autoreleasepool {
+    BXwindow->clear_screen();
+  }
 }
 
 /**
  * replace_bitmap forwarding
  */
 void BXGuiCocoaDevice::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
-  BXwindow->replace_bitmap(hbar_id, bmap_id);
+  @autoreleasepool {
+    BXwindow->replace_bitmap(hbar_id, bmap_id);
+  }
 }
 
 /**
  * setup_charmap forwarding
  */
 void BXGuiCocoaDevice::setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h) {
-  BXwindow->setup_charmap(charmapA, charmapB, w, h);
+  @autoreleasepool {
+    BXwindow->setup_charmap(charmapA, charmapB, w, h);
+  }
 }
 
 /**
  * set_font
  */
 void BXGuiCocoaDevice::set_font(bool font2, unsigned pos, unsigned char *charmap) {
-  BXwindow->set_font(font2, pos, charmap);
+  @autoreleasepool {
+    BXwindow->set_font(font2, pos, charmap);
+  }
 }
 
 /**

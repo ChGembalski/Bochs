@@ -858,7 +858,7 @@ void bx_cocoa_gui_c::set_mouse_mode_absxy(bool mode) {
 
 BxEvent * bx_cocoa_gui_c::notify_callback(void *unused, BxEvent *event) {
 
-  bx_param_c *param;
+  // bx_param_c *param;
 
   switch (event->type) {
     case BX_SYNC_EVT_MSG_BOX: {

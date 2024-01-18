@@ -27,38 +27,24 @@
 
   #define BX_GUI_COCOA_DISPLAY_H
 
-  @interface BXVGATile : NSImage
-    @property (nonatomic, readwrite) BOOL isDirty;
-    @property (nonatomic, readwrite) NSPoint XY;
-    @property (nonatomic, readwrite) UInt32 crc;
-
-    - (instancetype)initWithSize:(NSSize)size;
-    - (instancetype)initWithCGImage:(CGImageRef)cgImage size:(NSSize)size crc:(UInt32) crc32;
-    - (void)dealloc;
-
-  @end
-
   @interface BXVGAImageView : NSView
-    @property (nonatomic, readwrite) unsigned columns;
-    @property (nonatomic, readwrite) unsigned rows;
-    @property (nonatomic, readwrite) NSSize tileSize;
-    // @property (nonatomic, readwrite) BOOL fullRedraw;
-    // @property (nonatomic, readwrite, assign) NSColor *fullRedrawColor;
+    @property (nonatomic, readwrite) unsigned char * VGAdisplay;
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
-    @property (nonatomic, readonly, getter=hasUpdate) BOOL hasUpdate;
+
+
+
+
+    @property (nonatomic, readwrite) unsigned columns;
+    @property (nonatomic, readwrite) unsigned rows;
+    @property (nonatomic, readwrite) NSSize tileSize;
 
     - (instancetype)initWithFrame:(NSRect) frameRect col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
     - (void)dealloc;
-    - (BOOL)hasUpdate;
+
     - (void)updateWithFrame:(NSSize) frameSize col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
-    - (void)constructArray:(unsigned)h width:(unsigned) w;
-    - (void)clearCache;
-    - (void)cacheFullRedraw;
-    - (void)cacheRender;
-    - (void)updateTile:(BXVGATile *) tile x:(unsigned) col y:(unsigned) row;
-    - (void)updateTileCFData:(CFMutableDataRef) cfRef DataRefSize:(unsigned) cfSize colorspace:(CGColorSpaceRef) csRef xpos:(unsigned) x ypos:(unsigned) y;
+    - (void)renderVGAdisplay:(unsigned char *) palette size:(unsigned) palette_size;
 
   @end
 
