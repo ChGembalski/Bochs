@@ -753,15 +753,15 @@ bx_svga_tileinfo_t * bx_cocoa_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info
       break;
     case 24:
     case 32:
-      info->red_shift = 24;
+      info->red_shift = 8;
       info->green_shift = 16;
-      info->blue_shift = 8;
-      info->red_mask = 0xff0000;
+      info->blue_shift = 24;
+      info->red_mask = 0x0000ff;
       info->green_mask = 0x00ff00;
-      info->blue_mask = 0x0000ff;
+      info->blue_mask = 0xff0000;
       break;
   }
-  info->is_indexed = (host_bpp == 8);
+  info->is_indexed = (host_bpp <= 8);
 #ifdef BX_LITTLE_ENDIAN
   info->is_little_endian = 1;
 #else
@@ -866,7 +866,7 @@ void bx_cocoa_gui_c::set_mouse_mode_absxy(bool mode) {
   void bx_cocoa_gui_c::sim_is_idle(void) {
     // device->handle_events();
     // sleep(5);
-
+    // usleep(500);
   }
 
 #endif

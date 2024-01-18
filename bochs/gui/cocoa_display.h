@@ -33,19 +33,13 @@
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
 
-
-
-
-    @property (nonatomic, readwrite) unsigned columns;
-    @property (nonatomic, readwrite) unsigned rows;
-    @property (nonatomic, readwrite) NSSize tileSize;
-
-    - (instancetype)initWithFrame:(NSRect) frameRect col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
+    - (instancetype)initWithFrame:(NSRect) frameRect bits:(unsigned) bpp;
     - (void)dealloc;
 
-    - (void)updateWithFrame:(NSSize) frameSize col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
+    - (void)updateWithFrame:(NSSize) frameSize bits:(unsigned) bpp;
     - (void)renderVGAdisplay:(unsigned char *) palette size:(unsigned) palette_size;
     - (void)renderVGAdisplayRGB;
+    - (void)updateVGA:(NSRect) dirty;
 
   @end
 
