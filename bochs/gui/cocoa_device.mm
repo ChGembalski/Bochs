@@ -92,7 +92,7 @@ BXGuiCocoaDevice::~BXGuiCocoaDevice() {
  * run once
  * NSEvent loop processing
  */
-void BXGuiCocoaDevice::handle_events() {
+void BXGuiCocoaDevice::handle_events(void) {
   @autoreleasepool {
 
     NSEvent* ev;
@@ -117,7 +117,7 @@ void BXGuiCocoaDevice::handle_events() {
  * run_terminate
  * hopefully cleanup
  */
-void BXGuiCocoaDevice::run_terminate() {
+void BXGuiCocoaDevice::run_terminate(void) {
   @autoreleasepool {
     BXL_DEBUG((@"NSApp terminate"));
     // close all windows
@@ -166,7 +166,7 @@ void BXGuiCocoaDevice::captureMouse(unsigned x, unsigned y) {
 /**
  * hasMouseCapture forwarding
  */
-bool BXGuiCocoaDevice::hasMouseCapture() {
+bool BXGuiCocoaDevice::hasMouseCapture(void) {
   return (BXwindow->hasMouseCapture());
 }
 
@@ -269,7 +269,7 @@ void BXGuiCocoaDevice::draw_char(bool crsr, bool font2, unsigned char fgcolor, u
 /**
  * hasEvent forwarding
  */
-bool BXGuiCocoaDevice::hasEvent() {
+bool BXGuiCocoaDevice::hasEvent(void) {
   return (BXwindow->hasEvent());
 }
 
@@ -283,7 +283,7 @@ void BXGuiCocoaDevice::setEventMouseABS(bool abs) {
 /**
  * getEvent forwarding
  */
-unsigned long BXGuiCocoaDevice::getEvent() {
+unsigned long BXGuiCocoaDevice::getEvent(void) {
   return (BXwindow->getEvent());
 }
 
@@ -296,8 +296,21 @@ void BXGuiCocoaDevice::graphics_tile_update(unsigned char *tile, unsigned x, uns
   }
 }
 
+/**
+ * getVGAdisplayPtr forwarding
+ */
+const unsigned char * BXGuiCocoaDevice::getVGAdisplayPtr(void) {
+  return (BXwindow->getVGAdisplayPtr());
+}
 
-
+/**
+ * graphics_tile_update_in_place forwarding
+ */
+void BXGuiCocoaDevice::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
+  @autoreleasepool {
+    BXwindow->graphics_tile_update_in_place(x, y, w, h);
+  }
+}
 
 
 

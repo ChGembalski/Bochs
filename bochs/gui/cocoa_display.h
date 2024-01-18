@@ -45,6 +45,7 @@
 
     - (void)updateWithFrame:(NSSize) frameSize col_width:(unsigned) cw col_height:(unsigned) ch bits:(unsigned) bpp;
     - (void)renderVGAdisplay:(unsigned char *) palette size:(unsigned) palette_size;
+    - (void)renderVGAdisplayRGB;
 
   @end
 
@@ -56,7 +57,7 @@
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
-    // @property (nonatomic, readwrite) unsigned char * screen;
+    @property (nonatomic, readonly, getter=VGAdisplayRAM) const unsigned char * VGAdisplayRAM;
     @property (nonatomic, readwrite) unsigned char * palette;
     @property (nonatomic, readwrite) unsigned palette_size;
     @property (nonatomic, readwrite) BOOL dirty;
@@ -73,6 +74,8 @@
     - (void)updateFontAt:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
     - (void)paintChar:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
     - (void)clipRegion:(unsigned char *) src position:(NSRect) rect;
+    - (const unsigned char *)VGAdisplayRAM;
+    - (void)clipRegionPosition:(NSRect) rect;
   @end
 
 #endif /* BX_GUI_COCOA_DISPLAY_H */

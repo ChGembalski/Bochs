@@ -138,6 +138,8 @@ NSMutableArray<NSNumber *> * queue;
   - (UInt64)getEvent;
   - (void)handleMouse:(NSEvent *)event;
   - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
+  - (const unsigned char *) getVGAMemory;
+  - (void)clipRegionVGAPosition:(NSRect) rect;
 
 // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
 // -(NSArray<NSButton *> *)createToolbar;
@@ -536,6 +538,19 @@ BXNSEventQueue * BXEventQueue;
   [self.BXVGA clipRegion:src position:rect];
 }
 
+/**
+ * getVGAMemory Ptr
+ */
+- (const unsigned char *) getVGAMemory {
+  return self.BXVGA.VGAdisplayRAM;
+}
+
+/**
+ * clip region from local Memory
+ */
+- (void)clipRegionVGAPosition:(NSRect) rect {
+  [self.BXVGA clipRegionPosition:rect];
+}
 
 
 
@@ -598,7 +613,7 @@ void BXGuiCocoaWindow::captureMouse(unsigned x, unsigned y) {
 /**
  * hasMouseCapture
  */
-bool BXGuiCocoaWindow::hasMouseCapture() {
+bool BXGuiCocoaWindow::hasMouseCapture(void) {
   return (BXCocoaWindow->BXWindow.MouseCaptureActive);
 }
 
@@ -705,7 +720,7 @@ void BXGuiCocoaWindow::draw_char(bool crsr, bool font2, unsigned char fgcolor, u
 /**
  * hasEvent
  */
-bool BXGuiCocoaWindow::hasEvent() {
+bool BXGuiCocoaWindow::hasEvent(void) {
   return (BXCocoaWindow->BXWindow.hasEvent);
 }
 
@@ -719,7 +734,7 @@ void BXGuiCocoaWindow::setEventMouseABS(bool abs) {
 /**
  * getEvent
  */
-unsigned long BXGuiCocoaWindow::getEvent() {
+unsigned long BXGuiCocoaWindow::getEvent(void) {
   return ([BXCocoaWindow->BXWindow getEvent]);
 }
 
@@ -730,8 +745,19 @@ void BXGuiCocoaWindow::graphics_tile_update(unsigned char *tile, unsigned x, uns
   [BXCocoaWindow->BXWindow clipRegionVGA:tile position:NSMakeRect(x, y, w, h)];
 }
 
+/**
+ * getVGAdisplayPtr
+ */
+const unsigned char * BXGuiCocoaWindow::getVGAdisplayPtr(void) {
+  return ([BXCocoaWindow->BXWindow getVGAMemory]);
+}
 
-
+/**
+ * graphics_tile_update_in_place
+ */
+void BXGuiCocoaWindow::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
+  [BXCocoaWindow->BXWindow clipRegionVGAPosition:NSMakeRect(x, y, w, h)];
+}
 
 
 

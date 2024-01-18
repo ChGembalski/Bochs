@@ -195,6 +195,32 @@ BOOL VGAdisplayBufferChanged;
 
 }
 
+/**
+ * render the VGAdisplay to NSImage
+ */
+- (void)renderVGAdisplayRGB {
+
+  CGColorSpaceRef colorspace;
+  CFDataRef data;
+  CGDataProviderRef provider;
+  CGImageRef rgbImageRef;
+
+  colorspace = CGColorSpaceCreateDeviceRGB();
+  NSAssert(colorspace != NULL, @"create colorspace failed.");
+  data = CFDataCreate(NULL, self.VGAdisplay, (self.stride * self.frame.size.height));
+  provider = CGDataProviderCreateWithCFData(data);
+  rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
+  [VGAdisplayBuffer release];
+  VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
+  CGImageRelease(rgbImageRef);
+  CGDataProviderRelease(provider);
+  CFRelease(data);
+  CGColorSpaceRelease(colorspace);
+
+  VGAdisplayBufferChanged = YES;
+  [self setNeedsDisplay:YES];
+
+}
 
 
 - (BOOL)wantsLayer {
@@ -336,7 +362,11 @@ BXVGAImageView * imgview;
     return;
   }
 
-  [imgview renderVGAdisplay:self.palette size:self.palette_size];
+  if (self.bpp > 16) {
+    [imgview renderVGAdisplayRGB];
+  } else {
+    [imgview renderVGAdisplay:self.palette size:self.palette_size];
+  }
 
   self.dirty = NO;
 
@@ -620,9 +650,20 @@ BXVGAImageView * imgview;
 
 }
 
+/**
+ * VGAdisplayRAM Ptr
+ */
+- (const unsigned char *)VGAdisplayRAM {
+  return (const unsigned char *)imgview.VGAdisplay;
+}
 
-
-
+/**
+ * clipRegionPosition
+ */
+- (void)clipRegionPosition:(NSRect) rect {
+  [imgview setNeedsDisplayInRect:rect];
+  self.dirty = YES;
+}
 
 
 
