@@ -91,6 +91,8 @@ extern unsigned int crc32buf(const unsigned char * buf, size_t len);
 @implementation BXVGAImageView
 
 NSImage * VGAdisplayBuffer;
+// id VGAdisplayContent;
+CGFloat VGAdisplayContentScale;
 BOOL VGAdisplayBufferChanged;
 NSRect VGAdirty;
 
@@ -116,6 +118,9 @@ NSRect VGAdirty;
     // create buffer
     VGAdisplayBuffer = [[NSImage alloc] initWithSize:frameRect.size];
     VGAdisplayBufferChanged = NO;
+    // VGAdisplayContent = nil;
+
+    // self.layer.drawsAsynchronously = YES;
 
   }
   return self;
@@ -164,6 +169,7 @@ NSRect VGAdirty;
   [VGAdisplayBuffer release];
   VGAdisplayBuffer = [[NSImage alloc] initWithSize:frameSize];
   VGAdisplayBufferChanged = NO;
+  // VGAdisplayContent = nil;
 
 }
 
@@ -189,12 +195,16 @@ NSRect VGAdirty;
   rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
   [VGAdisplayBuffer release];
   VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
+  if (VGAdisplayBuffer.valid) {
+    [self renderVGAdisplayContent];
+  }
   CGImageRelease(rgbImageRef);
   CGDataProviderRelease(provider);
   CFRelease(data);
   CGColorSpaceRelease(colorspace);
 
   VGAdisplayBufferChanged = YES;
+  // BXL_INFO((@"renderVGAdisplay done"));
 
 }
 
@@ -219,29 +229,45 @@ NSRect VGAdirty;
   rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
   [VGAdisplayBuffer release];
   VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
+  if (VGAdisplayBuffer.valid) {
+    [self renderVGAdisplayContent];
+  }
   CGImageRelease(rgbImageRef);
   CGDataProviderRelease(provider);
   CFRelease(data);
   CGColorSpaceRelease(colorspace);
 
   VGAdisplayBufferChanged = YES;
-
+  // BXL_INFO((@"renderVGAdisplayRGB done"));
 }
 
+/**
+ * renderVGAdisplayContent
+ */
+- (void)renderVGAdisplayContent {
+
+  CGFloat windowScaleFactor;
+
+  windowScaleFactor = self.window.backingScaleFactor;
+
+  VGAdisplayContentScale = [VGAdisplayBuffer recommendedLayerContentsScale:windowScaleFactor];
+  // VGAdisplayContent = [VGAdisplayBuffer layerContentsForContentsScale:VGAdisplayContentScale];
+  // BXL_INFO((@"renderVGAdisplayContent done"));
+}
 
 // - (BOOL)isOpaque {
 //     return YES;
 // }
 
-// - (BOOL)wantsLayer {
-//   return YES;
-// }
-// - (BOOL)wantsUpdateLayer {
-//   return YES;
-// }
-//
-// - (void)updateLayer {
-//
+- (BOOL)wantsLayer {
+  return YES;
+}
+- (BOOL)wantsUpdateLayer {
+  return YES;
+}
+
+- (void)updateLayer {
+
 //   CGFloat windowScaleFactor;
 //   CGFloat imageScaleFactor;
 //
@@ -256,13 +282,27 @@ NSRect VGAdirty;
 //     VGAdisplayBufferChanged = NO;
 //
 //   }
-//
-// }
+
+  // if (VGAdisplayContent == nil) return;
+
+  // if (self.layer.contents != VGAdisplayContent) {
+  if (VGAdisplayBufferChanged) {
+    // BXL_INFO((@"updateLayer"));
+    self.layer.contents = VGAdisplayBuffer;//VGAdisplayContent;
+    self.layer.contentsScale = VGAdisplayContentScale;
+    // VGAdisplayContent = nil;
+    VGAdirty = NSZeroRect;
+    VGAdisplayBufferChanged = NO;
+    // BXL_INFO((@"updateLayer done"));
+  }
+
+}
 
 // - (void)setNeedsDisplayInRect:(NSRect)invalidRect {
-//   // BXL_INFO(([NSString stringWithFormat:@"setNeedsDisplayInRect x=%d y=%d w=%d h=%d",
-//   //   (unsigned)invalidRect.origin.x, (unsigned)invalidRect.origin.y, (unsigned)invalidRect.size.width, (unsigned)invalidRect.size.height]));
-//     [super setNeedsDisplayInRect:invalidRect];
+// //   // BXL_INFO(([NSString stringWithFormat:@"setNeedsDisplayInRect x=%d y=%d w=%d h=%d",
+// //   //   (unsigned)invalidRect.origin.x, (unsigned)invalidRect.origin.y, (unsigned)invalidRect.size.width, (unsigned)invalidRect.size.height]));
+// //     [super setNeedsDisplayInRect:invalidRect];
+//   [self.layer setNeedsDisplayInRect:invalidRect];
 // }
 // - (void)displayRectIgnoringOpacity:(NSRect)rect {
 //
@@ -285,51 +325,51 @@ NSRect VGAdirty;
 
 - (void)drawRect:(NSRect)dirtyRect {
 
-  // if (!NSIsEmptyRect(VGAdirty)) {
-  //
-  //   NSRect paintFROMTO;
-  //
-  //   paintFROMTO = [self dirtyVGAView];
-  //
-  //   BXL_INFO(([NSString stringWithFormat:@"drawRect VGAdirty x=%d y=%d w=%d h=%d opaque=%s",
-  //     (unsigned)VGAdirty.origin.x, (unsigned)VGAdirty.origin.y, (unsigned)VGAdirty.size.width, (unsigned)VGAdirty.size.height,
-  //     self.opaque?"YES":"NO"
-  //   ]));
-  //   BXL_INFO(([NSString stringWithFormat:@"drawRect dirtyRect x=%d y=%d w=%d h=%d",
-  //     (unsigned)dirtyRect.origin.x, (unsigned)dirtyRect.origin.y, (unsigned)dirtyRect.size.width, (unsigned)dirtyRect.size.height]));
-  //
-  //   [VGAdisplayBuffer drawInRect:paintFROMTO fromRect:paintFROMTO operation:NSCompositingOperationCopy fraction:1];
-  //
-  //   VGAdirty = NSZeroRect;
-  //   // usleep(500000);
-  // } else {
-    [VGAdisplayBuffer drawInRect:dirtyRect fromRect:dirtyRect operation:NSCompositingOperationCopy fraction:1];
-    VGAdirty = NSZeroRect;
-  // }
-
-
-
-  // const NSRect *rects;
-  // NSInteger count;
-  //
-  // [self getRectsBeingDrawn:&rects count:&count];
-  //
-  // if (count) {
-  //
-  //   for (int i = 0; i < count; i++) {
-  //     BXL_INFO(([NSString stringWithFormat:@"drawRect count[%d] rects[%d] x=%d y=%d w=%d h=%d",
-  //       (unsigned)count, i, (unsigned)rects[i].origin.x, (unsigned)rects[i].origin.y, (unsigned)rects[i].size.width, (unsigned)rects[i].size.height]));
-  //     [VGAdisplayBuffer drawInRect:rects[i] fromRect:rects[i] operation:NSCompositingOperationCopy fraction:1];
-  //   }
-  //
-  // } else {
-  //   BXL_INFO(([NSString stringWithFormat:@"drawRect dirtyRect x=%d y=%d w=%d h=%d",
-  //     (unsigned)dirtyRect.origin.x, (unsigned)dirtyRect.origin.y, (unsigned)dirtyRect.size.width, (unsigned)dirtyRect.size.height]));
-  //   [VGAdisplayBuffer drawInRect:dirtyRect];
-  // }
-
-  VGAdisplayBufferChanged = NO;
-
+//   // if (!NSIsEmptyRect(VGAdirty)) {
+//   //
+//   //   NSRect paintFROMTO;
+//   //
+//   //   paintFROMTO = [self dirtyVGAView];
+//   //
+//   //   BXL_INFO(([NSString stringWithFormat:@"drawRect VGAdirty x=%d y=%d w=%d h=%d opaque=%s",
+//   //     (unsigned)VGAdirty.origin.x, (unsigned)VGAdirty.origin.y, (unsigned)VGAdirty.size.width, (unsigned)VGAdirty.size.height,
+//   //     self.opaque?"YES":"NO"
+//   //   ]));
+//   //   BXL_INFO(([NSString stringWithFormat:@"drawRect dirtyRect x=%d y=%d w=%d h=%d",
+//   //     (unsigned)dirtyRect.origin.x, (unsigned)dirtyRect.origin.y, (unsigned)dirtyRect.size.width, (unsigned)dirtyRect.size.height]));
+//   //
+//   //   [VGAdisplayBuffer drawInRect:paintFROMTO fromRect:paintFROMTO operation:NSCompositingOperationCopy fraction:1];
+//   //
+//   //   VGAdirty = NSZeroRect;
+//   //   // usleep(500000);
+//   // } else {
+//     [VGAdisplayBuffer drawInRect:dirtyRect fromRect:dirtyRect operation:NSCompositingOperationCopy fraction:1];
+//     VGAdirty = NSZeroRect;
+//   // }
+//
+//   BXL_INFO((@"drawRect done"));
+//
+//   // const NSRect *rects;
+//   // NSInteger count;
+//   //
+//   // [self getRectsBeingDrawn:&rects count:&count];
+//   //
+//   // if (count) {
+//   //
+//   //   for (int i = 0; i < count; i++) {
+//   //     BXL_INFO(([NSString stringWithFormat:@"drawRect count[%d] rects[%d] x=%d y=%d w=%d h=%d",
+//   //       (unsigned)count, i, (unsigned)rects[i].origin.x, (unsigned)rects[i].origin.y, (unsigned)rects[i].size.width, (unsigned)rects[i].size.height]));
+//   //     [VGAdisplayBuffer drawInRect:rects[i] fromRect:rects[i] operation:NSCompositingOperationCopy fraction:1];
+//   //   }
+//   //
+//   // } else {
+//   //   BXL_INFO(([NSString stringWithFormat:@"drawRect dirtyRect x=%d y=%d w=%d h=%d",
+//   //     (unsigned)dirtyRect.origin.x, (unsigned)dirtyRect.origin.y, (unsigned)dirtyRect.size.width, (unsigned)dirtyRect.size.height]));
+//   //   [VGAdisplayBuffer drawInRect:dirtyRect];
+//   // }
+//
+//   VGAdisplayBufferChanged = NO;
+  BXL_INFO((@"drawRect done"));
 }
 
 /**
@@ -393,6 +433,7 @@ BXVGAImageView * imgview;
     memset((void *)self.FontB, 0, FONT_DATA_SIZE * sizeof(unsigned short int));
 
     imgview = [[BXVGAImageView alloc] initWithFrame:NSMakeRect(0, 0, self.width, self.height) bits:bpp];
+    imgview.layerContentsRedrawPolicy = NSViewLayerContentsRedrawOnSetNeedsDisplay;
     [v addSubview:imgview];
 
     BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",

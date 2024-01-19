@@ -171,6 +171,8 @@ BXNSEventQueue * BXEventQueue;
   [NSApp setDelegate:[self contentView]];
   [self setTitle:BOCHS_WINDOW_NAME];
 
+  // [self contentView].wantsLayer = YES;
+
   BXEventQueue = [[BXNSEventQueue alloc] init];
 
   self.MouseCaptureAbsolute = NO;
