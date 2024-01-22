@@ -58,7 +58,7 @@ GUI_OBJS_SDL2 = sdl2.o
 GUI_OBJS_WIN32 = win32.o
 GUI_OBJS_MACOS = macintosh.o
 GUI_OBJS_CARBON = carbon.o
-GUI_OBJS_COCOA = cocoa.o cocoa_device.o cocoa_window.o cocoa_display.o cocoa_headerbar.o
+GUI_OBJS_COCOA = cocoa.o cocoa_application.o cocoa_windows.o cocoa_display.o cocoa_headerbar.o
 GUI_OBJS_NOGUI = nogui.o
 GUI_OBJS_TERM  = term.o
 GUI_OBJS_RFB = rfb.o
@@ -69,6 +69,7 @@ GUI_OBJS_WX_SUPPORT = wxmain.o wxdialog.o
 
 CI_OBJS_WIN32 = win32config.o
 CI_OBJS_WIN32_SUPPORT = win32paramdlg.o scrollwin.o
+CI_OBJS_COCOA = cocoaconfig.o
 
 GUI_DLL_TARGETS = @GUI_DLL_TARGETS@
 OBJS_THAT_CANNOT_BE_PLUGINS = keymap.o gui.o siminterface.o paramtree.o @ENH_DBG_OBJS@
@@ -241,12 +242,19 @@ carbon.o: carbon.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree
  ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
  ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
 cocoa.o: cocoa.@CPP_SUFFIX@ \
- ../gui/cocoa_device.h ../gui/cocoa_window.h ../gui/cocoa_display.h ../gui/cocoa_headerbar.h ../gui/cocoa_logging.h \
- ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h \
- ../logio.h ../misc/bswap.h \
- keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h ../param_names.h \
- ../pc_system.h ../bx_debug/debug.h ../config.h ../osdep.h \
- ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
+ ../gui/cocoa_application.h ../gui/cocoa_bochs.h \
+ ../gui/cocoa_windows.h ../gui/cocoa_display.h ../gui/cocoa_headerbar.h ../gui/cocoa_logging.h \
+ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h ../logio.h \
+ ../misc/bswap.h keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h \
+ ../param_names.h ../pc_system.h ../bx_debug/debug.h ../memory/memory-bochs.h \
+ ../gui/siminterface.h ../gui/gui.h
+cocoaconfig.o: cocoaconfig.@CPP_SUFFIX@ \
+ ../config.h ../bochs.h ../osdep.h ../gui/paramtree.h ../logio.h \
+ ../misc/bswap.h ../bx_debug/debug.h ../param_names.h gui.h \
+ ../gui/siminterface.h ../plugin.h ../extplugin.h
+cocoa_enh_dbg_osdep.o: cocoa_enh_dbg_osdep.@CPP_SUFFIX@ \
+ ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h ../logio.h \
+ ../misc/bswap.h ../bx_debug/debug.h siminterface.h enh_dbg.h
 enh_dbg.o: enh_dbg.@CPP_SUFFIX@ ../config.h
 gtk_enh_dbg_osdep.o: gtk_enh_dbg_osdep.@CPP_SUFFIX@ ../bochs.h ../config.h \
  ../osdep.h ../gui/paramtree.h ../logio.h \

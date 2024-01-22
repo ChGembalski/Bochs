@@ -33,16 +33,10 @@
 #include "param_names.h"
 #include "iodev.h"
 
-
-// #include "gui.h"
-// #include "plugin.h"
-// #include "param_names.h"
-// #include "iodev.h"
-
 #if BX_WITH_COCOA
 #include "font/vga.bitmap.h"
 
-#include "cocoa_device.h"
+#include "cocoa_bochs.h"
 
 
 Bit32s scancode_tbl[] = {
@@ -203,11 +197,10 @@ Bit32s scancode_tbl[] = {
 
 #define LOG_THIS theGui->
 
-
-BXGuiCocoaDevice * device;
-
 class bx_cocoa_gui_c : public bx_gui_c {
 private:
+  BXGuiCocoaApplication * bxcocoagui;
+
   bool cocoa_mouse_mode_absxy;
   bxevent_handler old_callback;
   void *old_callback_arg;
@@ -284,7 +277,8 @@ extern "C" void bx_cocoa_gui_c_log_fatal(const char *data) {
 
 // flip bits
 
-extern "C" unsigned char flip_byte(unsigned char b) {
+// extern "C"
+unsigned char flip_byte(unsigned char b) {
    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
@@ -292,7 +286,7 @@ extern "C" unsigned char flip_byte(unsigned char b) {
 }
 
 
-static BxEvent * notify_callback_xtd(void *unused, BxEvent *event) {
+static BxEvent * cocoa_notify_callback(void *unused, BxEvent *event) {
   return (theGui->notify_callback(unused, event));
 }
 
@@ -315,6 +309,10 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 {
   Bit8u max_bpp;
 
+#if BX_DEBUGGER && BX_DEBUGGER_GUI
+  bool cocoa_with_debug_gui = 0;
+#endif
+
   put("COCOA");
   UNUSED(argc);
   UNUSED(argv);
@@ -328,36 +326,41 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   old_callback = NULL;
   old_callback_arg = NULL;
 
-  // init device
-  device = new BXGuiCocoaDevice(guest_xres, guest_yres, headerbar_y);
+  // get access to NSApp objc wrapper
+  bxcocoagui = new BXGuiCocoaApplication();
+  // device = new BXGuiCocoaDevice(guest_xres, guest_yres, headerbar_y);
 
   // setup screen
-  device->getScreenConfiguration(&max_xres, &max_yres, &max_bpp);
+  // device->getScreenConfiguration(&max_xres, &max_yres, &max_bpp);
 
   // setup mouse handling
-  device->setEventMouseABS(cocoa_mouse_mode_absxy);
+  // device->setEventMouseABS(cocoa_mouse_mode_absxy);
 
   // init startup - use current guest settings
-  device->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
+  // device->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
   // device->dimension_update(640, 480, 8, 16, 8);
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() running some events now ..."));
 
-  for (int i=0; i<100; i++) {
-    device->handle_events();
-  }
+  // for (int i=0; i<100; i++) {
+  //   device->handle_events();
+  // }
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() done running some events now ..."));
 
   // device->setup_charmap((unsigned char *)&vga_charmap[0], (unsigned char *)&vga_charmap[1]);
-  device->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont, 8, 16);
+  // device->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont, 8, 16);
 
   // redirect notify callback
   SIM->get_notify_callback(&old_callback, &old_callback_arg);
   assert(old_callback != NULL);
-  SIM->set_notify_callback(notify_callback_xtd, NULL);
+  SIM->set_notify_callback(cocoa_notify_callback, NULL);
 
-
+#if BX_DEBUGGER && BX_DEBUGGER_GUI
+  cocoa_with_debug_gui = 1;
+#else
+  SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
+#endif
 
 
 
@@ -368,9 +371,15 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   new_gfx_api = 1;
   new_text_api = 1;
 
-  // dialog_caps = BX_GUI_DLG_ALL;
+  dialog_caps = BX_GUI_DLG_ALL;
 
-
+#if BX_DEBUGGER && BX_DEBUGGER_GUI
+  // initialize debugger gui
+  if (cocoa_with_debug_gui) {
+    SIM->set_debug_gui(1);
+    init_debug_dialog();
+  }
+#endif
 
 }
 
@@ -426,7 +435,7 @@ void bx_cocoa_gui_c::text_update(Bit8u *old_text, Bit8u *new_text,
 
 void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 {
-  device->graphics_tile_update(tile, x0, y0, x_tilesize, y_tilesize);
+  // device->graphics_tile_update(tile, x0, y0, x_tilesize, y_tilesize);
 }
 
 
@@ -438,89 +447,89 @@ void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 
 void bx_cocoa_gui_c::handle_events(void)
 {
-    device->handle_events();
-    if (device->hasEvent()) {
-      Bit64u event;
-      Bit32u scancode;
-      Bit32u scanflags;
-      bool released;
-      bool mouse;
-
-      event = device->getEvent();
-      mouse = (event & MACOS_NSEventModifierFlagMouse) == MACOS_NSEventModifierFlagMouse;
-      if (mouse) {
-        Bit16s mx;
-        Bit16s my;
-        Bit8u  mb;
-        Bit8u  mf;
-
-        mb = (event >> 48) & 0xFF;
-        mf = (event >> 32) % 0xFF;
-        mx = (event >> 16) & 0xFFFF;
-        my = event & 0xFFFF;
-        BX_DEBUG((">>> event mouse event=%lx x=%d y=%d mb=%d mf=%x x=%x y=%x mb=%x", event, mx, my, mb, mf, mx, my, mb));
-
-        if (device->hasMouseCapture() & ((mf & 0x10) == 0x10) & (mb == 1)) {
-          SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(false);
-          return;
-        }
-
-        DEV_mouse_motion(mx, my, 0, mb, cocoa_mouse_mode_absxy);
-
-        return;
-      }
-      scanflags = event & MACOS_NSEventModifierFlagMask;
-      scancode = event & ~MACOS_NSEventModifierFlagMask;
-      released = (event & MACOS_NSEventModifierFlagKeyUp) == 0;
-      BX_DEBUG((">>> event %lx mouse %s scancode %x scanflags %x released %x", event, mouse?"YES":"NO", scancode, scanflags, released));
-
-      if (scancode < 0x80) {
-        BX_DEBUG(("scancode %x scanflags %x released %x", scancode, scanflags, released));
-        scancode = scancode_tbl[scancode];
-        BX_DEBUG(("resolved scancode %x scanflags %x released %x", scancode, scanflags, released));
-        if (scancode != -1) {
-
-          // resolve scanflags (seems each must be send one after one)
-          if ((scanflags & MACOS_NSEventModifierFlagCapsLock) > 0) {
-            bx_gui->set_modifier_keys(BX_MOD_KEY_CAPS, released);
-            // BX_INFO(("BX_KEY_CAPS_LOCK %d", released));
-            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CAPS_LOCK);
-          }
-          if ((scanflags & MACOS_NSEventModifierFlagShift) > 0) {
-            bx_gui->set_modifier_keys(BX_MOD_KEY_SHIFT, released);
-            // BX_INFO(("BX_KEY_SHIFT_L %d", released));
-            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_SHIFT_L);
-          }
-          if ((scanflags & MACOS_NSEventModifierFlagControl) > 0) {
-            set_modifier_keys(BX_MOD_KEY_CTRL, released);
-            // BX_INFO(("BX_KEY_CTRL_L %d", released));
-            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CTRL_L);
-          }
-          if ((scanflags & MACOS_NSEventModifierFlagOption) > 0) {
-            set_modifier_keys(BX_MOD_KEY_ALT, released);
-            // BX_INFO(("BX_KEY_ALT_L %d", released));
-            DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_ALT_L);
-          }
-          // if ((scanflags & MACOS_NSEventModifierFlagCommand) > 0) {
-          //
-          // }
-          // if ((scanflags & MACOS_NSEventModifierFlagNumericPad) > 0) {
-          //
-          // }
-          // if ((scanflags & MACOS_NSEventModifierFlagHelp) > 0) {
-          //
-          // }
-          // if ((scanflags & MACOS_NSEventModifierFlagFunction) > 0) {
-          //
-          // }
-          // Send keycode
-          DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | scancode);
-
-        }
-      } else {
-        BX_ERROR((">>> event dropped"));
-      }
-    }
+    // device->handle_events();
+    // if (device->hasEvent()) {
+    //   Bit64u event;
+    //   Bit32u scancode;
+    //   Bit32u scanflags;
+    //   bool released;
+    //   bool mouse;
+    //
+    //   // event = device->getEvent();
+    //   mouse = (event & MACOS_NSEventModifierFlagMouse) == MACOS_NSEventModifierFlagMouse;
+    //   if (mouse) {
+    //     Bit16s mx;
+    //     Bit16s my;
+    //     Bit8u  mb;
+    //     Bit8u  mf;
+    //
+    //     mb = (event >> 48) & 0xFF;
+    //     mf = (event >> 32) % 0xFF;
+    //     mx = (event >> 16) & 0xFFFF;
+    //     my = event & 0xFFFF;
+    //     BX_DEBUG((">>> event mouse event=%lx x=%d y=%d mb=%d mf=%x x=%x y=%x mb=%x", event, mx, my, mb, mf, mx, my, mb));
+    //
+    //     if (device->hasMouseCapture() & ((mf & 0x10) == 0x10) & (mb == 1)) {
+    //       SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(false);
+    //       return;
+    //     }
+    //
+    //     DEV_mouse_motion(mx, my, 0, mb, cocoa_mouse_mode_absxy);
+    //
+    //     return;
+    //   }
+    //   scanflags = event & MACOS_NSEventModifierFlagMask;
+    //   scancode = event & ~MACOS_NSEventModifierFlagMask;
+    //   released = (event & MACOS_NSEventModifierFlagKeyUp) == 0;
+    //   BX_DEBUG((">>> event %lx mouse %s scancode %x scanflags %x released %x", event, mouse?"YES":"NO", scancode, scanflags, released));
+    //
+    //   if (scancode < 0x80) {
+    //     BX_DEBUG(("scancode %x scanflags %x released %x", scancode, scanflags, released));
+    //     scancode = scancode_tbl[scancode];
+    //     BX_DEBUG(("resolved scancode %x scanflags %x released %x", scancode, scanflags, released));
+    //     if (scancode != -1) {
+    //
+    //       // resolve scanflags (seems each must be send one after one)
+    //       if ((scanflags & MACOS_NSEventModifierFlagCapsLock) > 0) {
+    //         bx_gui->set_modifier_keys(BX_MOD_KEY_CAPS, released);
+    //         // BX_INFO(("BX_KEY_CAPS_LOCK %d", released));
+    //         DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CAPS_LOCK);
+    //       }
+    //       if ((scanflags & MACOS_NSEventModifierFlagShift) > 0) {
+    //         bx_gui->set_modifier_keys(BX_MOD_KEY_SHIFT, released);
+    //         // BX_INFO(("BX_KEY_SHIFT_L %d", released));
+    //         DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_SHIFT_L);
+    //       }
+    //       if ((scanflags & MACOS_NSEventModifierFlagControl) > 0) {
+    //         set_modifier_keys(BX_MOD_KEY_CTRL, released);
+    //         // BX_INFO(("BX_KEY_CTRL_L %d", released));
+    //         DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CTRL_L);
+    //       }
+    //       if ((scanflags & MACOS_NSEventModifierFlagOption) > 0) {
+    //         set_modifier_keys(BX_MOD_KEY_ALT, released);
+    //         // BX_INFO(("BX_KEY_ALT_L %d", released));
+    //         DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_ALT_L);
+    //       }
+    //       // if ((scanflags & MACOS_NSEventModifierFlagCommand) > 0) {
+    //       //
+    //       // }
+    //       // if ((scanflags & MACOS_NSEventModifierFlagNumericPad) > 0) {
+    //       //
+    //       // }
+    //       // if ((scanflags & MACOS_NSEventModifierFlagHelp) > 0) {
+    //       //
+    //       // }
+    //       // if ((scanflags & MACOS_NSEventModifierFlagFunction) > 0) {
+    //       //
+    //       // }
+    //       // Send keycode
+    //       DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | scancode);
+    //
+    //     }
+    //   } else {
+    //     BX_ERROR((">>> event dropped"));
+    //   }
+    // }
 }
 
 
@@ -531,8 +540,8 @@ void bx_cocoa_gui_c::handle_events(void)
 
 void bx_cocoa_gui_c::flush(void)
 {
-    device->render();
-    device->handle_events();
+    // device->render();
+    // device->handle_events();
 }
 
 
@@ -543,7 +552,7 @@ void bx_cocoa_gui_c::flush(void)
 
 void bx_cocoa_gui_c::clear_screen(void)
 {
-  device->clear_screen();
+  // device->clear_screen();
 }
 
 
@@ -556,7 +565,7 @@ void bx_cocoa_gui_c::clear_screen(void)
 
 bool bx_cocoa_gui_c::palette_change(Bit8u index, Bit8u red, Bit8u green, Bit8u blue)
 {
-  return(device->palette_change(index, red, green, blue));
+  // return(device->palette_change(index, red, green, blue));
 }
 
 
@@ -594,7 +603,7 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
   //   new_text_api?"YES":"NO", cursor_address));
 
   BX_DEBUG(("bx_cocoa_gui_c::dimension_update x=%d y=%d fheight=%d fwidth=%d bpp=%d", x, y, fheight, fwidth, bpp));
-  device->dimension_update(x, y, fwidth, fheight, bpp);
+  // device->dimension_update(x, y, fwidth, fheight, bpp);
 
   host_xres = x;
   host_yres = y;
@@ -616,7 +625,7 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
 
 unsigned bx_cocoa_gui_c::create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim)
 {
-  return(device->create_bitmap(bmap, xdim, ydim));
+  // return(device->create_bitmap(bmap, xdim, ydim));
 }
 
 
@@ -636,7 +645,7 @@ unsigned bx_cocoa_gui_c::create_bitmap(const unsigned char *bmap, unsigned xdim,
 
 unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void))
 {
-  return(device->headerbar_bitmap(bmap_id, alignment, f));
+  // return(device->headerbar_bitmap(bmap_id, alignment, f));
 }
 
 
@@ -655,7 +664,7 @@ unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, 
 
 void bx_cocoa_gui_c::replace_bitmap(unsigned hbar_id, unsigned bmap_id)
 {
-  device->replace_bitmap(hbar_id, bmap_id);
+  // device->replace_bitmap(hbar_id, bmap_id);
 }
 
 
@@ -666,7 +675,7 @@ void bx_cocoa_gui_c::replace_bitmap(unsigned hbar_id, unsigned bmap_id)
 
 void bx_cocoa_gui_c::show_headerbar(void)
 {
-  device->show_headerbar();
+  // device->show_headerbar();
 }
 
 
@@ -706,7 +715,7 @@ int bx_cocoa_gui_c::set_clipboard_text(char *text_snapshot, Bit32u len)
 
 void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 {
-  device->captureMouse(val, guest_xres/2, guest_yres/2);
+  // device->captureMouse(val, guest_xres/2, guest_yres/2);
 }
 
 
@@ -718,10 +727,16 @@ void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 void bx_cocoa_gui_c::exit(void)
 {
 
-  if (device != NULL) {
-    device->run_terminate();
-    delete device;
-  }
+// #if BX_DEBUGGER && BX_DEBUGGER_GUI
+//   if (SIM->has_debug_gui()) {
+//     close_debug_dialog();
+//   }
+// #endif
+//
+//   if (device != NULL) {
+//     device->run_terminate();
+//     delete device;
+//   }
 
 }
 
@@ -790,14 +805,14 @@ Bit8u * bx_cocoa_gui_c::graphics_tile_get(unsigned x, unsigned y, unsigned *w, u
     *h = y_tilesize;
   }
 
-  return (Bit8u *)device->getVGAdisplayPtr() + y * host_pitch +
-                  x * ((host_bpp + 1) >> 3);
+  // return (Bit8u *)device->getVGAdisplayPtr() + y * host_pitch +
+  //                 x * ((host_bpp + 1) >> 3);
 }
 
 
 void bx_cocoa_gui_c::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
   // BX_INFO(("bx_cocoa_gui_c::graphics_tile_update_in_place x=%d y=%d w=%d h=%d", x, y, w, h));
-  device->graphics_tile_update_in_place(x, y, w, h);
+  // device->graphics_tile_update_in_place(x, y, w, h);
 }
 
 
@@ -812,7 +827,7 @@ void bx_cocoa_gui_c::set_font(bool lg) {
 
         // display knows about font size from dimension_update call
         // font pixel space 16x16
-        device->set_font(c, m==1, m==0 ? (unsigned char *)&vga_charmap[0] : (unsigned char *)&vga_charmap[1]);
+        // device->set_font(c, m==1, m==0 ? (unsigned char *)&vga_charmap[0] : (unsigned char *)&vga_charmap[1]);
         char_changed[m][c] = 0;
       // }
       }
@@ -826,7 +841,7 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
                        Bit8u fw, Bit8u fh, Bit8u fx, Bit8u fy,
                        bool gfxcharw9, Bit8u cs, Bit8u ce, bool curs, bool font2) {
 
-  device->draw_char(curs, font2, fc, bc, ch, xc, yc, fw+fx, fh);
+  // device->draw_char(curs, font2, fc, bc, ch, xc, yc, fw+fx, fh);
 
 }
 
@@ -857,7 +872,7 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
 // }
 
 void bx_cocoa_gui_c::set_mouse_mode_absxy(bool mode) {
-  device->showAlertMessage("bx_cocoa_gui_c::set_mouse_mode_absxy", BX_ALERT_MSG_STYLE_CRIT);
+  // device->showAlertMessage("bx_cocoa_gui_c::set_mouse_mode_absxy", BX_ALERT_MSG_STYLE_CRIT);
   BX_INFO(("bx_cocoa_gui_c::set_mouse_mode_absxy %s", mode?"TRUE":"FALSE"));
 }
 
@@ -880,12 +895,28 @@ BxEvent * bx_cocoa_gui_c::notify_callback(void *unused, BxEvent *event) {
   // bx_param_c *param;
 
   switch (event->type) {
-    case BX_SYNC_EVT_MSG_BOX: {
-      device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
-      return event;
-    }
+    // case BX_SYNC_EVT_LOG_DLG: {
+    //   device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
+    //   return event;
+    // }
+    // case BX_SYNC_EVT_MSG_BOX: {
+    //   device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
+    //   return event;
+    // }
+    // case BX_SYNC_EVT_ML_MSG_BOX: {
+    //   device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
+    //   return event;
+    // }
+    // case BX_SYNC_EVT_ML_MSG_BOX_KILL: {
+    //   device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
+    //   return event;
+    // }
+    // case BX_SYNC_EVT_ASK_PARAM: {
+    //   device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
+    //   return event;
+    // }
 
-
+    case BX_ASYNC_EVT_LOG_MSG: // maybe have a window collecting the logs ?
     case BX_SYNC_EVT_TICK: // called periodically by siminterface.
     case BX_ASYNC_EVT_REFRESH: // called when some bx_param_c parameters have changed.
       // fall into default case
