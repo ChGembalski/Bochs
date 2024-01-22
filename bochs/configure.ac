@@ -2639,7 +2639,7 @@ if test "$with_cocoa" = yes; then
   INSTALL_TARGET='install_macosx'
   AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "cocoaconfig")
   AC_DEFINE(BX_USE_TEXTCONFIG, 0)
-  use_gui_console=1
+  use_gui_console=0
   AC_MSG_WARN([This Bochs feature is maintained by Ch.Gembalski])
 fi
 
@@ -2768,20 +2768,20 @@ if test "$display_libs" = " wxWidgets"; then
   AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "wx")
   AC_DEFINE(BX_DEFAULT_DISPLAY_LIBRARY, "wx")
   AC_DEFINE(BX_USE_TEXTCONFIG, 0)
-elif test "$display_libs" = " cocoa"; then
-  AC_MSG_NOTICE(using cocoa)
 else
-  if test "$DEFAULT_GUI" = win32; then
-    AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "win32config")
-  else
-    AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "textconfig")
+  if test "$DEFAULT_GUI" != cocoa; then
+    if test "$DEFAULT_GUI" = win32; then
+      AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "win32config")
+    else
+      AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "textconfig")
+    fi
+    if test "$DEFAULT_GUI" = x11; then
+      AC_DEFINE(BX_DEFAULT_DISPLAY_LIBRARY, "x")
+    else
+      AC_DEFINE_UNQUOTED(BX_DEFAULT_DISPLAY_LIBRARY, "$DEFAULT_GUI")
+    fi
+    AC_DEFINE(BX_USE_TEXTCONFIG, 1)
   fi
-  if test "$DEFAULT_GUI" = x11; then
-    AC_DEFINE(BX_DEFAULT_DISPLAY_LIBRARY, "x")
-  else
-    AC_DEFINE_UNQUOTED(BX_DEFAULT_DISPLAY_LIBRARY, "$DEFAULT_GUI")
-  fi
-  AC_DEFINE(BX_USE_TEXTCONFIG, 1)
 fi
 
 if test "$use_gui_console" = 1; then

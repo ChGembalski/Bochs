@@ -26737,7 +26737,7 @@ if test "$with_cocoa" = yes; then
 
   printf "%s\n" "#define BX_USE_TEXTCONFIG 0" >>confdefs.h
 
-  use_gui_console=1
+  use_gui_console=0
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: This Bochs feature is maintained by Ch.Gembalski" >&5
 printf "%s\n" "$as_me: WARNING: This Bochs feature is maintained by Ch.Gembalski" >&2;}
 fi
@@ -26875,26 +26875,29 @@ printf "%s\n" "wxWidgets" >&6; }
 
   printf "%s\n" "#define BX_USE_TEXTCONFIG 0" >>confdefs.h
 
-elif test "$display_libs" = " cocoa"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using cocoa" >&5
-printf "%s\n" "$as_me: using cocoa" >&6;}
 else
-  if test "$DEFAULT_GUI" = win32; then
-    printf "%s\n" "#define BX_DEFAULT_CONFIG_INTERFACE \"win32config\"" >>confdefs.h
+  if test "$DEFAULT_GUI" != cocoa; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for problem in configure ac" >&5
+printf %s "checking for problem in configure ac... " >&6; }
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found error" >&5
+printf "%s\n" "found error" >&6; }
+    if test "$DEFAULT_GUI" = win32; then
+      printf "%s\n" "#define BX_DEFAULT_CONFIG_INTERFACE \"win32config\"" >>confdefs.h
 
-  else
-    printf "%s\n" "#define BX_DEFAULT_CONFIG_INTERFACE \"textconfig\"" >>confdefs.h
+    else
+      printf "%s\n" "#define BX_DEFAULT_CONFIG_INTERFACE \"textconfig\"" >>confdefs.h
+
+    fi
+    if test "$DEFAULT_GUI" = x11; then
+      printf "%s\n" "#define BX_DEFAULT_DISPLAY_LIBRARY \"x\"" >>confdefs.h
+
+    else
+      printf "%s\n" "#define BX_DEFAULT_DISPLAY_LIBRARY \"$DEFAULT_GUI\"" >>confdefs.h
+
+    fi
+    printf "%s\n" "#define BX_USE_TEXTCONFIG 1" >>confdefs.h
 
   fi
-  if test "$DEFAULT_GUI" = x11; then
-    printf "%s\n" "#define BX_DEFAULT_DISPLAY_LIBRARY \"x\"" >>confdefs.h
-
-  else
-    printf "%s\n" "#define BX_DEFAULT_DISPLAY_LIBRARY \"$DEFAULT_GUI\"" >>confdefs.h
-
-  fi
-  printf "%s\n" "#define BX_USE_TEXTCONFIG 1" >>confdefs.h
-
 fi
 
 if test "$use_gui_console" = 1; then
