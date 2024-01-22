@@ -25,29 +25,29 @@
 
 #include <Cocoa/Cocoa.h>
 #include "cocoa_logging.h"
-#include "cocoa_window.h"
-#include "cocoa_headerbar.h"
+#include "cocoa_windows.h"
 
 
-#if BX_SUPPORT_X86_64
-  #define BOCHS_WINDOW_NAME @"Bochs x86-64 emulator MacOS X"
-#else
-  #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
-#endif
 
-
-@interface BXNSEventQueue : NSObject
-
-  @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
-
-  - (instancetype)init;
-  - (void)dealloc;
-
-  - (void)enqueue:(UInt64) value;
-  - (UInt64)dequeue;
-  - (BOOL)isEmpty;
-
-@end
+// #if BX_SUPPORT_X86_64
+//   #define BOCHS_WINDOW_NAME @"Bochs x86-64 emulator MacOS X"
+// #else
+//   #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
+// #endif
+//
+//
+// @interface BXNSEventQueue : NSObject
+//
+//   @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
+//
+//   - (instancetype)init;
+//   - (void)dealloc;
+//
+//   - (void)enqueue:(UInt64) value;
+//   - (UInt64)dequeue;
+//   - (BOOL)isEmpty;
+//
+// @end
 
 @implementation BXNSEventQueue
 
@@ -105,46 +105,46 @@ NSMutableArray<NSNumber *> * queue;
 @end
 
 
-@interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
-
-  @property (nonatomic, readwrite, assign) BXVGAdisplay * BXVGA;
-  @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
-  @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
-  @property (nonatomic, readwrite) BOOL MouseCaptureActive;
-  - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
-  - (void)dealloc;
-
-  - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
-
-  - (void)showAlertMessage:(const char *) msg style:(const char) type;
-
-  - (void)captureMouse:(BOOL) grab;
-  - (void)captureMouseXY:(NSPoint) XY;
-
-  - (NSImage *)createIconXPM;
-  - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
-  - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
-  - (void)headerbarCreate;
-  - (void)headerbarUpdate;
-  - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
-  - (unsigned)getHeaderbarHeight;
-  - (void)renderVGA;
-  - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
-  - (void)clearVGAscreen;
-  - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
-  - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
-  - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
-  - (BOOL)hasEvent;
-  - (UInt64)getEvent;
-  - (void)handleMouse:(NSEvent *)event;
-  - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
-  - (const unsigned char *) getVGAMemory;
-  - (void)clipRegionVGAPosition:(NSRect) rect;
-
-// -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
-// -(NSArray<NSButton *> *)createToolbar;
-// -(void)updateToolbar:(NSSize) size;
-@end
+// @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
+//
+//   @property (nonatomic, readwrite, assign) BXVGAdisplay * BXVGA;
+//   @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
+//   @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
+//   @property (nonatomic, readwrite) BOOL MouseCaptureActive;
+//   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
+//   - (void)dealloc;
+//
+//   - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
+//
+//   - (void)showAlertMessage:(const char *) msg style:(const char) type;
+//
+//   - (void)captureMouse:(BOOL) grab;
+//   - (void)captureMouseXY:(NSPoint) XY;
+//
+//   - (NSImage *)createIconXPM;
+//   - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
+//   - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
+//   - (void)headerbarCreate;
+//   - (void)headerbarUpdate;
+//   - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
+//   - (unsigned)getHeaderbarHeight;
+//   - (void)renderVGA;
+//   - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
+//   - (void)clearVGAscreen;
+//   - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
+//   - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
+//   - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
+//   - (BOOL)hasEvent;
+//   - (UInt64)getEvent;
+//   - (void)handleMouse:(NSEvent *)event;
+//   - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
+//   - (const unsigned char *) getVGAMemory;
+//   - (void)clipRegionVGAPosition:(NSRect) rect;
+//
+// // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
+// // -(NSArray<NSButton *> *)createToolbar;
+// // -(void)updateToolbar:(NSSize) size;
+// @end
 
 @implementation BXGuiCocoaNSWindow
 
@@ -333,7 +333,16 @@ BXNSEventQueue * BXEventQueue;
   NSString * aMsg;
   NSAlertStyle aStyle;
 
-  aMsg = [[NSString stringWithFormat:@"%s", msg] autorelease];
+  if ((msg == NULL) | (msg == nil)) {
+    aMsg = @"No msg supplied ...";
+  } else {
+    BXL_INFO(([NSString stringWithFormat:@"showAlertMessage %s", msg]));
+    // NSMutableData * dmsg;
+    // dmsg = [[[NSMutableData alloc] initWithLength:(strlen(msg)+1)] autorelease];
+    // [dmsg replaceBytesInRange:NSMakeRange(0, strlen(msg)) withBytes:msg];
+    // aMsg = [[[NSString alloc] initWithData:(NSData *)dmsg encoding:NSUTF8StringEncoding] autorelease];
+    aMsg = @"No msg supplied ...";
+  }
   switch (type) {
     case BX_ALERT_MSG_STYLE_INFO: {
       aStyle = NSAlertStyleInformational;
@@ -564,202 +573,202 @@ struct BXGuiCocoaWindowImpl {
   BXGuiCocoaNSWindow * BXWindow;
 };
 
-// Class BXGuiCocoaWindow
-
-/**
- * BXGuiCocoaWindow CTor
- */
-BXGuiCocoaWindow::BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y) : BXCocoaWindow(new BXGuiCocoaWindowImpl) {
-  BXCocoaWindow->BXWindow = [[[BXGuiCocoaNSWindow alloc] init:headerbar_y VGAsize:NSMakeSize(x, y)] autorelease];
-}
-
-/**
- * BXGuiCocoaWindow DTor
- */
-BXGuiCocoaWindow::~BXGuiCocoaWindow() {
-  if (BXCocoaWindow) {
-    [BXCocoaWindow->BXWindow performClose:nil];
-  }
-}
-
-/**
- * getScreenConfiguration
- */
-void BXGuiCocoaWindow::getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp) {
-  [BXCocoaWindow->BXWindow getMaxScreenResolution:bpp width:width height:height];
-}
-
-
-/**
- * showAlertMessage
- */
-void BXGuiCocoaWindow::showAlertMessage(const char *msg, const char type) {
-  [BXCocoaWindow->BXWindow showAlertMessage:msg style:type];
-}
-
-/**
- * captureMouse
- */
-void BXGuiCocoaWindow::captureMouse(bool cap, unsigned x, unsigned y) {
-  [BXCocoaWindow->BXWindow captureMouseXY:NSMakePoint(x, y)];
-  [BXCocoaWindow->BXWindow captureMouse:cap];
-}
-
-/**
- * captureMouse
- */
-void BXGuiCocoaWindow::captureMouse(unsigned x, unsigned y) {
-  [BXCocoaWindow->BXWindow captureMouseXY:NSMakePoint(x, y)];
-}
-
-/**
- * hasMouseCapture
- */
-bool BXGuiCocoaWindow::hasMouseCapture(void) {
-  return (BXCocoaWindow->BXWindow.MouseCaptureActive);
-}
-
-
-
-
-void * BXGuiCocoaWindow::createIconXPM(void) {
-  return (void *)[BXCocoaWindow->BXWindow createIconXPM];
-}
-/**
- * create_bitmap
- */
-unsigned BXGuiCocoaWindow::create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim) {
-  return ([BXCocoaWindow->BXWindow createBXBitmap:bmap xdim:xdim ydim:ydim]);
-}
-
-/**
- * headerbar_bitmap
- */
-unsigned BXGuiCocoaWindow::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void)) {
-  return ([BXCocoaWindow->BXWindow headerbarBXBitmap:bmap_id alignment:alignment func:f]);
-}
-
-/**
- * show_headerbar
- */
-void BXGuiCocoaWindow::show_headerbar(void) {
-  [BXCocoaWindow->BXWindow headerbarCreate];
-}
-
-/**
- * dimension_update
- */
-void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
-
-  NSRect windowFrame;
-  NSRect newWindowFrame;
-
-  // Change VGA display
-  [BXCocoaWindow->BXWindow.BXVGA changeBPP:bpp width:x height:y font_width:fwidth font_height:fheight];
-
-  // prepare window
-  windowFrame = [BXCocoaWindow->BXWindow contentRectForFrameRect:[BXCocoaWindow->BXWindow frame]];
-  newWindowFrame = [BXCocoaWindow->BXWindow frameRectForContentRect:NSMakeRect( NSMinX( windowFrame ), NSMinY( windowFrame ), x, y + BXCocoaWindow->BXWindow.getHeaderbarHeight)];
-
-  [BXCocoaWindow->BXWindow setContentSize:NSMakeSize(x, y + BXCocoaWindow->BXWindow.getHeaderbarHeight)];
-
-  [BXCocoaWindow->BXWindow headerbarUpdate];
-
-  //[BXCocoaWindow->BXWindow setFrame:newWindowFrame display:YES animate:[BXCocoaWindow->BXWindow isVisible]];
-
-}
-
-/**
- * render
- */
-void BXGuiCocoaWindow::render(void) {
-  [BXCocoaWindow->BXWindow renderVGA];
-}
-
-/**
- * palette_change
- */
-bool BXGuiCocoaWindow::palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue) {
-  return ([BXCocoaWindow->BXWindow changeVGApalette:index red:red green:green blue:blue]);
-}
-
-/**
- * clear_screen
- */
-void BXGuiCocoaWindow::clear_screen(void) {
-  [BXCocoaWindow->BXWindow clearVGAscreen];
-}
-
-/**
- * replace_bitmap
- */
-void BXGuiCocoaWindow::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
-  [BXCocoaWindow->BXWindow headerbarSwitchBXBitmap:hbar_id data_id:bmap_id];
-}
-
-/**
- * setup_charmap
- */
-void BXGuiCocoaWindow::setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h) {
-  [BXCocoaWindow->BXWindow charmapVGA:charmapA charmap:charmapB width:w height:h];
-}
-
-/**
- * set_font
- */
-void BXGuiCocoaWindow::set_font(bool font2, unsigned pos, unsigned char *charmap) {
-  [BXCocoaWindow->BXWindow charmapVGAat:pos isFont2:font2 map:charmap];
-}
-
-
-/**
- * draw_char
- */
-void BXGuiCocoaWindow::draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
-  [BXCocoaWindow->BXWindow paintcharVGA:charpos isCrsr:crsr font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
-}
-
-/**
- * hasEvent
- */
-bool BXGuiCocoaWindow::hasEvent(void) {
-  return (BXCocoaWindow->BXWindow.hasEvent);
-}
-
-/**
- * setEventMouseABS
- */
-void BXGuiCocoaWindow::setEventMouseABS(bool abs) {
-  BXCocoaWindow->BXWindow.MouseCaptureAbsolute = abs;
-}
-
-/**
- * getEvent
- */
-unsigned long BXGuiCocoaWindow::getEvent(void) {
-  return ([BXCocoaWindow->BXWindow getEvent]);
-}
-
-/**
- * graphics_tile_update
- */
-void BXGuiCocoaWindow::graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h) {
-  [BXCocoaWindow->BXWindow clipRegionVGA:tile position:NSMakeRect(x, y, w, h)];
-}
-
-/**
- * getVGAdisplayPtr
- */
-const unsigned char * BXGuiCocoaWindow::getVGAdisplayPtr(void) {
-  return ([BXCocoaWindow->BXWindow getVGAMemory]);
-}
-
-/**
- * graphics_tile_update_in_place
- */
-void BXGuiCocoaWindow::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
-  [BXCocoaWindow->BXWindow clipRegionVGAPosition:NSMakeRect(x, y, w, h)];
-}
+// // Class BXGuiCocoaWindow
+//
+// /**
+//  * BXGuiCocoaWindow CTor
+//  */
+// BXGuiCocoaWindow::BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y) : BXCocoaWindow(new BXGuiCocoaWindowImpl) {
+//   BXCocoaWindow->BXWindow = [[[BXGuiCocoaNSWindow alloc] init:headerbar_y VGAsize:NSMakeSize(x, y)] autorelease];
+// }
+//
+// /**
+//  * BXGuiCocoaWindow DTor
+//  */
+// BXGuiCocoaWindow::~BXGuiCocoaWindow() {
+//   if (BXCocoaWindow) {
+//     [BXCocoaWindow->BXWindow performClose:nil];
+//   }
+// }
+//
+// /**
+//  * getScreenConfiguration
+//  */
+// void BXGuiCocoaWindow::getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp) {
+//   [BXCocoaWindow->BXWindow getMaxScreenResolution:bpp width:width height:height];
+// }
+//
+//
+// /**
+//  * showAlertMessage
+//  */
+// void BXGuiCocoaWindow::showAlertMessage(const char *msg, const char type) {
+//   [BXCocoaWindow->BXWindow showAlertMessage:msg style:type];
+// }
+//
+// /**
+//  * captureMouse
+//  */
+// void BXGuiCocoaWindow::captureMouse(bool cap, unsigned x, unsigned y) {
+//   [BXCocoaWindow->BXWindow captureMouseXY:NSMakePoint(x, y)];
+//   [BXCocoaWindow->BXWindow captureMouse:cap];
+// }
+//
+// /**
+//  * captureMouse
+//  */
+// void BXGuiCocoaWindow::captureMouse(unsigned x, unsigned y) {
+//   [BXCocoaWindow->BXWindow captureMouseXY:NSMakePoint(x, y)];
+// }
+//
+// /**
+//  * hasMouseCapture
+//  */
+// bool BXGuiCocoaWindow::hasMouseCapture(void) {
+//   return (BXCocoaWindow->BXWindow.MouseCaptureActive);
+// }
+//
+//
+//
+//
+// void * BXGuiCocoaWindow::createIconXPM(void) {
+//   return (void *)[BXCocoaWindow->BXWindow createIconXPM];
+// }
+// /**
+//  * create_bitmap
+//  */
+// unsigned BXGuiCocoaWindow::create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim) {
+//   return ([BXCocoaWindow->BXWindow createBXBitmap:bmap xdim:xdim ydim:ydim]);
+// }
+//
+// /**
+//  * headerbar_bitmap
+//  */
+// unsigned BXGuiCocoaWindow::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void)) {
+//   return ([BXCocoaWindow->BXWindow headerbarBXBitmap:bmap_id alignment:alignment func:f]);
+// }
+//
+// /**
+//  * show_headerbar
+//  */
+// void BXGuiCocoaWindow::show_headerbar(void) {
+//   [BXCocoaWindow->BXWindow headerbarCreate];
+// }
+//
+// /**
+//  * dimension_update
+//  */
+// void BXGuiCocoaWindow::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
+//
+//   NSRect windowFrame;
+//   NSRect newWindowFrame;
+//
+//   // Change VGA display
+//   [BXCocoaWindow->BXWindow.BXVGA changeBPP:bpp width:x height:y font_width:fwidth font_height:fheight];
+//
+//   // prepare window
+//   windowFrame = [BXCocoaWindow->BXWindow contentRectForFrameRect:[BXCocoaWindow->BXWindow frame]];
+//   newWindowFrame = [BXCocoaWindow->BXWindow frameRectForContentRect:NSMakeRect( NSMinX( windowFrame ), NSMinY( windowFrame ), x, y + BXCocoaWindow->BXWindow.getHeaderbarHeight)];
+//
+//   [BXCocoaWindow->BXWindow setContentSize:NSMakeSize(x, y + BXCocoaWindow->BXWindow.getHeaderbarHeight)];
+//
+//   [BXCocoaWindow->BXWindow headerbarUpdate];
+//
+//   //[BXCocoaWindow->BXWindow setFrame:newWindowFrame display:YES animate:[BXCocoaWindow->BXWindow isVisible]];
+//
+// }
+//
+// /**
+//  * render
+//  */
+// void BXGuiCocoaWindow::render(void) {
+//   [BXCocoaWindow->BXWindow renderVGA];
+// }
+//
+// /**
+//  * palette_change
+//  */
+// bool BXGuiCocoaWindow::palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue) {
+//   return ([BXCocoaWindow->BXWindow changeVGApalette:index red:red green:green blue:blue]);
+// }
+//
+// /**
+//  * clear_screen
+//  */
+// void BXGuiCocoaWindow::clear_screen(void) {
+//   [BXCocoaWindow->BXWindow clearVGAscreen];
+// }
+//
+// /**
+//  * replace_bitmap
+//  */
+// void BXGuiCocoaWindow::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
+//   [BXCocoaWindow->BXWindow headerbarSwitchBXBitmap:hbar_id data_id:bmap_id];
+// }
+//
+// /**
+//  * setup_charmap
+//  */
+// void BXGuiCocoaWindow::setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h) {
+//   [BXCocoaWindow->BXWindow charmapVGA:charmapA charmap:charmapB width:w height:h];
+// }
+//
+// /**
+//  * set_font
+//  */
+// void BXGuiCocoaWindow::set_font(bool font2, unsigned pos, unsigned char *charmap) {
+//   [BXCocoaWindow->BXWindow charmapVGAat:pos isFont2:font2 map:charmap];
+// }
+//
+//
+// /**
+//  * draw_char
+//  */
+// void BXGuiCocoaWindow::draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
+//   [BXCocoaWindow->BXWindow paintcharVGA:charpos isCrsr:crsr font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
+// }
+//
+// /**
+//  * hasEvent
+//  */
+// bool BXGuiCocoaWindow::hasEvent(void) {
+//   return (BXCocoaWindow->BXWindow.hasEvent);
+// }
+//
+// /**
+//  * setEventMouseABS
+//  */
+// void BXGuiCocoaWindow::setEventMouseABS(bool abs) {
+//   BXCocoaWindow->BXWindow.MouseCaptureAbsolute = abs;
+// }
+//
+// /**
+//  * getEvent
+//  */
+// unsigned long BXGuiCocoaWindow::getEvent(void) {
+//   return ([BXCocoaWindow->BXWindow getEvent]);
+// }
+//
+// /**
+//  * graphics_tile_update
+//  */
+// void BXGuiCocoaWindow::graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h) {
+//   [BXCocoaWindow->BXWindow clipRegionVGA:tile position:NSMakeRect(x, y, w, h)];
+// }
+//
+// /**
+//  * getVGAdisplayPtr
+//  */
+// const unsigned char * BXGuiCocoaWindow::getVGAdisplayPtr(void) {
+//   return ([BXCocoaWindow->BXWindow getVGAMemory]);
+// }
+//
+// /**
+//  * graphics_tile_update_in_place
+//  */
+// void BXGuiCocoaWindow::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
+//   [BXCocoaWindow->BXWindow clipRegionVGAPosition:NSMakeRect(x, y, w, h)];
+// }
 
 
 

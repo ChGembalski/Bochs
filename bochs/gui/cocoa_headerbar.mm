@@ -107,7 +107,7 @@ void print_buf(const unsigned char *buf, size_t buf_len)
     self.alignment = align;
     self.position = NSMakePoint(x, y);
     self.size = NSMakeSize(w, h);
-    self.func = f;
+    self.func = (void *)f; // TODO :fix me
     self.button = [[NSButton alloc] initWithFrame:NSMakeRect(x, y, w, h)];
     [self.button setImage:img];
     [self.button setImagePosition:NSImageOnly];
