@@ -171,7 +171,7 @@ BX_INCLUDES = bochs.h config.h osdep.h
 	$(CC) @DASH@c $(BX_INCDIRS) $(CPPFLAGS) $(CFLAGS) $(FPU_FLAGS) $< @OFP@$@
 # standard compile rule for mm files
 .mm.o:
-	$(CXX) @DASH@c  $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
+	$(CXX) @DASH@c -fobjc-arc $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
 
 all: @PRIMARY_TARGET@ @PLUGIN_TARGET@ bximage@EXE@ @OPTIONAL_TARGET@ @BUILD_DOCBOOK_VAR@
 

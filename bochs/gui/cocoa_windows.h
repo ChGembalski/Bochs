@@ -47,7 +47,7 @@
     @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
 
     - (instancetype)init;
-    - (void)dealloc;
+    // - (void)dealloc;
 
     - (void)enqueue:(UInt64) value;
     - (UInt64)dequeue;
@@ -57,12 +57,12 @@
 
   @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
 
-    @property (nonatomic, readwrite, assign) BXVGAdisplay * BXVGA;
+    @property (nonatomic, readwrite, strong) BXVGAdisplay * BXVGA;
     @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
     @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
     @property (nonatomic, readwrite) BOOL MouseCaptureActive;
     - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
-    - (void)dealloc;
+    // - (void)dealloc;
 
     - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
 

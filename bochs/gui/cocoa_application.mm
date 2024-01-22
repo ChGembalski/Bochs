@@ -79,11 +79,11 @@ BXBochsThread * bochsThread;
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   NSApp.applicationIconImage = nil;//(NSImage *) BXwindow->createIconXPM();
 
-  // Manue Bar
-  id menubar = [[NSMenu new] autorelease];
-  id appMenuItem = [[NSMenuItem new] autorelease];
-  id editMenuItem = [[NSMenuItem new] autorelease];
-  id windowMenuItem = [[NSMenuItem new] autorelease];
+  // Menue Bar
+  id menubar = [NSMenu new];
+  id appMenuItem = [NSMenuItem new];
+  id editMenuItem = [NSMenuItem new];
+  id windowMenuItem = [NSMenuItem new];
   [menubar addItem:appMenuItem];
   [menubar addItem:editMenuItem];
   [menubar addItem:windowMenuItem];
@@ -91,30 +91,30 @@ BXBochsThread * bochsThread;
 
   // Then we add the quit item to the menu. Fortunately the action is simple since terminate: is
   // already implemented in NSApplication and the NSApplication is always in the responder chain.
-  id appMenu = [[NSMenu new] autorelease];
+  id appMenu = [NSMenu new];
   id appName = [[NSProcessInfo processInfo] processName];
   id quitTitle = [@"Quit " stringByAppendingString:appName];
-  id quitMenuItem = [[[NSMenuItem alloc] initWithTitle:quitTitle
-                                                action:@selector(terminate:) keyEquivalent:@"q"] autorelease];
+  id quitMenuItem = [[NSMenuItem alloc] initWithTitle:quitTitle
+                                                action:@selector(terminate:) keyEquivalent:@"q"];
                                                 // MUST CALL BX_EXIT(exitcode) !!!!!!!!!!!!!!
 
   [appMenu addItem:quitMenuItem];
   [appMenuItem setSubmenu:appMenu];
 
-  id editMenu = [[[NSMenu new] initWithTitle:@"Edit"] autorelease];
-  id clipboardgetMenuItem = [[[NSMenuItem alloc] initWithTitle:@"get Clipboard" action: nil keyEquivalent:@""] autorelease];
-  id clipboardsetMenuItem = [[[NSMenuItem alloc] initWithTitle:@"set Clipboard" action: nil keyEquivalent:@""] autorelease];
+  id editMenu = [[NSMenu new] initWithTitle:@"Edit"];
+  id clipboardgetMenuItem = [[NSMenuItem alloc] initWithTitle:@"get Clipboard" action: nil keyEquivalent:@""];
+  id clipboardsetMenuItem = [[NSMenuItem alloc] initWithTitle:@"set Clipboard" action: nil keyEquivalent:@""];
 
   [editMenu addItem:clipboardgetMenuItem];
   [editMenu addItem:clipboardsetMenuItem];
   [editMenuItem setSubmenu:editMenu];
 
   // TODO : Need some Menus like Window -> VGA Display, Console? , Logging, Debugger
-  id windowMenu = [[[NSMenu new] initWithTitle:@"Window"] autorelease];
-  id vgadisplayMenuItem = [[[NSMenuItem alloc] initWithTitle:@"VGA display" action: nil keyEquivalent:@""] autorelease];
-  id consoleMenuItem = [[[NSMenuItem alloc] initWithTitle:@"Console" action: nil keyEquivalent:@""] autorelease];
-  id loggingMenuItem = [[[NSMenuItem alloc] initWithTitle:@"Logging" action: nil keyEquivalent:@""] autorelease];
-  id debuggerMenuItem = [[[NSMenuItem alloc] initWithTitle:@"Debugger" action: nil keyEquivalent:@""] autorelease];
+  id windowMenu = [[NSMenu new] initWithTitle:@"Window"];
+  id vgadisplayMenuItem = [[NSMenuItem alloc] initWithTitle:@"VGA display" action: nil keyEquivalent:@""];
+  id consoleMenuItem = [[NSMenuItem alloc] initWithTitle:@"Console" action: nil keyEquivalent:@""];
+  id loggingMenuItem = [[NSMenuItem alloc] initWithTitle:@"Logging" action: nil keyEquivalent:@""];
+  id debuggerMenuItem = [[NSMenuItem alloc] initWithTitle:@"Debugger" action: nil keyEquivalent:@""];
 
   [windowMenu addItem:vgadisplayMenuItem];
   [windowMenu addItem:consoleMenuItem];
@@ -126,7 +126,7 @@ BXBochsThread * bochsThread;
 
   // TODO : setup everithing else
   // Startup NSThread running the bochs core
-  bochsThread = [[[BXBochsThread alloc] init] autorelease];
+  bochsThread = [[BXBochsThread alloc] init];
   [bochsThread start];
 
   [super finishLaunching];
@@ -166,12 +166,12 @@ BXBochsThread * bochsThread;
 
 NSLog(@"bochs thread testWnd");
   NSRect frame = NSMakeRect(0, 0, 200, 200);
-NSWindow* window  = [[[NSWindow alloc] initWithContentRect:frame
+NSWindow* window  = [[NSWindow alloc] initWithContentRect:frame
                     styleMask:NSWindowStyleMaskTitled |
                                NSWindowStyleMaskClosable |
                                NSWindowStyleMaskMiniaturizable
                     backing:NSBackingStoreBuffered
-                    defer:NO] autorelease];
+                    defer:NO];
 [window setTitle:@"test Window"];
 [window setBackgroundColor:[NSColor blueColor]];
 [window center];

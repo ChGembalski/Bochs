@@ -124,7 +124,7 @@ libgui.a: $(NONPLUGIN_OBJS)
 
 # standard compile rule for mm files
 .mm.o:
-	$(CXX) @DASH@c  $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
+	$(CXX) @DASH@c -fobjc-arc $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
 
 ##### building plugins with libtool
 %.lo: %.@CPP_SUFFIX@

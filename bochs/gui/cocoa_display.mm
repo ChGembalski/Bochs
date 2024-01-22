@@ -126,15 +126,15 @@ NSRect VGAdirty;
   return self;
 }
 
-/**
- * BXVGAImageView DTor
- */
-- (void)dealloc {
-  free(self.VGAdisplay);
-
-  [VGAdisplayBuffer release];
-  [super dealloc];
-}
+// /**
+//  * BXVGAImageView DTor
+//  */
+// - (void)dealloc {
+//   free(self.VGAdisplay);
+//
+//   [VGAdisplayBuffer release];
+//   [super dealloc];
+// }
 
 /**
  * disable the mouse events on this view
@@ -166,7 +166,7 @@ NSRect VGAdirty;
   NSAssert(self.VGAdisplay != NULL, @"VGAdisplay [%p]: allocate memory failed.", self.VGAdisplay);
 
   // // recreate buffer
-  [VGAdisplayBuffer release];
+  // [VGAdisplayBuffer release];
   VGAdisplayBuffer = [[NSImage alloc] initWithSize:frameSize];
   VGAdisplayBufferChanged = NO;
   // VGAdisplayContent = nil;
@@ -193,7 +193,7 @@ NSRect VGAdirty;
   data = CFDataCreate(NULL, self.VGAdisplay, (self.stride * self.frame.size.height));
   provider = CGDataProviderCreateWithCFData(data);
   rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
-  [VGAdisplayBuffer release];
+  // [VGAdisplayBuffer release];
   VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
   if (VGAdisplayBuffer.valid) {
     [self renderVGAdisplayContent];
@@ -227,7 +227,7 @@ NSRect VGAdirty;
   data = CFDataCreate(NULL, self.VGAdisplay, (self.stride * self.frame.size.height));
   provider = CGDataProviderCreateWithCFData(data);
   rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
-  [VGAdisplayBuffer release];
+  // [VGAdisplayBuffer release];
   VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
   if (VGAdisplayBuffer.valid) {
     [self renderVGAdisplayContent];
@@ -445,17 +445,17 @@ BXVGAImageView * imgview;
   return self;
 }
 
-/**
- * BXVGAdisplay DTor
- */
-- (void)dealloc {
-  free((void *)self.FontA);
-  free((void *)self.FontB);
-  free((void *)self.palette);
-
-  [imgview release];
-  [super dealloc];
-}
+// /**
+//  * BXVGAdisplay DTor
+//  */
+// - (void)dealloc {
+//   free((void *)self.FontA);
+//   free((void *)self.FontB);
+//   free((void *)self.palette);
+//
+//   [imgview release];
+//   [super dealloc];
+// }
 
 
 /**

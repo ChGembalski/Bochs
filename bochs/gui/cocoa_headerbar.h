@@ -40,7 +40,7 @@
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) size_t size;
     - (instancetype)init:(const unsigned char *) data width:(unsigned) w height:(unsigned) h;
-    - (void)dealloc;
+    // - (void)dealloc;
   @end
 
   @interface BXHeaderbarButton : NSObject
@@ -51,7 +51,7 @@
     @property (nonatomic, readwrite) void * func;
     @property (nonatomic, readwrite, strong) NSButton * button;
     - (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f;
-    - (void)dealloc;
+    // - (void)dealloc;
     - (void)mouseEvent: (NSButton*)button;
   @end
 
@@ -61,7 +61,7 @@
     @property (nonatomic, readwrite) unsigned yofs;
     @property (nonatomic, readwrite) BOOL visible;
     - (instancetype)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
-    - (void)dealloc;
+    // - (void)dealloc;
     - (NSImage *)createIconXPM;
     -(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
     -(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;

@@ -28,7 +28,14 @@
 // is used to know when we are exporting symbols and when we are importing.
 #define BX_PLUGGABLE
 
+#include "config.h"
+
 #if BX_USE_COCOACONFIG
+
+#include "bochs.h"
+#include "param_names.h"
+#include "iodev.h"
+
 
 static int cocoa_ci_callback(void *userdata, ci_command_t command);
 static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event);

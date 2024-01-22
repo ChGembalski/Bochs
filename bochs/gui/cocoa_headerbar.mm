@@ -84,13 +84,13 @@ void print_buf(const unsigned char *buf, size_t buf_len)
   return self;
 }
 
-/**
- * BXHeaderbarButtonData DTor
- */
-- (void)dealloc {
-  CFRelease(self.data);
-  [super dealloc];
-}
+// /**
+//  * BXHeaderbarButtonData DTor
+//  */
+// - (void)dealloc {
+//   CFRelease(self.data);
+//   [super dealloc];
+// }
 
 @end
 
@@ -118,13 +118,13 @@ void print_buf(const unsigned char *buf, size_t buf_len)
   return self;
 }
 
-/**
- * BXHeaderbarButton DTor
- */
-- (void)dealloc {
-  [self.button dealloc];
-  [super dealloc];
-}
+// /**
+//  * BXHeaderbarButton DTor
+//  */
+// - (void)dealloc {
+//   [self.button dealloc];
+//   [super dealloc];
+// }
 
 - (void)mouseEvent: (NSButton*)button {
   if (self.func != nil) {
@@ -160,14 +160,14 @@ unsigned last_rx;
   return self;
 }
 
-/**
- * BXHeaderbar DTor
- */
-- (void)dealloc {
-  [button_data dealloc];
-  [buttons dealloc];
-  [super dealloc];
-}
+// /**
+//  * BXHeaderbar DTor
+//  */
+// - (void)dealloc {
+//   [button_data dealloc];
+//   [buttons dealloc];
+//   [super dealloc];
+// }
 
 /**
  * createIcon
@@ -250,7 +250,7 @@ unsigned last_rx;
 
   NSImage * image;
   // image = [[NSImage alloc] initWithSize:NSMakeSize(32, 32)];
-  image =[[[NSImage alloc] initWithData:imageData] autorelease];
+  image =[[NSImage alloc] initWithData:imageData];
   // [image addRepresentation:bitmap];
   // image.size = NSMakeSize(32,32);
   // image.prefersColorMatch = YES;
@@ -318,7 +318,7 @@ unsigned last_rx;
   rgbImageRef = CGImageCreate(rgbData.width, rgbData.height, 1, 1, rgbData.width/8, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
   CGDataProviderRelease(provider);
   CGColorSpaceRelease(colorspace);
-  image = [[[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize] autorelease];
+  image = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
   CGImageRelease(rgbImageRef);
 
   // calculate button position
@@ -368,7 +368,7 @@ unsigned last_rx;
   rgbImageRef = CGImageCreate(rgbData.width, rgbData.height, 1, 1, rgbData.width/8, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
   CGDataProviderRelease(provider);
   CGColorSpaceRelease(colorspace);
-  image = [[[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize] autorelease];
+  image = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
   CGImageRelease(rgbImageRef);
 
   btn = [buttons objectAtIndex:btn_id];

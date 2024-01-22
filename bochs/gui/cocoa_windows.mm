@@ -66,13 +66,13 @@ NSMutableArray<NSNumber *> * queue;
   return self;
 }
 
-/**
- * BXNSEventQueue DTor
- */
-- (void)dealloc {
-  [queue dealloc];
-  [super dealloc];
-}
+// /**
+//  * BXNSEventQueue DTor
+//  */
+// - (void)dealloc {
+//   // [queue dealloc];
+//   [super dealloc];
+// }
 
 - (void)enqueue:(UInt64) value {
   NSNumber *obj;
@@ -92,7 +92,7 @@ NSMutableArray<NSNumber *> * queue;
     return (0);
   }
 
-  [[obj retain] autorelease];
+  // [[obj retain] autorelease];
   [queue removeObjectAtIndex:0];
 
   return obj.unsignedLongValue;
@@ -159,7 +159,7 @@ BXNSEventQueue * BXEventQueue;
 
   BXL_DEBUG(@"BXGuiCocoaNSWindow::init");
 
-  [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
+  self = [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
                     NSWindowStyleMaskMiniaturizable
@@ -197,15 +197,15 @@ BXNSEventQueue * BXEventQueue;
   return self;
 }
 
-/**
- * BXGuiCocoaNSWindow DTor
- */
-- (void)dealloc {
-  [BXEventQueue dealloc];
-  [self.BXVGA dealloc];
-  [BXToolbar dealloc];
-  [super dealloc];
-}
+// /**
+//  * BXGuiCocoaNSWindow DTor
+//  */
+// - (void)dealloc {
+//   [BXEventQueue dealloc];
+//   [self.BXVGA dealloc];
+//   [BXToolbar dealloc];
+//   [super dealloc];
+// }
 
 - (BOOL)windowShouldClose:(id)sender {
   [NSApp terminate:sender];
@@ -357,7 +357,7 @@ BXNSEventQueue * BXEventQueue;
     }
   }
 
-  alert = [[[NSAlert alloc] init] autorelease];
+  alert = [[NSAlert alloc] init];
   alert.alertStyle = aStyle;
   alert.messageText = aMsg;
   alert.informativeText = @"thats the Info!";
@@ -567,11 +567,11 @@ BXNSEventQueue * BXEventQueue;
 
 @end
 
-// C++ Wrapper for BXGuiCocoaNSWindow : NSWindow
-
-struct BXGuiCocoaWindowImpl {
-  BXGuiCocoaNSWindow * BXWindow;
-};
+// // C++ Wrapper for BXGuiCocoaNSWindow : NSWindow
+//
+// struct BXGuiCocoaWindowImpl {
+//   BXGuiCocoaNSWindow * BXWindow;
+// };
 
 // // Class BXGuiCocoaWindow
 //

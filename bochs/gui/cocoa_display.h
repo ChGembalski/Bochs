@@ -34,7 +34,7 @@
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
 
     - (instancetype)initWithFrame:(NSRect) frameRect bits:(unsigned) bpp;
-    - (void)dealloc;
+    // - (void)dealloc;
 
     - (void)updateWithFrame:(NSSize) frameSize bits:(unsigned) bpp;
     - (void)renderVGAdisplay:(unsigned char *) palette size:(unsigned) palette_size;
@@ -59,7 +59,7 @@
     @property (nonatomic, readwrite) unsigned short int *FontB;
 
     - (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh view:(NSView *) v;
-    - (void)dealloc;
+    // - (void)dealloc;
     - (void)changeBPP:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh;
     - (void)render;
     - (BOOL)setPaletteRGB:(unsigned) index red:(char) r green:(char) g blue:(char) b;
