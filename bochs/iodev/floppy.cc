@@ -2406,8 +2406,10 @@ bool bx_floppy_ctrl_c::evaluate_media(Bit8u devtype, Bit8u type, const char *pat
   }
   // open media file (image file or device)
 #ifdef macintosh
+#if !BX_WITH_COCOA
   media->fd = 0;
   if (strcmp(path, SuperDrive))
+#endif
 #endif
 #ifdef WIN32
   if ((isalpha(path[0])) && (path[1] == ':') && (strlen(path) == 2)) {
@@ -2448,8 +2450,10 @@ bool bx_floppy_ctrl_c::evaluate_media(Bit8u devtype, Bit8u type, const char *pat
     // try opening the file read-only
     media->write_protected = 1;
 #ifdef macintosh
+#if !BX_WITH_COCOA
     media->fd = 0;
     if (strcmp(path, SuperDrive))
+#endif
 #endif
 #ifdef WIN32
     if (raw_floppy == 1)

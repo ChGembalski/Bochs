@@ -990,6 +990,9 @@ plugin_t bx_builtin_plugins[] = {
 #if BX_USE_WIN32CONFIG
   BUILTIN_CI_PLUGIN_ENTRY(win32config),
 #endif
+#if BX_USE_COCOACONFIG
+  BUILTIN_CI_PLUGIN_ENTRY(cocoaconfig),
+#endif
 #if BX_WITH_AMIGAOS
   BUILTIN_GUI_PLUGIN_ENTRY(amigaos),
 #endif

@@ -38,7 +38,7 @@
 #include <locale.h>
 #endif
 
-#if defined(macintosh)
+#if defined(macintosh) && !BX_WITH_COCOA
 // Work around a bug in SDL 1.2.4 on MacOS X, which redefines getenv to
 // SDL_getenv, but then neglects to provide SDL_getenv.  It happens
 // because we are defining -Dmacintosh.

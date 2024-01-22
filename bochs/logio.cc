@@ -312,7 +312,7 @@ int logfunctions::default_onoff[N_LOGLEV] =
   ACT_IGNORE,  // ignore debug
   ACT_REPORT,  // report info
   ACT_REPORT,  // report error
-#if BX_WITH_SDL2 || BX_WITH_WX || BX_WITH_WIN32 || BX_WITH_X11
+#if BX_WITH_SDL2 || BX_WITH_WX || BX_WITH_WIN32 || BX_WITH_X11 || BX_WITH_COCOA
   ACT_ASK      // on panic, ask user what to do
 #else
   ACT_FATAL    // on panic, quit

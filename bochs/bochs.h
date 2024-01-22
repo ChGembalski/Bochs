@@ -94,7 +94,9 @@ extern "C" {
 #include <fcntl.h>
 #include <limits.h>
 #ifdef macintosh
+#if !BX_WITH_COCOA
 #  define SuperDrive "[fd:]"
+#endif
 #endif
 
 #ifndef __QNXNTO__

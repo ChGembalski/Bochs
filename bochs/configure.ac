@@ -2630,12 +2630,16 @@ if test "$with_cocoa" = yes; then
   AC_DEFINE(BX_WITH_COCOA, 1)
   SPECIFIC_GUI_OBJS="$SPECIFIC_GUI_OBJS \$(GUI_OBJS_COCOA)"
   GUI_LINK_OPTS="$GUI_LINK_OPTS \$(GUI_LINK_OPTS_COCOA)"
+  EXTRA_BX_OBJS="$EXTRA_BX_OBJS main_cocoa.o"
   if test "$bx_plugins" = 1; then
     PRIMARY_TARGET=bochs.app/.build_plugins   # only for cocoa application
   else
     PRIMARY_TARGET=bochs.app/.build   # only for cocoa application
   fi
   INSTALL_TARGET='install_macosx'
+  AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "cocoaconfig")
+  AC_DEFINE(BX_USE_TEXTCONFIG, 0)
+  use_gui_console=1
   AC_MSG_WARN([This Bochs feature is maintained by Ch.Gembalski])
 fi
 
@@ -2764,6 +2768,8 @@ if test "$display_libs" = " wxWidgets"; then
   AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "wx")
   AC_DEFINE(BX_DEFAULT_DISPLAY_LIBRARY, "wx")
   AC_DEFINE(BX_USE_TEXTCONFIG, 0)
+elif test "$display_libs" = " cocoa"; then
+  AC_MSG_NOTICE(using cocoa)
 else
   if test "$DEFAULT_GUI" = win32; then
     AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "win32config")
@@ -2923,6 +2929,9 @@ if test "$gui_debugger" = 1; then
   elif test "$DEFAULT_GUI" = win32 -o "$with_win32" = yes; then
     ENH_DBG_OBJS="enh_dbg.o win32_enh_dbg_osdep.o"
     AC_DEFINE(BX_DEBUGGER_GUI, 1)
+  elif test "$DEFAULT_GUI" = cocoa; then
+    ENH_DBG_OBJS="enh_dbg.o cocoa_enh_dbg_osdep.o"
+    AC_DEFINE(BX_DEBUGGER_GUI, 1)
   else
     AC_MSG_WARN([The Bochs debugger gui cannot be compiled here, disabling it])
     AC_DEFINE(BX_DEBUGGER_GUI, 0)
@@ -2996,6 +3005,11 @@ case $target in
     fi
     CI_PLUGIN_OBJS="$CI_PLUGIN_OBJS \$(CI_OBJS_WIN32)"
     CI_SUPPORT_OBJS="\$(CI_OBJS_WIN32_SUPPORT)"
+    EXPORT_DYNAMIC=""
+    ;;
+  *-apple-darwin*)
+    echo Using MacOsX Gui Client Interface
+    CI_PLUGIN_OBJS="$CI_PLUGIN_OBJS \$(CI_OBJS_COCOA)"
     EXPORT_DYNAMIC=""
     ;;
 esac

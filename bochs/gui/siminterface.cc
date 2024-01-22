@@ -994,7 +994,7 @@ bool bx_real_sim_c::is_sim_thread()
 // tests if stdin/stdout/stderr are usable and returns 0 if not.
 bool bx_real_sim_c::test_for_text_console()
 {
-#if BX_WITH_CARBON
+#if BX_WITH_CARBON | BX_WITH_COCOA
   // In a Carbon application, you have a text console if you run the app from
   // the command line, but if you start it from the finder you don't.
   if(!isatty(STDIN_FILENO)) return 0;

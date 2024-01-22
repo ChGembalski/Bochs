@@ -444,6 +444,7 @@ PLUGIN_ENTRY_FOR_MODULE(voodoo);
 // config interface plugins
 PLUGIN_ENTRY_FOR_MODULE(textconfig);
 PLUGIN_ENTRY_FOR_MODULE(win32config);
+PLUGIN_ENTRY_FOR_MODULE(cocoaconfig);
 // gui plugins
 PLUGIN_ENTRY_FOR_GUI_MODULE(amigaos);
 PLUGIN_ENTRY_FOR_GUI_MODULE(carbon);
