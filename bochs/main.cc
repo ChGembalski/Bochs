@@ -521,7 +521,7 @@ int WINAPI WinMain(
 }
 #endif
 
-#if !defined(__WXMSW__)
+#if !defined(__WXMSW__) && !BX_WITH_COCOA
 // normal main function, presently in for all cases except for
 // wxWidgets under win32.
 int CDECL main(int argc, char *argv[])

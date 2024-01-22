@@ -169,7 +169,9 @@ BX_INCLUDES = bochs.h config.h osdep.h
 	$(CXX) @DASH@c $(BX_INCDIRS) $(CPPFLAGS) $(CXXFLAGS) @CXXFP@$< @OFP@$@
 .c.o:
 	$(CC) @DASH@c $(BX_INCDIRS) $(CPPFLAGS) $(CFLAGS) $(FPU_FLAGS) $< @OFP@$@
-
+# standard compile rule for mm files
+.mm.o:
+	$(CXX) @DASH@c  $(CPPFLAGS) $(CXXFLAGS) $(LOCAL_CXXFLAGS) @CXXFP@$< @OFP@$@
 
 all: @PRIMARY_TARGET@ @PLUGIN_TARGET@ bximage@EXE@ @OPTIONAL_TARGET@ @BUILD_DOCBOOK_VAR@
 
@@ -804,6 +806,7 @@ main.o: main.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
  plugin.h extplugin.h param_names.h pc_system.h memory/memory-bochs.h \
  gui/siminterface.h gui/paramtree.h gui/gui.h iodev/hdimage/hdimage.h \
  iodev/network/netmod.h iodev/sound/soundmod.h iodev/usb/usb_common.h
+main_cocoa.o: main_cocoa.mm gui/cocoa_application.h config.h
 osdep.o: osdep.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
  instrument/stubs/instrument.h misc/bswap.h bxthread.h
 pc_system.o: pc_system.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h \
