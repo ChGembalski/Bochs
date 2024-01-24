@@ -36,6 +36,7 @@
 #include "param_names.h"
 #include "iodev.h"
 
+#include "cocoa_bochs.h"
 
 static int cocoa_ci_callback(void *userdata, ci_command_t command);
 static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event);
@@ -43,6 +44,8 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event);
 PLUGIN_ENTRY_FOR_MODULE(cocoaconfig)
 {
   if (mode == PLUGIN_INIT) {
+    // create BXGuiCocoaApplication ref
+    bxcocoagui = new BXGuiCocoaApplication();
     SIM->register_configuration_interface("cocoaconfig", cocoa_ci_callback, NULL);
     SIM->set_notify_callback(cocoa_notify_callback, NULL);
   } else if (mode == PLUGIN_PROBE) {
@@ -69,9 +72,35 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
   switch (command)
   {
     case CI_START: {
+      if (SIM->get_param_enum(BXPN_BOCHS_START)->get() == BX_QUICK_START) {
+        SIM->begin_simulation(main_argc, main_argv);
+        // we don't expect it to return, but if it does, quit
+        SIM->quit_sim(1);
+      } else {
+        bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
+        if (bxcocoagui->getWindowProperty(BX_GUI_WINDOW_CONFIGURATION, BX_WINDOW_PROPERTY_START_SIM, true) == 1) {
+          bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
+          SIM->begin_simulation(main_argc, main_argv);
+        }
+        SIM->quit_sim(1);
+      }
       break;
     }
     case CI_RUNTIME_CONFIG: {
+      if (!bx_gui->has_gui_console()) {
+        bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
+        if (bxcocoagui->getWindowProperty(BX_GUI_WINDOW_CONFIGURATION, BX_WINDOW_PROPERTY_EXIT_SIM, true) == 1) {
+          bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
+          bx_user_quit = 1;
+#if !BX_DEBUGGER
+          bx_atexit();
+          SIM->quit_sim(1);
+#else
+          bx_dbg_exit(1);
+#endif
+          return -1;
+        }
+      }
       break;
     }
     case CI_SHUTDOWN: {
@@ -79,7 +108,7 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
     }
   }
 
-  return 0;
+  return CI_OK;
 
 }
 

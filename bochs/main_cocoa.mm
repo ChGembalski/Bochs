@@ -37,8 +37,11 @@
 #include <Cocoa/Cocoa.h>
 #include "gui/cocoa_application.h"
 
+class BXGuiCocoaApplication;
+
 int main_argc;
 char ** main_argv;
+BXGuiCocoaApplication * bxcocoagui;
 
 // the one and only MacOS entry point
 int main(int argc, char *argv[]) {

@@ -28,6 +28,252 @@
 #include "cocoa_windows.h"
 
 
+@implementation BXNSWindowController
+
+gui_window_t window_list[] = {
+  {BX_GUI_WINDOW_CONFIGURATION, NULL},
+  {BX_GUI_WINDOW_VGA_DISPLAY, NULL},
+  {BX_GUI_WINDOW_LOGGING, NULL},
+  {BX_GUI_WINDOW_DEBUGGER, NULL},
+  {BX_GUI_WINDOW_UNDEFINED, NULL}
+};
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+
+  self = [super init];
+  if(self) {
+    // init all windows we use
+    // each window_list.window [[? alloc] init];
+
+    window_list[0].window = [[BXNSConfigWindow alloc] init];
+    [((NSWindow *)window_list[0].window) center];
+    [window_list[0].window setIsVisible:NO];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * dealloc
+ */
+- (void)dealloc {
+
+  int i;
+
+  i=0;
+  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
+    window_list[i].window = nil;
+    i++;
+  }
+
+}
+
+/**
+ * showWindow
+ */
+- (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show {
+
+  int i;
+
+  if (window == BX_GUI_WINDOW_UNDEFINED) {
+    return;
+  }
+
+  i = 0;
+  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
+    if (window_list[i].name == window) {
+      if (window_list[i].window != nil) {
+        [window_list[i].window setIsVisible:show];
+        if (show) {
+          [window_list[i].window makeKeyAndOrderFront:self];
+        }
+      }
+      return;
+    }
+    i++;
+  }
+
+}
+
+/**
+ * getWindow
+ */
+- (id _Nullable)getWindow:(gui_window_type_t) window {
+
+  int i;
+
+  i = 0;
+  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
+    if (window_list[i].name == window) {
+      return window_list[i].window;
+    }
+    i++;
+  }
+
+  return nil;
+
+}
+
+
+@end
+
+@implementation BXNSPropertyCollection
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+
+  self = [super init];
+  if (self) {
+
+  }
+  return self;
+
+}
+
+@end
+
+@implementation BXNSGenericWindow
+
+/**
+ * initWithContentRect
+ */
+- (instancetype _Nonnull)initWithContentRect:(NSRect)contentRect styleMask:(NSWindowStyleMask)style backing:(NSBackingStoreType)backingStoreType defer:(BOOL)flag {
+
+  self = [super initWithContentRect:contentRect styleMask:style backing:backingStoreType defer:flag];
+  if (self) {
+    self.bx_p_col = [[BXNSPropertyCollection alloc] init];
+  }
+
+  return self;
+
+}
+
+
+
+/**
+ * getProperty
+ */
+- (int)getProperty:(window_property_t) p {
+  return BX_WINDOW_PROPERTY_UNDEFINED;
+}
+
+@end
+
+
+
+
+
+
+
+
+
+@interface BXldata : NSObject <NSTableViewDataSource, NSTableViewDelegate>
+@end
+
+@implementation BXldata
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
+  return 10;
+}
+
+- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
+  NSTextField *result = [tableView makeViewWithIdentifier:@"Col1" owner:self];
+  if (result == nil) {
+    result = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 100, 10)];
+    result.identifier = @"Col1";
+  }
+  result.stringValue = @"Data for me";//[self.nameArray objectAtIndex:row];
+  return result;
+}
+@end
+
+@implementation BXNSConfigWindow
+
+  NSBox * configBox;
+  NSTableView * editOptionsTable;
+  BXldata * eotdata;
+
+  - (instancetype _Nonnull)init {
+
+    self = [super initWithContentRect:NSMakeRect(0, 0, 400, 200)
+           styleMask: NSWindowStyleMaskTitled |
+                      NSWindowStyleMaskClosable |
+                      NSWindowStyleMaskMiniaturizable
+             backing: NSBackingStoreBuffered
+               defer: NO
+    ];
+  // |                    NSWindowStyleMaskResizable
+
+    if (self) {
+
+      configBox = [[NSBox alloc] init];
+      [configBox setFrameFromContentFrame:NSMakeRect(20,100,100,50)];
+      configBox.title = @"Configuration";
+
+      [self.contentView addSubview:configBox];
+
+      NSScrollView * tableContainer = [[NSScrollView alloc] initWithFrame:NSMakeRect(200,000,150,200)];
+
+      editOptionsTable = [[NSTableView alloc] initWithFrame:NSMakeRect(200,000,150,200)];
+      NSTableColumn * column1 = [[NSTableColumn alloc] initWithIdentifier:@"Col1"];
+      [column1 setWidth:180];
+      [editOptionsTable addTableColumn:column1];
+      editOptionsTable.headerView = nil;
+
+      eotdata = [[BXldata alloc] init];
+      [editOptionsTable setDelegate:eotdata];
+      [editOptionsTable setDataSource:eotdata];
+      // editOptionsTable.dataSource = eotdata;
+      [editOptionsTable reloadData];
+
+      [tableContainer setDocumentView:editOptionsTable];
+      [tableContainer setHasVerticalScroller:YES];
+
+      [self.contentView addSubview:tableContainer];
+
+
+
+      [NSApp setDelegate:self];
+      [NSApp setDelegate:[self contentView]];
+      [self setTitle:BOCHS_WINDOW_NAME];
+
+
+
+
+
+    }
+
+    return self;
+  }
+
+  - (int)getProperty:(window_property_t) p {
+    return BX_WINDOW_PROPERTY_UNDEFINED;
+  }
+
+
+
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // #if BX_SUPPORT_X86_64
 //   #define BOCHS_WINDOW_NAME @"Bochs x86-64 emulator MacOS X"

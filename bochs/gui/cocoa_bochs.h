@@ -29,6 +29,20 @@
 
   struct BXNSApplicationImpl;
 
+  typedef enum {
+    BX_GUI_WINDOW_UNDEFINED,
+    BX_GUI_WINDOW_CONFIGURATION,
+    BX_GUI_WINDOW_VGA_DISPLAY,
+    BX_GUI_WINDOW_LOGGING,
+    BX_GUI_WINDOW_DEBUGGER
+  } gui_window_type_t;
+
+  typedef enum {
+    BX_WINDOW_PROPERTY_UNDEFINED = -1,
+    BX_WINDOW_PROPERTY_START_SIM,
+    BX_WINDOW_PROPERTY_EXIT_SIM,
+  } window_property_t;
+
   class BXGuiCocoaApplication {
 
   private:
@@ -38,11 +52,15 @@
     BXGuiCocoaApplication();
     ~BXGuiCocoaApplication();
 
-    void createVGAdisplayWindow(unsigned x, unsigned y, unsigned headerbar_y);
-    void createConsoleWindow();
-    void createLoggingWindow();
-    void createDebuggerWindow();
+    void showWindow(gui_window_type_t window, bool bShow);
+    int getWindowProperty(gui_window_type_t window, window_property_t property, bool bWait);
+
+    
 
   };
+
+  extern BXGuiCocoaApplication * bxcocoagui;
+  extern int main_argc;
+  extern char ** main_argv;
 
 #endif /* BX_GUI_COCOA_BOCHS_H */

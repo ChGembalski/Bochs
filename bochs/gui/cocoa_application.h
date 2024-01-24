@@ -27,19 +27,22 @@
 
   #define BX_GUI_COCOA_APPLICATION_H
 
+  #include "cocoa_windows.h"
+
   @interface BXBochsThread : NSThread
 
-  - (instancetype)init;
-  - (void)main;
+    - (instancetype)init;
+    - (void)main;
 
   @end
 
   @interface BXNSApplication : NSApplication
 
-  - (void)finishLaunching;
-  - (void)terminate:(id)sender;
+    @property (nonatomic, readwrite, strong) BXNSWindowController * bx_window_controller;
 
-  - (void)testWnd;
+    - (void)finishLaunching;
+    - (void)terminate:(id)sender;
+
 
   @end
 

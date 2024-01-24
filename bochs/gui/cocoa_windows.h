@@ -27,6 +27,7 @@
 
   #define BX_GUI_COCOA_WINDOWS_H
 
+  #include "cocoa_bochs.h"
   #include "cocoa_headerbar.h"
 
   #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
@@ -41,6 +42,56 @@
   #else
     #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
   #endif
+
+  typedef struct {
+    gui_window_type_t           name;
+    id                _Nullable window;
+  } gui_window_t;
+
+  @interface BXNSWindowController : NSObject
+
+    - (instancetype _Nonnull)init;
+    - (void)dealloc;
+    - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show;
+    - (id _Nullable)getWindow:(gui_window_type_t) window;
+
+  @end
+
+  @interface BXNSPropertyCollection : NSObject
+    - (instancetype _Nonnull)init;
+  @end
+
+  @interface BXNSGenericWindow : NSWindow <NSApplicationDelegate>
+
+    @property (atomic, readwrite, strong) BXNSPropertyCollection * _Nullable bx_p_col;
+
+    - (instancetype _Nonnull)initWithContentRect:(NSRect)contentRect styleMask:(NSWindowStyleMask)style backing:(NSBackingStoreType)backingStoreType defer:(BOOL)flag;
+
+    - (int)getProperty:(window_property_t) p;
+
+  @end
+
+
+
+  @interface BXNSConfigWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    - (instancetype _Nonnull)init;
+
+    - (int)getProperty:(window_property_t) p;
+
+
+  @end
+
+
+
+
+
+
+
+
+
+
+
 
   @interface BXNSEventQueue : NSObject
 

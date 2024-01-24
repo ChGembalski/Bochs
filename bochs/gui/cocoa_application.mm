@@ -26,12 +26,16 @@
 #include <Cocoa/Cocoa.h>
 #include "cocoa_bochs.h"
 #include "cocoa_application.h"
+#include "cocoa_menu.h"
+
 #include "bochs.h"
 #include "siminterface.h"
 
 extern int bxmain(void);
-extern int main_argc;
-extern char ** main_argv;
+
+/////////////////////////////////
+// BXBochsThread
+/////////////////////////////////
 
 @implementation BXBochsThread
 
@@ -65,8 +69,13 @@ extern char ** main_argv;
 
 @end
 
+/////////////////////////////////
+// BXNSApplication
+/////////////////////////////////
+
 @implementation BXNSApplication
 
+BXNSMenuBar * menubar;
 BXBochsThread * bochsThread;
 
 
@@ -80,47 +89,14 @@ BXBochsThread * bochsThread;
   NSApp.applicationIconImage = nil;//(NSImage *) BXwindow->createIconXPM();
 
   // Menue Bar
-  id menubar = [NSMenu new];
-  id appMenuItem = [NSMenuItem new];
-  id editMenuItem = [NSMenuItem new];
-  id windowMenuItem = [NSMenuItem new];
-  [menubar addItem:appMenuItem];
-  [menubar addItem:editMenuItem];
-  [menubar addItem:windowMenuItem];
-  [NSApp setMainMenu:menubar];
+  menubar = [[BXNSMenuBar alloc] init];
+  [BXNSMenuBar showMenu:@"Debugger" doShow:NO];
 
-  // Then we add the quit item to the menu. Fortunately the action is simple since terminate: is
-  // already implemented in NSApplication and the NSApplication is always in the responder chain.
-  id appMenu = [NSMenu new];
-  id appName = [[NSProcessInfo processInfo] processName];
-  id quitTitle = [@"Quit " stringByAppendingString:appName];
-  id quitMenuItem = [[NSMenuItem alloc] initWithTitle:quitTitle
-                                                action:@selector(terminate:) keyEquivalent:@"q"];
-                                                // MUST CALL BX_EXIT(exitcode) !!!!!!!!!!!!!!
+  // Window Controller
+  self.bx_window_controller = [[BXNSWindowController alloc] init];
 
-  [appMenu addItem:quitMenuItem];
-  [appMenuItem setSubmenu:appMenu];
 
-  id editMenu = [[NSMenu new] initWithTitle:@"Edit"];
-  id clipboardgetMenuItem = [[NSMenuItem alloc] initWithTitle:@"get Clipboard" action: nil keyEquivalent:@""];
-  id clipboardsetMenuItem = [[NSMenuItem alloc] initWithTitle:@"set Clipboard" action: nil keyEquivalent:@""];
 
-  [editMenu addItem:clipboardgetMenuItem];
-  [editMenu addItem:clipboardsetMenuItem];
-  [editMenuItem setSubmenu:editMenu];
-
-  // TODO : Need some Menus like Window -> VGA Display, Console? , Logging, Debugger
-  id windowMenu = [[NSMenu new] initWithTitle:@"Window"];
-  id vgadisplayMenuItem = [[NSMenuItem alloc] initWithTitle:@"VGA display" action: nil keyEquivalent:@""];
-  id consoleMenuItem = [[NSMenuItem alloc] initWithTitle:@"Console" action: nil keyEquivalent:@""];
-  id loggingMenuItem = [[NSMenuItem alloc] initWithTitle:@"Logging" action: nil keyEquivalent:@""];
-  id debuggerMenuItem = [[NSMenuItem alloc] initWithTitle:@"Debugger" action: nil keyEquivalent:@""];
-
-  [windowMenu addItem:vgadisplayMenuItem];
-  [windowMenu addItem:consoleMenuItem];
-  [windowMenu addItem:loggingMenuItem];
-  [windowMenu addItem:debuggerMenuItem];
-  [windowMenuItem setSubmenu:windowMenu];
 
 
 
@@ -158,38 +134,6 @@ BXBochsThread * bochsThread;
 
 
 
-
-
-
-
-- (void)testWnd {
-
-NSLog(@"bochs thread testWnd");
-  NSRect frame = NSMakeRect(0, 0, 200, 200);
-NSWindow* window  = [[NSWindow alloc] initWithContentRect:frame
-                    styleMask:NSWindowStyleMaskTitled |
-                               NSWindowStyleMaskClosable |
-                               NSWindowStyleMaskMiniaturizable
-                    backing:NSBackingStoreBuffered
-                    defer:NO];
-[window setTitle:@"test Window"];
-[window setBackgroundColor:[NSColor blueColor]];
-[window center];
-[window setIsVisible:YES];
-[window makeKeyAndOrderFront:self];
-[window setAcceptsMouseMovedEvents:YES];
-
-NSLog(@"bochs thread testWnd done");
-
-}
-
-
-
-
-
-
-
-
 @end
 
 /////////////////////////////////
@@ -213,10 +157,40 @@ BXGuiCocoaApplication::~BXGuiCocoaApplication() {
 }
 
 /**
- * createVGAdisplayWindow
+ * showWindow
  */
-void BXGuiCocoaApplication::createVGAdisplayWindow(unsigned x, unsigned y, unsigned headerbar_y) {
-// [[[BXGuiCocoaNSWindow alloc] init:headerbar_y VGAsize:NSMakeSize(x, y)] autorelease];
+void BXGuiCocoaApplication::showWindow(gui_window_type_t window, bool bShow) {
+  NSLog(@"BXGuiCocoaApplication::showWindow");
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller showWindow:window doShow:bShow];
+  });
+}
+
+/**
+ * getWindowProperty
+ */
+int BXGuiCocoaApplication::getWindowProperty(gui_window_type_t window, window_property_t property, bool bWait) {
+
+  int result;
+  id wnd;
+
+  wnd = [BXCocoaApplication->BXNSApp.bx_window_controller getWindow:window];
+  if (wnd == nil) {
+    return BX_WINDOW_PROPERTY_UNDEFINED;
+  }
+
+  if (!bWait) {
+    return [((BXNSGenericWindow *)wnd) getProperty:property];
+  }
+
+  while (bWait) {
+    result = [((BXNSGenericWindow *)wnd) getProperty:property];
+    usleep(10000);
+    bWait = result == BX_WINDOW_PROPERTY_UNDEFINED ? true : false;
+  }
+
+  return result;
+
 }
 
 
