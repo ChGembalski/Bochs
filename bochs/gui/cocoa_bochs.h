@@ -38,10 +38,10 @@
   } gui_window_type_t;
 
   typedef enum {
-    BX_WINDOW_PROPERTY_UNDEFINED = -1,
-    BX_WINDOW_PROPERTY_START_SIM,
-    BX_WINDOW_PROPERTY_EXIT_SIM,
-  } window_property_t;
+    BX_PROPERTY_UNDEFINED = -1,
+    BX_PROPERTY_START_SIM,
+    BX_PROPERTY_EXIT_SIM,
+  } property_t;
 
   class BXGuiCocoaApplication {
 
@@ -53,9 +53,13 @@
     ~BXGuiCocoaApplication();
 
     void showWindow(gui_window_type_t window, bool bShow);
-    int getWindowProperty(gui_window_type_t window, window_property_t property, bool bWait);
+    void activateWindow(gui_window_type_t window);
+    int getProperty(property_t property, bool bWait);
 
-    
+    void postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg);
+
+    void getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp);
+
 
   };
 

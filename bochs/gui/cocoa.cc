@@ -199,8 +199,6 @@ Bit32s scancode_tbl[] = {
 
 class bx_cocoa_gui_c : public bx_gui_c {
 private:
-  BXGuiCocoaApplication * bxcocoagui;
-
   bool cocoa_mouse_mode_absxy;
   bxevent_handler old_callback;
   void *old_callback_arg;
@@ -326,12 +324,10 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   old_callback = NULL;
   old_callback_arg = NULL;
 
-  // get access to NSApp objc wrapper
-  bxcocoagui = new BXGuiCocoaApplication();
-  // device = new BXGuiCocoaDevice(guest_xres, guest_yres, headerbar_y);
+  // bxcocoagui created by cocoaconfig !!!
 
   // setup screen
-  // device->getScreenConfiguration(&max_xres, &max_yres, &max_bpp);
+  bxcocoagui->getScreenConfiguration(&max_xres, &max_yres, &max_bpp);
 
   // setup mouse handling
   // device->setEventMouseABS(cocoa_mouse_mode_absxy);
@@ -339,6 +335,9 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   // init startup - use current guest settings
   // device->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
   // device->dimension_update(640, 480, 8, 16, 8);
+
+  bxcocoagui->showWindow(BX_GUI_WINDOW_VGA_DISPLAY, true);
+  bxcocoagui->activateWindow(BX_GUI_WINDOW_VGA_DISPLAY);
 
   BX_INFO(("bx_cocoa_gui_c::specific_init() running some events now ..."));
 

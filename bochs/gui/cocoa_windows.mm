@@ -28,6 +28,178 @@
 #include "cocoa_windows.h"
 
 
+property_entry_t mapping[] = {
+  {BX_PROPERTY_START_SIM,    @"Simulation.Start"},
+  {BX_PROPERTY_EXIT_SIM,     @"Simulation.Stop"},
+  {BX_PROPERTY_UNDEFINED,    @""}
+};
+
+
+@implementation BXNSPropertyCollection
+
+NSMutableDictionary<NSString *, NSNumber *> * map;
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+
+  self = [super init];
+  if (self) {
+    map = [[NSMutableDictionary alloc] init];
+  }
+  return self;
+
+}
+
+/*
+ * propertyToString
+ */
+- (NSString * _Nullable)propertyToString:(property_t) property {
+
+  int i;
+
+  i=0;
+  while (mapping[i].type != BX_PROPERTY_UNDEFINED) {
+    if (mapping[i].type == property) {
+      return mapping[i].name;
+    }
+    i++;
+  }
+
+  return nil;
+
+}
+
+/**
+ * setProperty
+ */
+- (void)setProperty:(NSString * _Nonnull) name value:(NSInteger) val {
+
+  [map setObject:[NSNumber numberWithInteger:val] forKey:name];
+
+}
+
+/**
+ * getProperty
+ */
+- (NSInteger)getProperty:(NSString * _Nonnull) name {
+
+  NSNumber * value;
+
+  value = [map objectForKey:name];
+  if (value == nil) {
+    return BX_PROPERTY_UNDEFINED;
+  }
+  [map removeObjectForKey:name];
+
+  return value.integerValue;
+
+}
+
+
+@end
+
+
+@implementation BXNSLogEntry
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init:(UInt8) level LogMode:(UInt8) mode LogTimeCode:(NSString * _Nonnull) timecode LogModule:(NSString * _Nonnull) module LogMsg:(NSString * _Nonnull) msg {
+
+  self = [super init];
+  if (self) {
+
+    self.level = level;
+    self.mode = mode;
+    self.timecode = timecode;
+    self.module = module;
+    self.msg = msg;
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSLogQueue
+
+NSMutableArray<BXNSLogEntry *> * logqueue;
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+
+  self = [super init];
+  if(self) {
+
+    logqueue = [[NSMutableArray alloc] init];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * enqueueSplit
+ */
+- (void)enqueueSplit:(NSString * _Nonnull) msg LogLevel:(UInt8) level LogMode:(UInt8) mode {
+
+  BXNSLogEntry * entry;
+  NSString * timecode;
+  NSString * module;
+  NSString * lmsg;
+
+  timecode = [msg substringToIndex:11];
+  module = [msg substringWithRange:NSMakeRange(12, 8)];
+  lmsg = [msg substringFromIndex:21];
+
+  [logqueue addObject:[[BXNSLogEntry alloc] init:level LogMode:mode LogTimeCode:timecode LogModule:module LogMsg:lmsg]];
+
+}
+
+/**
+ * enqueue
+ */
+- (void)enqueue:(BXNSLogEntry * _Nonnull) entry {
+
+  [logqueue addObject:entry];
+
+}
+
+/**
+ * dequeue
+ */
+- (BXNSLogEntry * _Nullable)dequeue {
+
+  BXNSLogEntry * obj;
+
+  if ([logqueue count] == 0) {
+    return nil;
+  }
+  obj = [logqueue objectAtIndex:0];
+  [logqueue removeObjectAtIndex:0];
+
+  return obj;
+
+}
+
+/**
+ * isEmpty
+ */
+- (BOOL)isEmpty {
+  return [logqueue count] == 0;
+}
+
+@end
+
+
 @implementation BXNSWindowController
 
 gui_window_t window_list[] = {
@@ -45,12 +217,30 @@ gui_window_t window_list[] = {
 
   self = [super init];
   if(self) {
+
+    self.bx_p_col = [[BXNSPropertyCollection alloc] init];
+
+    self.bx_log_queue = [[BXNSLogQueue alloc] init];
+
     // init all windows we use
     // each window_list.window [[? alloc] init];
 
-    window_list[0].window = [[BXNSConfigWindow alloc] init];
+    window_list[0].window = [[BXNSConfigurationWindow alloc] init:self];
     [((NSWindow *)window_list[0].window) center];
     [window_list[0].window setIsVisible:NO];
+
+    window_list[1].window = [[BXNSSimulationWindow alloc] init:self];
+    [((NSWindow *)window_list[1].window) center];
+    [window_list[1].window setIsVisible:NO];
+
+    window_list[2].window = [[BXNSLoggingWindow alloc] init:self LogQueue:self.bx_log_queue];
+    [((NSWindow *)window_list[2].window) center];
+    [window_list[2].window setIsVisible:NO];
+
+    window_list[3].window = [[BXNSDebuggerWindow alloc] init:self];
+    [((NSWindow *)window_list[3].window) center];
+    [window_list[3].window setIsVisible:NO];
+
 
   }
 
@@ -78,24 +268,25 @@ gui_window_t window_list[] = {
  */
 - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show {
 
-  int i;
+  BXNSGenericWindow * curWindow;
 
-  if (window == BX_GUI_WINDOW_UNDEFINED) {
-    return;
+  curWindow = [self getWindow:window];
+  if (curWindow != nil) {
+    [curWindow setIsVisible:show];
   }
 
-  i = 0;
-  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
-    if (window_list[i].name == window) {
-      if (window_list[i].window != nil) {
-        [window_list[i].window setIsVisible:show];
-        if (show) {
-          [window_list[i].window makeKeyAndOrderFront:self];
-        }
-      }
-      return;
-    }
-    i++;
+}
+
+/**
+ * activateWindow
+ */
+- (void)activateWindow:(gui_window_type_t) window {
+
+  BXNSGenericWindow * curWindow;
+
+  curWindow = [self getWindow:window];
+  if (curWindow != nil) {
+    [curWindow makeKeyAndOrderFront:nil];
   }
 
 }
@@ -119,60 +310,91 @@ gui_window_t window_list[] = {
 
 }
 
+/**
+ * getProperty
+ */
+- (int)getProperty:(property_t) p {
 
-@end
+  NSString * property;
 
-@implementation BXNSPropertyCollection
+  property = [self.bx_p_col propertyToString:p];
+  if (property == nil) {
+    return BX_PROPERTY_UNDEFINED;
+  }
+
+  return [self.bx_p_col getProperty:property];
+
+}
+
 
 /**
- * init
+ * onMenuEvent
  */
-- (instancetype _Nonnull)init {
+- (void)onMenuEvent:(id _Nonnull) sender {
 
-  self = [super init];
-  if (self) {
+  NSMenuItem * curMenuItem;
+  NSMenu * curMenu;
+  NSString * senderPath;
+  BXNSGenericWindow * curWindow;
 
+  // resolve the sender
+  curMenuItem = (NSMenuItem *)sender;
+  senderPath = curMenuItem.title;
+  curMenu = curMenuItem.menu;
+  while ((curMenu != nil) & (curMenu.title != nil)) {
+    senderPath = [[NSString alloc] initWithFormat:@"%@.%@", curMenu.title, senderPath];
+    curMenu = curMenu.supermenu;
+  };
+
+  // spectial handling Window Menu
+  if ([senderPath isEqualToString:@"Window.Logger"]) {
+    // Toggle Logger Window visibility
+    curWindow = [self getWindow:BX_GUI_WINDOW_LOGGING];
+    [curMenuItem setState:!curWindow.visible?NSControlStateValueOn:NSControlStateValueOff];
+    [self showWindow:BX_GUI_WINDOW_LOGGING doShow:!curWindow.visible];
+    return;
   }
-  return self;
+
+
+  NSLog(@"Hit that menu %@", senderPath);
+  [self.bx_p_col setProperty:senderPath value:1];
 
 }
 
 @end
+
 
 @implementation BXNSGenericWindow
 
 /**
- * initWithContentRect
+ * initWithBXController
  */
-- (instancetype _Nonnull)initWithContentRect:(NSRect)contentRect styleMask:(NSWindowStyleMask)style backing:(NSBackingStoreType)backingStoreType defer:(BOOL)flag {
+- (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag {
 
-  self = [super initWithContentRect:contentRect styleMask:style backing:backingStoreType defer:flag];
+  self = [super initWithContentRect:rect styleMask:style backing:backingStoreType defer:flag];
   if (self) {
-    self.bx_p_col = [[BXNSPropertyCollection alloc] init];
+    self.bx_controller = controller;
   }
 
   return self;
 
 }
 
-
-
 /**
- * getProperty
+ * windowShouldClose
  */
-- (int)getProperty:(window_property_t) p {
-  return BX_WINDOW_PROPERTY_UNDEFINED;
+- (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender {
+  [self setIsVisible:NO];
+  return NO;
 }
 
 @end
 
 
 
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+// TEMP Configuration Window
+////////////////////////////////////////////////////////////////////////////////
 
 @interface BXldata : NSObject <NSTableViewDataSource, NSTableViewDelegate>
 @end
@@ -193,15 +415,16 @@ gui_window_t window_list[] = {
 }
 @end
 
-@implementation BXNSConfigWindow
+@implementation BXNSConfigurationWindow
 
   NSBox * configBox;
   NSTableView * editOptionsTable;
   BXldata * eotdata;
 
-  - (instancetype _Nonnull)init {
+  - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller; {
 
-    self = [super initWithContentRect:NSMakeRect(0, 0, 400, 200)
+    self = [super initWithBXController:controller
+         contentRect: NSMakeRect(0, 0, 400, 200)
            styleMask: NSWindowStyleMaskTitled |
                       NSWindowStyleMaskClosable |
                       NSWindowStyleMaskMiniaturizable
@@ -252,14 +475,217 @@ gui_window_t window_list[] = {
     return self;
   }
 
-  - (int)getProperty:(window_property_t) p {
-    return BX_WINDOW_PROPERTY_UNDEFINED;
-  }
-
 
 
 
 @end
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// TEMP Simulation Window
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSSimulationWindow
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
+
+  self = [super initWithBXController:controller
+       contentRect: NSMakeRect(0, 0, 640, 400)
+         styleMask: NSWindowStyleMaskTitled |
+                    NSWindowStyleMaskClosable |
+                    NSWindowStyleMaskMiniaturizable
+           backing: NSBackingStoreBuffered
+             defer: NO
+  ];
+
+  if (self) {
+
+    [self setTitle:BOCHS_WINDOW_NAME];
+
+    self.MouseCaptureAbsolute = NO;
+
+    // Setup VGA display
+
+    // setup Toolbar
+
+    [self setAcceptsMouseMovedEvents:YES];
+
+  }
+
+  return self;
+
+}
+
+@end
+
+////////////////////////////////////////////////////////////////////////////////
+// TEMP Logging Window
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSLoggingWindow
+
+NSView * optionsView;
+NSBox * optionsBox;
+NSButton * panicOption;
+NSButton * errorOption;
+NSButton * infoOption;
+NSButton * debugOption;
+NSButton * refreshButton;
+NSBox * messagesBox;
+NSScrollView * messagesScrollView;
+NSTextView * messagesText;
+NSDictionary * attributesText;
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller LogQueue:(BXNSLogQueue * _Nonnull) queue {
+
+  self = [super initWithBXController:controller
+       contentRect: NSMakeRect(0, 0, 400, 400)
+         styleMask: NSWindowStyleMaskTitled |
+                    NSWindowStyleMaskClosable |
+                    NSWindowStyleMaskMiniaturizable |
+                    NSWindowStyleMaskResizable
+           backing: NSBackingStoreBuffered
+             defer: NO
+  ];
+
+  if (self) {
+
+    self.queue = queue;
+
+    [self setTitle:BOCHS_WINDOW_LOGGER_NAME];
+
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    optionsBox = [[NSBox alloc] init];
+    [optionsBox setFrameFromContentFrame:NSMakeRect(20,350,360,20)];
+    optionsBox.title = @"Logging Level";
+    optionsBox.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+
+    panicOption = [NSButton checkboxWithTitle:@"Panic" target:self action:nil];
+    panicOption.frame = NSMakeRect(0, 0, 80, 20);
+    [optionsBox addSubview:panicOption];
+    errorOption = [NSButton checkboxWithTitle:@"Error" target:self action:nil];
+    errorOption.frame = NSMakeRect(80, 0, 80, 20);
+    [optionsBox addSubview:errorOption];
+    infoOption = [NSButton checkboxWithTitle:@"Info" target:self action:nil];
+    infoOption.frame = NSMakeRect(160, 0, 80, 20);
+    [optionsBox addSubview:infoOption];
+    debugOption = [NSButton checkboxWithTitle:@"Debug" target:self action:nil];
+    debugOption.frame = NSMakeRect(240, 0, 80, 20);
+    [optionsBox addSubview:debugOption];
+
+    refreshButton = [NSButton buttonWithTitle:@"Refresh" target:self action:@selector(refreshFromQueue)];
+    refreshButton.frame = NSMakeRect(320, 0, 80, 20);
+    [optionsBox addSubview:refreshButton];
+
+    messagesBox = [[NSBox alloc] init];
+    [messagesBox setFrameFromContentFrame:NSMakeRect(20,20,360,290)];
+    messagesBox.title = @"Logging Messages";
+    messagesBox.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin | NSViewHeightSizable;
+
+    messagesScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(10, 10, 340, 270)];
+    messagesScrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [messagesScrollView setBorderType:NSNoBorder];
+    [messagesScrollView setHasVerticalScroller:YES];
+
+    messagesText = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, 340, 270)];
+    messagesText.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [messagesText setMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
+    [messagesText setVerticallyResizable:YES];
+    [messagesText setHorizontallyResizable:YES];
+    [messagesText setTextColor:NSColor.textColor];
+    [[messagesText textContainer] setContainerSize:NSMakeSize(340, 270)];
+    [[messagesText textContainer] setWidthTracksTextView:YES];
+    [[messagesText textContainer] setHeightTracksTextView:YES];
+
+    attributesText = @{NSForegroundColorAttributeName:NSColor.textColor,
+    NSFontAttributeName:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular]};
+
+    [messagesScrollView setDocumentView:messagesText];
+    [messagesBox addSubview:messagesScrollView];
+
+    [self.contentView addSubview:optionsBox];
+    [self.contentView addSubview:messagesBox];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * refreshFromQueue
+ */
+- (void)refreshFromQueue {
+
+  if (self.queue.isEmpty) {
+    return;
+  }
+
+  while (!self.queue.isEmpty) {
+
+    BXNSLogEntry * entry;
+    NSAttributedString * msg;
+    NSString * fmsg;
+
+    entry = [self.queue dequeue];
+
+    // TODO : check flags
+    fmsg = [[NSString alloc] initWithFormat:@"%@<->%@<->%@", entry.timecode, entry.module, entry.msg];
+    msg = [[NSAttributedString alloc] initWithString:fmsg attributes:attributesText];
+
+    [[messagesText textStorage] appendAttributedString:msg];
+
+  }
+
+}
+
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// TEMP Debugger Window
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSDebuggerWindow
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
+
+  self = [super initWithBXController:controller
+       contentRect: NSMakeRect(0, 0, 640, 480)
+         styleMask: NSWindowStyleMaskTitled |
+                    NSWindowStyleMaskClosable |
+                    NSWindowStyleMaskMiniaturizable |
+                    NSWindowStyleMaskResizable
+           backing: NSBackingStoreBuffered
+             defer: NO
+  ];
+
+  if (self) {
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+
+
+
 
 
 

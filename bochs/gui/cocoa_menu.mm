@@ -28,29 +28,29 @@
 
 
 menu_opts_t menu_options[] = {
-  {NULL,                    "Bochs",          YES,  nil,  nil},
-  {"Bochs",                 "Configuration",  YES,  nil,  nil},
-  {"Bochs.Configuration",   "Load",           NO,   nil,  nil},
-  {"Bochs.Configuration",   "Save",           NO,   nil,  nil},
-  {"Bochs.Configuration",   "Reset",          NO,   nil,  nil},
-  {"Bochs",                 "About",          NO,   nil,  nil},
-  {"Bochs",                 "-",              NO,   nil,  nil},
-  {"Bochs",                 "Quit",           NO,   @"q", @selector(terminate:)},
-  {NULL,                    "Simulation",     YES,  nil,  nil},
-  {"Simulation",            "Start",          NO,   nil,  nil},
-  {"Simulation",            "Stop",           NO,   nil,  nil},
-  {"Simulation",            "-",              NO,   nil,  nil},
-  {"Simulation",            "Clipboard",      YES,  nil,  nil},
-  {"Simulation.Clipboard",  "Copy",           NO,   nil,  nil},
-  {"Simulation.Clipboard",  "Paste",          NO,   nil,  nil},
-  {NULL,                    "Debugger",       YES,  nil,  nil},
-  {NULL,                    "Window",         YES,  nil,  nil},
-  {"Window",                "Configuration",  NO,   nil,  nil},
-  {"Window",                "VGA Display",    NO,   nil,  nil},
-  {"Window",                "Logger",         NO,   nil,  nil},
-  {"Window",                "Debugger",       NO,   nil,  nil},
-  {NULL,                    "Help",           YES,  nil,  nil},
-  {NULL,                    NULL,             NO,   nil,  nil}
+  {NULL,                    "Bochs",          YES,  nil,  YES},
+  {"Bochs",                 "Configuration",  YES,  nil,  YES},
+  {"Bochs.Configuration",   "Load",           NO,   nil,  YES},
+  {"Bochs.Configuration",   "Save",           NO,   nil,  NO},
+  {"Bochs.Configuration",   "Reset",          NO,   nil,  NO},
+  {"Bochs",                 "About",          NO,   nil,  YES},
+  {"Bochs",                 "-",              NO,   nil,  YES},
+  {"Bochs",                 "Quit",           NO,   @"q", YES},
+  {NULL,                    "Simulation",     YES,  nil,  YES},
+  {"Simulation",            "Start",          NO,   nil,  YES},
+  {"Simulation",            "Stop",           NO,   nil,  NO},
+  {"Simulation",            "-",              NO,   nil,  YES},
+  {"Simulation",            "Clipboard",      YES,  nil,  NO},
+  {"Simulation.Clipboard",  "Copy",           NO,   nil,  NO},
+  {"Simulation.Clipboard",  "Paste",          NO,   nil,  NO},
+  {NULL,                    "Debugger",       YES,  nil,  NO},
+  {NULL,                    "Window",         YES,  nil,  YES},
+  {"Window",                "Configuration",  NO,   nil,  YES},
+  {"Window",                "VGA Display",    NO,   nil,  NO},
+  {"Window",                "Logger",         NO,   nil,  YES},
+  {"Window",                "Debugger",       NO,   nil,  NO},
+  {NULL,                    "Help",           YES,  nil,  YES},
+  {NULL,                    NULL,             NO,   nil,  NO}
 };
 
 
@@ -62,7 +62,7 @@ menu_opts_t menu_options[] = {
 /**
  * init
  */
-- (instancetype _Nonnull)init {
+- (instancetype _Nonnull)init:(id _Nonnull) target {
 
   self = [super init];
   if (self) {
@@ -74,7 +74,7 @@ menu_opts_t menu_options[] = {
     // create App menu bar
     NSApp.mainMenu = [NSMenu alloc];
     while ((menu_options[i].parent != NULL) | (menu_options[i].name != NULL)) {
-      [BXNSMenuBar createMenu:&menu_options[i]];
+      [BXNSMenuBar createMenu:&menu_options[i] menuTarget:target];
       i++;
     }
 
@@ -86,10 +86,12 @@ menu_opts_t menu_options[] = {
 /**
  * createMenu
  */
-+ (void)createMenu:(menu_opts_t * _Nonnull) opt {
++ (void)createMenu:(menu_opts_t * _Nonnull) opt menuTarget:(id _Nonnull) target {
 
   NSMenu * parent;
   NSString * title;
+  NSMenuItem * newMenuItem;
+  NSMenu * newMenu;
 
   // find menu parent
   if (opt->parent == NULL) {
@@ -99,21 +101,24 @@ menu_opts_t menu_options[] = {
   }
 
   if (opt->childs) {
-    NSMenuItem * newMenuItem;
-
     title = [NSString stringWithUTF8String:opt->name];
     newMenuItem = [NSMenuItem alloc];
     if (opt->parent != NULL) {
       newMenuItem.title = title;
     }
-    [newMenuItem setSubmenu:[[NSMenu alloc] initWithTitle:title]];
+    newMenu = [[NSMenu alloc] initWithTitle:title];
+    [newMenu setAutoenablesItems:NO];
+    [newMenuItem setSubmenu:newMenu];
     [parent addItem:newMenuItem];
   } else {
     title = [NSString stringWithUTF8String:opt->name];
     if ([title isEqualToString:@"-"]) {
       [parent addItem:[NSMenuItem separatorItem]];
     } else {
-      [parent addItemWithTitle:title action:opt->action keyEquivalent:opt->key==nil?@"":opt->key];
+      newMenuItem = [[NSMenuItem alloc] initWithTitle:title action:@selector(onMenuEvent:) keyEquivalent:opt->key==nil?@"":opt->key];
+      newMenuItem.target = target;
+      [newMenuItem setEnabled:opt->enabled];
+      [parent addItem:newMenuItem];
     }
   }
 

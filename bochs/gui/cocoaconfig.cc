@@ -47,6 +47,8 @@ PLUGIN_ENTRY_FOR_MODULE(cocoaconfig)
     // create BXGuiCocoaApplication ref
     bxcocoagui = new BXGuiCocoaApplication();
     SIM->register_configuration_interface("cocoaconfig", cocoa_ci_callback, NULL);
+    SIM->set_log_viewer(true);
+    // this callback is captured by cocoa.cc
     SIM->set_notify_callback(cocoa_notify_callback, NULL);
   } else if (mode == PLUGIN_PROBE) {
     return (int)PLUGTYPE_CI;
@@ -78,7 +80,8 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
         SIM->quit_sim(1);
       } else {
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
-        if (bxcocoagui->getWindowProperty(BX_GUI_WINDOW_CONFIGURATION, BX_WINDOW_PROPERTY_START_SIM, true) == 1) {
+        bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
+        if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, true) == 1) {
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
           SIM->begin_simulation(main_argc, main_argv);
         }
@@ -89,7 +92,8 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
     case CI_RUNTIME_CONFIG: {
       if (!bx_gui->has_gui_console()) {
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
-        if (bxcocoagui->getWindowProperty(BX_GUI_WINDOW_CONFIGURATION, BX_WINDOW_PROPERTY_EXIT_SIM, true) == 1) {
+        bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
+        if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
           bx_user_quit = 1;
 #if !BX_DEBUGGER
@@ -104,6 +108,9 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
       break;
     }
     case CI_SHUTDOWN: {
+      // cleanup here?
+      // send a cleanup call to bxcocoagui ?????
+      delete bxcocoagui;
       break;
     }
   }
@@ -120,6 +127,12 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
   event->retcode = -1;
   switch (event->type)
   {
+    case BX_ASYNC_EVT_DBG_MSG:
+    case BX_ASYNC_EVT_LOG_MSG: {
+      bxcocoagui->postLogMessage(event->u.logmsg.level, event->u.logmsg.mode, event->u.logmsg.prefix, event->u.logmsg.msg);
+      event->retcode = 0;
+      return event;
+    }
     case BX_SYNC_EVT_LOG_DLG: {
       return event;
     }

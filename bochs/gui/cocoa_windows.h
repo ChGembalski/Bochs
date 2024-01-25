@@ -39,8 +39,10 @@
 
   #if BX_SUPPORT_X86_64
     #define BOCHS_WINDOW_NAME @"Bochs x86-64 emulator MacOS X"
+    #define BOCHS_WINDOW_LOGGER_NAME @"Bochs x86-64 logger MacOS X"
   #else
     #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
+    #define BOCHS_WINDOW_LOGGER_NAME @"Bochs x86 logger MacOS X"
   #endif
 
   typedef struct {
@@ -48,39 +50,128 @@
     id                _Nullable window;
   } gui_window_t;
 
+  typedef struct {
+    property_t                  type;
+    NSString *        _Nonnull  name;
+  } property_entry_t;
+
+  @interface BXNSPropertyCollection : NSObject
+
+    - (instancetype _Nonnull)init;
+
+    - (NSString * _Nullable)propertyToString:(property_t) property;
+    - (void)setProperty:(NSString * _Nonnull) name value:(NSInteger) val;
+    - (NSInteger)getProperty:(NSString * _Nonnull) name;
+
+  @end
+
+
+  @interface BXNSLogEntry : NSObject
+
+    @property (nonatomic, readwrite) UInt8 level;
+    @property (nonatomic, readwrite) UInt8 mode;
+    @property (nonatomic, readwrite, strong) NSString * _Nonnull timecode;
+    @property (nonatomic, readwrite, strong) NSString * _Nonnull module;
+    @property (nonatomic, readwrite, strong) NSString * _Nonnull msg;
+
+    - (instancetype _Nonnull)init:(UInt8) level LogMode:(UInt8) mode LogTimeCode:(NSString * _Nonnull) timecode LogModule:(NSString * _Nonnull) module LogMsg:(NSString * _Nonnull) msg;
+
+  @end
+
+
+  @interface BXNSLogQueue : NSObject
+
+    @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
+
+    - (instancetype _Nonnull)init;
+
+    - (void)enqueue:(BXNSLogEntry * _Nonnull) entry;
+    - (void)enqueueSplit:(NSString * _Nonnull) msg LogLevel:(UInt8) level LogMode:(UInt8) mode;
+    - (BXNSLogEntry * _Nullable)dequeue;
+    - (BOOL)isEmpty;
+
+  @end
+
+
   @interface BXNSWindowController : NSObject
+
+    @property (nonatomic, readwrite, strong) BXNSPropertyCollection * _Nonnull bx_p_col;
+    @property (nonatomic, readwrite, strong) BXNSLogQueue * _Nonnull bx_log_queue;
 
     - (instancetype _Nonnull)init;
     - (void)dealloc;
     - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show;
+    - (void)activateWindow:(gui_window_type_t) window;
     - (id _Nullable)getWindow:(gui_window_type_t) window;
+    - (int)getProperty:(property_t) p;
+
+    - (void)onMenuEvent:(id _Nonnull) sender;
 
   @end
 
-  @interface BXNSPropertyCollection : NSObject
-    - (instancetype _Nonnull)init;
-  @end
 
   @interface BXNSGenericWindow : NSWindow <NSApplicationDelegate>
 
-    @property (atomic, readwrite, strong) BXNSPropertyCollection * _Nullable bx_p_col;
+    @property (nonatomic, readwrite) BXNSWindowController * _Nonnull bx_controller;
 
-    - (instancetype _Nonnull)initWithContentRect:(NSRect)contentRect styleMask:(NSWindowStyleMask)style backing:(NSBackingStoreType)backingStoreType defer:(BOOL)flag;
+    - (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag;
 
-    - (int)getProperty:(window_property_t) p;
+    - (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // TEMP Configuration Window
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSConfigurationWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
+
+  @end
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // TEMP Simulation Window
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSSimulationWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
+
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
+
+  @end
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // TEMP Logging Window
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSLoggingWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    @property (nonatomic, readwrite) BXNSLogQueue * _Nonnull queue;
+
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller LogQueue:(BXNSLogQueue * _Nonnull) queue;
+
+    - (void)refreshFromQueue;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // TEMP Debugger Window
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSDebuggerWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
 
   @end
 
 
 
-  @interface BXNSConfigWindow : BXNSGenericWindow <NSApplicationDelegate>
-
-    - (instancetype _Nonnull)init;
-
-    - (int)getProperty:(window_property_t) p;
 
 
-  @end
+
+
+
+
 
 
 

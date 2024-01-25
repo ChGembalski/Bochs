@@ -88,12 +88,13 @@ BXBochsThread * bochsThread;
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   NSApp.applicationIconImage = nil;//(NSImage *) BXwindow->createIconXPM();
 
-  // Menue Bar
-  menubar = [[BXNSMenuBar alloc] init];
-  [BXNSMenuBar showMenu:@"Debugger" doShow:NO];
-
   // Window Controller
   self.bx_window_controller = [[BXNSWindowController alloc] init];
+
+  // Menue Bar
+  menubar = [[BXNSMenuBar alloc] init:self.bx_window_controller];
+  [BXNSMenuBar showMenu:@"Debugger" doShow:NO];
+
 
 
 
@@ -124,6 +125,47 @@ BXBochsThread * bochsThread;
   [super terminate:sender];
 
 }
+
+
+
+
+/**
+ * getMaxScreenResolution
+ */
+- (void)getMaxScreenResolution:(unsigned char * _Nonnull) bpp width:(unsigned int * _Nonnull) w height:(unsigned int * _Nonnull) h {
+
+  NSArray * screens;
+
+  screens = [NSScreen screens];
+
+  [screens enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
+
+    NSScreen * screen;
+    NSRect frame;
+    NSInteger sBpp;
+
+    screen = [screens objectAtIndex: idx];
+    frame = [screen visibleFrame];
+    sBpp = NSBitsPerPixelFromDepth(screen.depth);
+
+    if (((unsigned int)frame.size.width > *w) | ((unsigned int)frame.size.height > *h) | (sBpp > *bpp)) {
+      *bpp = (unsigned char)sBpp;
+      *w = (unsigned int)frame.size.width;
+      *h = (unsigned int)frame.size.height;
+    }
+
+  }];
+
+  // BXL_DEBUG(([NSString stringWithFormat:@"ScreenResolution bpp=%d width=%d height=%d", *bpp, *w, *h]));
+
+}
+
+
+
+
+
+
+
 
 
 
@@ -161,32 +203,36 @@ BXGuiCocoaApplication::~BXGuiCocoaApplication() {
  */
 void BXGuiCocoaApplication::showWindow(gui_window_type_t window, bool bShow) {
   NSLog(@"BXGuiCocoaApplication::showWindow");
-  dispatch_async(dispatch_get_main_queue(), ^(void){
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
     [BXCocoaApplication->BXNSApp.bx_window_controller showWindow:window doShow:bShow];
   });
 }
 
 /**
- * getWindowProperty
+ * activateWindow
  */
-int BXGuiCocoaApplication::getWindowProperty(gui_window_type_t window, window_property_t property, bool bWait) {
+void BXGuiCocoaApplication::activateWindow(gui_window_type_t window) {
+  NSLog(@"BXGuiCocoaApplication::activateWindow");
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller activateWindow:window];
+  });
+}
+
+/**
+ * getProperty
+ */
+int BXGuiCocoaApplication::getProperty(property_t property, bool bWait) {
 
   int result;
-  id wnd;
-
-  wnd = [BXCocoaApplication->BXNSApp.bx_window_controller getWindow:window];
-  if (wnd == nil) {
-    return BX_WINDOW_PROPERTY_UNDEFINED;
-  }
 
   if (!bWait) {
-    return [((BXNSGenericWindow *)wnd) getProperty:property];
+    return [BXCocoaApplication->BXNSApp.bx_window_controller getProperty:property];
   }
 
   while (bWait) {
-    result = [((BXNSGenericWindow *)wnd) getProperty:property];
+    result = [BXCocoaApplication->BXNSApp.bx_window_controller getProperty:property];
     usleep(10000);
-    bWait = result == BX_WINDOW_PROPERTY_UNDEFINED ? true : false;
+    bWait = result == BX_PROPERTY_UNDEFINED ? true : false;
   }
 
   return result;
@@ -194,9 +240,30 @@ int BXGuiCocoaApplication::getWindowProperty(gui_window_type_t window, window_pr
 }
 
 
+/**
+ * postLogMessage
+ */
+void BXGuiCocoaApplication::postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg) {
+
+  if (msg == NULL) {
+    return;
+  }
+
+  [BXCocoaApplication->BXNSApp.bx_window_controller.bx_log_queue enqueueSplit:[NSString stringWithUTF8String:msg] LogLevel:level LogMode:mode];
+
+  // NSLog(@"level=%d mode=%d prefix=%@ msg=%@",
+  //   level, mode, prefix==NULL?@"null":[NSString stringWithUTF8String:prefix], msg==NULL?@"null":[NSString stringWithUTF8String:msg]);
+}
 
 
 
+
+/**
+ * getScreenConfiguration
+ */
+void BXGuiCocoaApplication::getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp) {
+  [BXCocoaApplication->BXNSApp getMaxScreenResolution:bpp width:width height:height];
+}
 
 
 

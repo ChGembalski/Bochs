@@ -27,19 +27,21 @@
 
   #define BX_GUI_COCOA_MENU_H
 
+  #include "cocoa_windows.h"
+
   typedef struct {
     const char * _Nullable parent;
     const char * _Nullable name;
     bool                   childs;
     NSString   * _Nullable key;
-    SEL          _Nullable action;
+    bool                   enabled;
   } menu_opts_t;
 
   @interface BXNSMenuBar : NSObject
 
-  - (instancetype _Nonnull)init;
+  - (instancetype _Nonnull)init:(id _Nonnull) target;
 
-  + (void)createMenu:(menu_opts_t * _Nonnull) opt;
+  + (void)createMenu:(menu_opts_t * _Nonnull) opt menuTarget:(id _Nonnull) target;
   + (NSMenu * _Nullable)findMenu:(NSString * _Nonnull) title startAt:(NSMenu * _Nullable) start;
   + (NSMenuItem * _Nullable)findMenuItem:(NSString * _Nonnull) title startAt:(NSMenu * _Nullable) start;
   + (void)showMenu:(NSString * _Nonnull) title doShow:(BOOL) show;

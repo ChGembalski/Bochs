@@ -43,6 +43,7 @@
     - (void)finishLaunching;
     - (void)terminate:(id)sender;
 
+    - (void)getMaxScreenResolution:(unsigned char * _Nonnull) bpp width:(unsigned int * _Nonnull) w height:(unsigned int * _Nonnull) h;
 
   @end
 
