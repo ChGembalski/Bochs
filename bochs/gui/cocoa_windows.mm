@@ -157,10 +157,13 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
   NSString * lmsg;
 
   timecode = [msg substringToIndex:11];
-  module = [msg substringWithRange:NSMakeRange(12, 8)];
+  module = [msg substringWithRange:NSMakeRange(13, 6)];
   lmsg = [msg substringFromIndex:21];
+  entry = [[BXNSLogEntry alloc] init:level LogMode:mode LogTimeCode:timecode LogModule:module LogMsg:lmsg];
 
-  [logqueue addObject:[[BXNSLogEntry alloc] init:level LogMode:mode LogTimeCode:timecode LogModule:module LogMsg:lmsg]];
+  @synchronized(self) {
+    [logqueue addObject:entry];
+  }
 
 }
 
@@ -169,7 +172,9 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
  */
 - (void)enqueue:(BXNSLogEntry * _Nonnull) entry {
 
-  [logqueue addObject:entry];
+  @synchronized(self) {
+    [logqueue addObject:entry];
+  }
 
 }
 
@@ -180,11 +185,14 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
 
   BXNSLogEntry * obj;
 
-  if ([logqueue count] == 0) {
-    return nil;
+  @synchronized(self) {
+    if ([logqueue count] == 0) {
+      return nil;
+    }
+
+    obj = [logqueue objectAtIndex:0];
+    [logqueue removeObjectAtIndex:0];
   }
-  obj = [logqueue objectAtIndex:0];
-  [logqueue removeObjectAtIndex:0];
 
   return obj;
 
@@ -194,7 +202,11 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
  * isEmpty
  */
 - (BOOL)isEmpty {
-  return [logqueue count] == 0;
+
+  @synchronized(self) {
+    return [logqueue count] == 0;
+  }
+
 }
 
 @end
@@ -540,6 +552,8 @@ NSBox * messagesBox;
 NSScrollView * messagesScrollView;
 NSTextView * messagesText;
 NSDictionary * attributesText;
+NSTimer * refreshTimer;
+UInt8 loglevelMask;
 
 /**
  * init
@@ -561,6 +575,8 @@ NSDictionary * attributesText;
     self.queue = queue;
 
     [self setTitle:BOCHS_WINDOW_LOGGER_NAME];
+
+    loglevelMask = 0x00;
 
     self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
@@ -597,14 +613,15 @@ NSDictionary * attributesText;
     [messagesScrollView setHasVerticalScroller:YES];
 
     messagesText = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, 340, 270)];
-    messagesText.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    messagesText.autoresizingMask = NSViewWidthSizable;
+    [messagesText setMinSize:NSMakeSize(0, 270)];
     [messagesText setMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
     [messagesText setVerticallyResizable:YES];
-    [messagesText setHorizontallyResizable:YES];
+    [messagesText setHorizontallyResizable:NO];
     [messagesText setTextColor:NSColor.textColor];
-    [[messagesText textContainer] setContainerSize:NSMakeSize(340, 270)];
+    [[messagesText textContainer] setContainerSize:NSMakeSize(340, FLT_MAX)];
     [[messagesText textContainer] setWidthTracksTextView:YES];
-    [[messagesText textContainer] setHeightTracksTextView:YES];
+    [[messagesText textContainer] setHeightTracksTextView:NO];
 
     attributesText = @{NSForegroundColorAttributeName:NSColor.textColor,
     NSFontAttributeName:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular]};
@@ -614,6 +631,8 @@ NSDictionary * attributesText;
 
     [self.contentView addSubview:optionsBox];
     [self.contentView addSubview:messagesBox];
+
+    refreshTimer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(refreshFromQueue) userInfo:nil repeats:YES];
 
   }
 
@@ -639,10 +658,11 @@ NSDictionary * attributesText;
     entry = [self.queue dequeue];
 
     // TODO : check flags
-    fmsg = [[NSString alloc] initWithFormat:@"%@<->%@<->%@", entry.timecode, entry.module, entry.msg];
+    fmsg = [[NSString alloc] initWithFormat:@"%@ (%d)[%@] %@", entry.timecode, entry.level, entry.module, entry.msg];
     msg = [[NSAttributedString alloc] initWithString:fmsg attributes:attributesText];
 
     [[messagesText textStorage] appendAttributedString:msg];
+    [messagesText scrollRangeToVisible:NSMakeRange([[messagesText string] length], 0)];
 
   }
 

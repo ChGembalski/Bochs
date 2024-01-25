@@ -130,6 +130,7 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
     case BX_ASYNC_EVT_DBG_MSG:
     case BX_ASYNC_EVT_LOG_MSG: {
       bxcocoagui->postLogMessage(event->u.logmsg.level, event->u.logmsg.mode, event->u.logmsg.prefix, event->u.logmsg.msg);
+      // TODO : do we need to delete the msg ???
       event->retcode = 0;
       return event;
     }
