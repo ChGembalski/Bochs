@@ -36,7 +36,7 @@
 #define VGA_WORD_BIT_MASK 0x8000
 
 extern unsigned char flip_byte(unsigned char b);
-extern unsigned int crc32buf(const unsigned char * buf, size_t len);
+// extern unsigned int crc32buf(const unsigned char * buf, size_t len);
 
 // static void print_buf(const unsigned char *buf, size_t buf_len)
 // {
@@ -102,14 +102,14 @@ NSRect VGAdirty;
 - (instancetype)initWithFrame:(NSRect) frameRect bits:(unsigned) bpp {
   self = [super initWithFrame:frameRect];
   if(self) {
-
+NSLog(@"init BXVGAImageView");
     self.bpp = bpp;
     self.stride = frameRect.size.width * bpp / 8;
     self.bitsPerComponent = bpp < 16 ? bpp : 8;
     VGAdirty = frameRect;
 
-    BXL_INFO(([NSString stringWithFormat:@"initWithFrame bpp=%d bpc=%d stride=%d w=%d h=%d",
-      self.bpp, self.bitsPerComponent, self.stride, (unsigned)frameRect.size.width, (unsigned)frameRect.size.height]));
+    // BXL_INFO(([NSString stringWithFormat:@"initWithFrame bpp=%d bpc=%d stride=%d w=%d h=%d",
+    //   self.bpp, self.bitsPerComponent, self.stride, (unsigned)frameRect.size.width, (unsigned)frameRect.size.height]));
 
     // allocate screen buffer
     self.VGAdisplay = (unsigned char *)realloc(NULL, (self.stride * (unsigned)frameRect.size.height) * sizeof(unsigned char));
@@ -407,7 +407,7 @@ BXVGAImageView * imgview;
 - (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh view:(NSView *) v {
   self = [super init];
   if(self) {
-
+NSLog(@"init BXVGAdisplay");
     self.bpp = bpp;
     self.width = w;
     self.height = h;
@@ -436,8 +436,8 @@ BXVGAImageView * imgview;
     imgview.layerContentsRedrawPolicy = NSViewLayerContentsRedrawOnSetNeedsDisplay;
     [v addSubview:imgview];
 
-    BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",
-    self.bpp, self.palette_size, self.width, self.height, self.font_width, self.font_height, self.stride, self.bitsPerComponent, self.dirty?"YES":"NO"]));
+    // BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",
+    // self.bpp, self.palette_size, self.width, self.height, self.font_width, self.font_height, self.stride, self.bitsPerComponent, self.dirty?"YES":"NO"]));
 
     self.dirty = YES;
 

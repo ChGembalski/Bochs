@@ -45,6 +45,7 @@
   + (NSMenu * _Nullable)findMenu:(NSString * _Nonnull) title startAt:(NSMenu * _Nullable) start;
   + (NSMenuItem * _Nullable)findMenuItem:(NSString * _Nonnull) title startAt:(NSMenu * _Nullable) start;
   + (void)showMenu:(NSString * _Nonnull) title doShow:(BOOL) show;
+  + (NSString * _Nonnull)getMenuItemPath:(NSMenuItem * _Nonnull) menuitem;
 
   @end
 

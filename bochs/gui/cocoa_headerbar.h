@@ -34,36 +34,46 @@
   #define BX_GUI_GAP_SIZE       10
 
 
-  @interface BXHeaderbarButtonData : NSObject
+  @interface BXNSHeaderBarButtonData : NSObject
+
     @property (nonatomic, readwrite) CFDataRef data;
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) size_t size;
-    - (instancetype)init:(const unsigned char *) data width:(unsigned) w height:(unsigned) h;
-    // - (void)dealloc;
+
+    - (instancetype _Nonnull)init:(const unsigned char * _Nonnull) data width:(unsigned) w height:(unsigned) h;
+    - (void)dealloc;
+
   @end
 
-  @interface BXHeaderbarButton : NSObject
+
+  @interface BXNSHeaderBarButton : NSObject
+
     @property (nonatomic, readwrite, assign) NSUInteger data_id;
     @property (nonatomic, readwrite) unsigned alignment;
     @property (nonatomic, readwrite) NSPoint position;
     @property (nonatomic, readwrite) NSSize size;
     @property (nonatomic, readwrite) void * func;
-    @property (nonatomic, readwrite, strong) NSButton * button;
-    - (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull button;
+
+    - (instancetype _Nonnull)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f;
     // - (void)dealloc;
     - (void)mouseEvent: (NSButton*)button;
+
   @end
 
-  @interface BXHeaderbar : NSObject
+
+  @interface BXNSHeaderBar : NSObject
+
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned yofs;
     @property (nonatomic, readwrite) BOOL visible;
-    - (instancetype)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
+
+    - (instancetype _Nonnull)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
     // - (void)dealloc;
     - (NSImage *)createIconXPM;
-    -(unsigned) createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
+    -(unsigned) createBXBitmap:(const unsigned char * _Nonnull)bmap xdim:(unsigned) x ydim:(unsigned) y;
     -(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
     - (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
     -(void) headerbarCreate:(NSView *) view;

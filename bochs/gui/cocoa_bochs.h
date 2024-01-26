@@ -43,6 +43,12 @@
     BX_PROPERTY_EXIT_SIM,
   } property_t;
 
+  typedef struct {
+    unsigned        headerbar_y;
+    unsigned short  xres;
+    unsigned short  yres;
+  } vga_settings_t;
+
   class BXGuiCocoaApplication {
 
   private:
@@ -59,6 +65,21 @@
     void postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg);
 
     void getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp);
+    void dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp);
+
+
+    unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
+    unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
+    void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
+    void show_headerbar(void);
+
+    void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
+    void set_font(bool font2, unsigned pos, unsigned char *charmap);
+    void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
+    bool palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue);
+    
+    void render(void);
+
 
 
   };

@@ -324,6 +324,8 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   old_callback = NULL;
   old_callback_arg = NULL;
 
+
+
   // bxcocoagui created by cocoaconfig !!!
 
   // setup screen
@@ -333,7 +335,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   // device->setEventMouseABS(cocoa_mouse_mode_absxy);
 
   // init startup - use current guest settings
-  // device->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
+  bxcocoagui->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
   // device->dimension_update(640, 480, 8, 16, 8);
 
   bxcocoagui->showWindow(BX_GUI_WINDOW_VGA_DISPLAY, true);
@@ -348,7 +350,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   BX_INFO(("bx_cocoa_gui_c::specific_init() done running some events now ..."));
 
   // device->setup_charmap((unsigned char *)&vga_charmap[0], (unsigned char *)&vga_charmap[1]);
-  // device->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont, 8, 16);
+  bxcocoagui->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont, 8, 16);
 
   // redirect notify callback
   SIM->get_notify_callback(&old_callback, &old_callback_arg);
@@ -356,7 +358,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   SIM->set_notify_callback(cocoa_notify_callback, NULL);
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
-  cocoa_with_debug_gui = 1;
+  cocoa_with_debug_gui = 0;//1;
 #else
   SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
 #endif
@@ -413,7 +415,7 @@ void bx_cocoa_gui_c::text_update(Bit8u *old_text, Bit8u *new_text,
   UNUSED(tm_info);
 
   // present for compatibility
-
+BX_INFO(("bx_cocoa_gui_c::text_update"));
 }
 
 
@@ -434,6 +436,7 @@ void bx_cocoa_gui_c::text_update(Bit8u *old_text, Bit8u *new_text,
 
 void bx_cocoa_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 {
+  BX_INFO(("bx_cocoa_gui_c::graphics_tile_update"));
   // device->graphics_tile_update(tile, x0, y0, x_tilesize, y_tilesize);
 }
 
@@ -539,7 +542,8 @@ void bx_cocoa_gui_c::handle_events(void)
 
 void bx_cocoa_gui_c::flush(void)
 {
-    // device->render();
+  // BX_INFO(("bx_cocoa_gui_c::flush"));
+    bxcocoagui->render();
     // device->handle_events();
 }
 
@@ -551,6 +555,7 @@ void bx_cocoa_gui_c::flush(void)
 
 void bx_cocoa_gui_c::clear_screen(void)
 {
+  BX_INFO(("bx_cocoa_gui_c::clear_screen"));
   // device->clear_screen();
 }
 
@@ -564,7 +569,8 @@ void bx_cocoa_gui_c::clear_screen(void)
 
 bool bx_cocoa_gui_c::palette_change(Bit8u index, Bit8u red, Bit8u green, Bit8u blue)
 {
-  // return(device->palette_change(index, red, green, blue));
+  BX_INFO(("bx_cocoa_gui_c::palette_change"));
+  return(bxcocoagui->palette_change(index, red, green, blue));
 }
 
 
@@ -583,7 +589,7 @@ bool bx_cocoa_gui_c::palette_change(Bit8u index, Bit8u red, Bit8u green, Bit8u b
 void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, unsigned fwidth, unsigned bpp)
 {
 
-  BX_DEBUG(("bx_cocoa_gui_c::dimension_update guest_xres=%d guest_yres=%d guest_bpp=%d", guest_xres, guest_yres, guest_bpp));
+  BX_INFO(("bx_cocoa_gui_c::dimension_update guest_xres=%d guest_yres=%d guest_bpp=%d", guest_xres, guest_yres, guest_bpp));
 
   // inform client about changes?
   guest_textmode = (fheight > 0);
@@ -601,8 +607,8 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
   // BX_INFO(("bx_cocoa_gui_c::dimension_update new_text_api=%s cursor_address=%d ",
   //   new_text_api?"YES":"NO", cursor_address));
 
-  BX_DEBUG(("bx_cocoa_gui_c::dimension_update x=%d y=%d fheight=%d fwidth=%d bpp=%d", x, y, fheight, fwidth, bpp));
-  // device->dimension_update(x, y, fwidth, fheight, bpp);
+  BX_INFO(("bx_cocoa_gui_c::dimension_update x=%d y=%d fheight=%d fwidth=%d bpp=%d", x, y, fheight, fwidth, bpp));
+  bxcocoagui->dimension_update(x, y, fwidth, fheight, bpp);
 
   host_xres = x;
   host_yres = y;
@@ -624,7 +630,7 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
 
 unsigned bx_cocoa_gui_c::create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim)
 {
-  // return(device->create_bitmap(bmap, xdim, ydim));
+  return(bxcocoagui->create_bitmap(bmap, xdim, ydim));
 }
 
 
@@ -644,7 +650,8 @@ unsigned bx_cocoa_gui_c::create_bitmap(const unsigned char *bmap, unsigned xdim,
 
 unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void))
 {
-  // return(device->headerbar_bitmap(bmap_id, alignment, f));
+  BX_INFO(("bx_cocoa_gui_c::headerbar_bitmap"));
+  return(bxcocoagui->headerbar_bitmap(bmap_id, alignment, f));
 }
 
 
@@ -663,7 +670,8 @@ unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, 
 
 void bx_cocoa_gui_c::replace_bitmap(unsigned hbar_id, unsigned bmap_id)
 {
-  // device->replace_bitmap(hbar_id, bmap_id);
+  // BX_INFO(("bx_cocoa_gui_c::replace_bitmap"));
+  bxcocoagui->replace_bitmap(hbar_id, bmap_id);
 }
 
 
@@ -674,7 +682,8 @@ void bx_cocoa_gui_c::replace_bitmap(unsigned hbar_id, unsigned bmap_id)
 
 void bx_cocoa_gui_c::show_headerbar(void)
 {
-  // device->show_headerbar();
+  BX_INFO(("bx_cocoa_gui_c::show_headerbar"));
+  bxcocoagui->show_headerbar();
 }
 
 
@@ -714,6 +723,7 @@ int bx_cocoa_gui_c::set_clipboard_text(char *text_snapshot, Bit32u len)
 
 void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 {
+  BX_INFO(("bx_cocoa_gui_c::mouse_enabled_changed_specific"));
   // device->captureMouse(val, guest_xres/2, guest_yres/2);
 }
 
@@ -725,7 +735,7 @@ void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 
 void bx_cocoa_gui_c::exit(void)
 {
-
+BX_INFO(("bx_cocoa_gui_c::exit"));
 // #if BX_DEBUGGER && BX_DEBUGGER_GUI
 //   if (SIM->has_debug_gui()) {
 //     close_debug_dialog();
@@ -742,7 +752,7 @@ void bx_cocoa_gui_c::exit(void)
 // Cocoa implementation of new graphics API methods (compatibility mode in gui.cc)
 
 bx_svga_tileinfo_t * bx_cocoa_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info) {
-  // BX_INFO(("bx_cocoa_gui_c::graphics_tile_info"));
+  BX_INFO(("bx_cocoa_gui_c::graphics_tile_info"));
 
   host_pitch = host_xres * ((host_bpp + 1) >> 3);
 
@@ -788,7 +798,7 @@ bx_svga_tileinfo_t * bx_cocoa_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info
 
 
 Bit8u * bx_cocoa_gui_c::graphics_tile_get(unsigned x, unsigned y, unsigned *w, unsigned *h) {
-  // BX_INFO(("bx_cocoa_gui_c::graphics_tile_get x=%d y=%d w=%d h=%d", x, y, *w, *h));
+  BX_INFO(("bx_cocoa_gui_c::graphics_tile_get x=%d y=%d w=%d h=%d", x, y, *w, *h));
 
   if (x+x_tilesize > host_xres) {
     *w = host_xres - x;
@@ -810,14 +820,14 @@ Bit8u * bx_cocoa_gui_c::graphics_tile_get(unsigned x, unsigned y, unsigned *w, u
 
 
 void bx_cocoa_gui_c::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
-  // BX_INFO(("bx_cocoa_gui_c::graphics_tile_update_in_place x=%d y=%d w=%d h=%d", x, y, w, h));
+  BX_INFO(("bx_cocoa_gui_c::graphics_tile_update_in_place x=%d y=%d w=%d h=%d", x, y, w, h));
   // device->graphics_tile_update_in_place(x, y, w, h);
 }
 
 
 // Cocoa implementation of new text update API
 void bx_cocoa_gui_c::set_font(bool lg) {
-
+BX_INFO(("bx_cocoa_gui_c::set_font"));
   for (unsigned m = 0; m < 2; m++) {
     for (unsigned c = 0; c < 256; c++) {
       if (char_changed[m][c]) {
@@ -826,7 +836,7 @@ void bx_cocoa_gui_c::set_font(bool lg) {
 
         // display knows about font size from dimension_update call
         // font pixel space 16x16
-        // device->set_font(c, m==1, m==0 ? (unsigned char *)&vga_charmap[0] : (unsigned char *)&vga_charmap[1]);
+        bxcocoagui->set_font(c, m==1, m==0 ? (unsigned char *)&vga_charmap[0] : (unsigned char *)&vga_charmap[1]);
         char_changed[m][c] = 0;
       // }
       }
@@ -840,8 +850,8 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
                        Bit8u fw, Bit8u fh, Bit8u fx, Bit8u fy,
                        bool gfxcharw9, Bit8u cs, Bit8u ce, bool curs, bool font2) {
 
-  // device->draw_char(curs, font2, fc, bc, ch, xc, yc, fw+fx, fh);
-
+  bxcocoagui->draw_char(curs, font2, fc, bc, ch, xc, yc, fw+fx, fh);
+  // BX_INFO(("bx_cocoa_gui_c::draw_char"));
 }
 
 

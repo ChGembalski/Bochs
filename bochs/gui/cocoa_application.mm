@@ -26,7 +26,6 @@
 #include <Cocoa/Cocoa.h>
 #include "cocoa_bochs.h"
 #include "cocoa_application.h"
-#include "cocoa_menu.h"
 
 #include "bochs.h"
 #include "siminterface.h"
@@ -75,9 +74,10 @@ extern int bxmain(void);
 
 @implementation BXNSApplication
 
-BXNSMenuBar * menubar;
 BXBochsThread * bochsThread;
-
+vga_settings_t default_vga_settings = {
+  32, 640, 480
+};
 
 /**
  * finishLaunching
@@ -89,11 +89,9 @@ BXBochsThread * bochsThread;
   NSApp.applicationIconImage = nil;//(NSImage *) BXwindow->createIconXPM();
 
   // Window Controller
-  self.bx_window_controller = [[BXNSWindowController alloc] init];
+  self.bx_window_controller = [[BXNSWindowController alloc] init:default_vga_settings.headerbar_y VGAxRes:default_vga_settings.xres VGAyRes:default_vga_settings.yres];
 
-  // Menue Bar
-  menubar = [[BXNSMenuBar alloc] init:self.bx_window_controller];
-  [BXNSMenuBar showMenu:@"Debugger" doShow:NO];
+
 
 
 
@@ -265,6 +263,101 @@ void BXGuiCocoaApplication::getScreenConfiguration(unsigned int * width, unsigne
   [BXCocoaApplication->BXNSApp getMaxScreenResolution:bpp width:width height:height];
 }
 
+/**
+ * dimension_update
+ */
+void BXGuiCocoaApplication::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
+
+    dispatch_sync(dispatch_get_main_queue(), ^(void){
+
+    // Change VGA display
+    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] changeBPP:bpp width:x height:y font_width:fwidth font_height:fheight];
+
+    // prepare window
+    [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] setContentSize:NSMakeSize(x, y + [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar].height)];
+
+    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarUpdate: [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA]];
+  });
+}
+
+
+
+
+
+
+
+/**
+ * create_bitmap
+ */
+unsigned BXGuiCocoaApplication::create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim) {
+  return [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] createBXBitmap:bmap xdim:xdim ydim:ydim];
+}
+
+/**
+ * headerbar_bitmap
+ */
+unsigned BXGuiCocoaApplication::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void)) {
+  return [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarBXBitmap:bmap_id alignment:alignment func:f];
+}
+
+/**
+ * replace_bitmap
+ */
+void BXGuiCocoaApplication::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarBXBitmap:hbar_id data_id:bmap_id];
+}
+
+/**
+ * show_headerbar
+ */
+void BXGuiCocoaApplication::show_headerbar(void) {
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarCreate:[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] contentView]];
+  });
+}
+
+
+
+
+/**
+ * setup_charmap
+ */
+void BXGuiCocoaApplication::setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] initFonts:charmapA second:charmapB width:w height:h];
+}
+
+/**
+ * set_font
+ */
+void BXGuiCocoaApplication::set_font(bool font2, unsigned pos, unsigned char *charmap) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] updateFontAt:pos isFont2:font2 map:charmap];
+}
+
+/**
+ * draw_char
+ */
+void BXGuiCocoaApplication::draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] paintChar:charpos isCrsr:crsr font2:font2 bgcolor:bgcolor fgcolor:fgcolor position:NSMakeRect(x, y, w, h)];
+}
+
+/**
+ * palette_change
+ */
+bool BXGuiCocoaApplication::palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue) {
+  return [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] setPaletteRGB:index red:red green:green blue:blue];
+}
+
+
+
+
+
+
+/**
+ * render
+ */
+void BXGuiCocoaApplication::render(void) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] render];
+}
 
 
 

@@ -26,6 +26,7 @@
 #include <Cocoa/Cocoa.h>
 #include "cocoa_logging.h"
 #include "cocoa_windows.h"
+#include "cocoa_menu.h"
 
 
 property_entry_t mapping[] = {
@@ -214,21 +215,26 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
 
 @implementation BXNSWindowController
 
+BXNSMenuBar * menubar;
+
 gui_window_t window_list[] = {
-  {BX_GUI_WINDOW_CONFIGURATION, NULL},
-  {BX_GUI_WINDOW_VGA_DISPLAY, NULL},
-  {BX_GUI_WINDOW_LOGGING, NULL},
-  {BX_GUI_WINDOW_DEBUGGER, NULL},
-  {BX_GUI_WINDOW_UNDEFINED, NULL}
+  {BX_GUI_WINDOW_CONFIGURATION, NULL, @"Window.Configuration"},
+  {BX_GUI_WINDOW_VGA_DISPLAY,   NULL, @"Window.VGA Display"},
+  {BX_GUI_WINDOW_LOGGING,       NULL, @"Window.Logger"},
+  {BX_GUI_WINDOW_DEBUGGER,      NULL, @"Window.Debugger"},
+  {BX_GUI_WINDOW_UNDEFINED,     NULL, nil}
 };
 
 /**
  * init
  */
-- (instancetype _Nonnull)init {
+- (instancetype _Nonnull)init:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres {
 
   self = [super init];
   if(self) {
+
+    // Menue Bar
+    menubar = [[BXNSMenuBar alloc] init:self];
 
     self.bx_p_col = [[BXNSPropertyCollection alloc] init];
 
@@ -241,7 +247,7 @@ gui_window_t window_list[] = {
     [((NSWindow *)window_list[0].window) center];
     [window_list[0].window setIsVisible:NO];
 
-    window_list[1].window = [[BXNSSimulationWindow alloc] init:self];
+    window_list[1].window = [[BXNSSimulationWindow alloc] init:self HeaderBarHeight:headerbar_y VGAxRes:vga_xres VGAyRes:vga_yres];
     [((NSWindow *)window_list[1].window) center];
     [window_list[1].window setIsVisible:NO];
 
@@ -281,9 +287,17 @@ gui_window_t window_list[] = {
 - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show {
 
   BXNSGenericWindow * curWindow;
+  NSString * curMenuName;
+  NSMenuItem * curMenuItem;
 
   curWindow = [self getWindow:window];
+  curMenuName = [self getWindowMenuName:window];
+  curMenuItem = [BXNSMenuBar findMenuItem:curMenuName startAt:nil];
+
   if (curWindow != nil) {
+    if (curMenuItem != nil) {
+      [curMenuItem setState:show ? NSControlStateValueOn : NSControlStateValueOff];
+    }
     [curWindow setIsVisible:show];
   }
 
@@ -323,6 +337,44 @@ gui_window_t window_list[] = {
 }
 
 /**
+ * getWindowMenuName
+ */
+- (NSString * _Nullable)getWindowMenuName:(gui_window_type_t) window {
+
+  int i;
+
+  i = 0;
+  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
+    if (window_list[i].name == window) {
+      return window_list[i].menu_name;
+    }
+    i++;
+  }
+
+  return nil;
+
+}
+
+/**
+ * getWindowType
+ */
+- (gui_window_type_t)getWindowType:(NSString * _Nonnull) name {
+
+  int i;
+
+  i = 0;
+  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
+    if ([name isEqualToString:window_list[i].menu_name]) {
+      return window_list[i].name;
+    }
+    i++;
+  }
+
+  return BX_GUI_WINDOW_UNDEFINED;
+
+}
+
+/**
  * getProperty
  */
 - (int)getProperty:(property_t) p {
@@ -344,29 +396,21 @@ gui_window_t window_list[] = {
  */
 - (void)onMenuEvent:(id _Nonnull) sender {
 
-  NSMenuItem * curMenuItem;
-  NSMenu * curMenu;
   NSString * senderPath;
   BXNSGenericWindow * curWindow;
+  gui_window_type_t curWindowType;
 
   // resolve the sender
-  curMenuItem = (NSMenuItem *)sender;
-  senderPath = curMenuItem.title;
-  curMenu = curMenuItem.menu;
-  while ((curMenu != nil) & (curMenu.title != nil)) {
-    senderPath = [[NSString alloc] initWithFormat:@"%@.%@", curMenu.title, senderPath];
-    curMenu = curMenu.supermenu;
-  };
+  senderPath = [BXNSMenuBar getMenuItemPath:(NSMenuItem *)sender];
 
   // spectial handling Window Menu
-  if ([senderPath isEqualToString:@"Window.Logger"]) {
-    // Toggle Logger Window visibility
-    curWindow = [self getWindow:BX_GUI_WINDOW_LOGGING];
-    [curMenuItem setState:!curWindow.visible?NSControlStateValueOn:NSControlStateValueOff];
-    [self showWindow:BX_GUI_WINDOW_LOGGING doShow:!curWindow.visible];
+  curWindowType = [self getWindowType:senderPath];
+  if (curWindowType != BX_GUI_WINDOW_UNDEFINED) {
+    // Toggle Window visibility
+    curWindow = [self getWindow:curWindowType];
+    [self showWindow:curWindowType doShow:!curWindow.visible];
     return;
   }
-
 
   NSLog(@"Hit that menu %@", senderPath);
   [self.bx_p_col setProperty:senderPath value:1];
@@ -446,7 +490,7 @@ gui_window_t window_list[] = {
   // |                    NSWindowStyleMaskResizable
 
     if (self) {
-
+NSLog(@"init BXNSConfigurationWindow");
       configBox = [[NSBox alloc] init];
       [configBox setFrameFromContentFrame:NSMakeRect(20,100,100,50)];
       configBox.title = @"Configuration";
@@ -505,10 +549,10 @@ gui_window_t window_list[] = {
 /**
  * init
  */
-- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller HeaderBarHeight:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres {
 
   self = [super initWithBXController:controller
-       contentRect: NSMakeRect(0, 0, 640, 400)
+       contentRect: NSMakeRect(0, 0, vga_xres, vga_yres)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
                     NSWindowStyleMaskMiniaturizable
@@ -517,14 +561,17 @@ gui_window_t window_list[] = {
   ];
 
   if (self) {
-
+NSLog(@"init BXNSSimulationWindow");
     [self setTitle:BOCHS_WINDOW_NAME];
 
     self.MouseCaptureAbsolute = NO;
-
+NSLog(@"setup VGA");
     // Setup VGA display
-
+    self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga_xres height:vga_yres font_width:0 font_height:0 view:[self contentView]];
+NSLog(@"setup Toolbar");
     // setup Toolbar
+    self.BXToolbar = [[BXNSHeaderBar alloc] init:headerbar_y width:vga_xres yofs:vga_yres];
+
 
     [self setAcceptsMouseMovedEvents:YES];
 
@@ -840,7 +887,7 @@ NSMutableArray<NSNumber *> * queue;
 
 @implementation BXGuiCocoaNSWindow
 
-BXHeaderbar * BXToolbar;
+// BXHeaderbar * BXToolbar;
 BXNSEventQueue * BXEventQueue;
 
 
@@ -873,7 +920,7 @@ BXNSEventQueue * BXEventQueue;
   self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga.width height:vga.height font_width:0 font_height:0 view:[self contentView]];
 
   // setup Toolbar
-  BXToolbar = [[BXHeaderbar alloc] init:headerbar_y width:self.BXVGA.width yofs:self.BXVGA.height];
+  // BXToolbar = [[BXHeaderbar alloc] init:headerbar_y width:self.BXVGA.width yofs:self.BXVGA.height];
 
 
 
@@ -1133,7 +1180,7 @@ BXNSEventQueue * BXEventQueue;
  * createIconXPM forwarding
  */
 - (NSImage *)createIconXPM {
-  return [BXToolbar createIconXPM];
+  // return [BXToolbar createIconXPM];
 }
 
 
@@ -1141,14 +1188,14 @@ BXNSEventQueue * BXEventQueue;
  * createBXBitmap forwarding
  */
 - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y {
-  return ([BXToolbar createBXBitmap:bmap xdim:x ydim:y]);
+  // return ([BXToolbar createBXBitmap:bmap xdim:x ydim:y]);
 }
 
 /**
  * headerbarBXBitmap forwarding
  */
 - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
-  return ([BXToolbar headerbarBXBitmap:bmap_id alignment:align func:f]);
+  // return ([BXToolbar headerbarBXBitmap:bmap_id alignment:align func:f]);
 }
 
 /**
@@ -1156,25 +1203,25 @@ BXNSEventQueue * BXEventQueue;
  * multiple calls allowed
  */
 - (void)headerbarCreate {
-  [BXToolbar headerbarCreate:[self contentView]];
+  // [BXToolbar headerbarCreate:[self contentView]];
 }
 
 /**
  * update headerbar
  */
 - (void)headerbarUpdate {
-  [BXToolbar headerbarUpdate:self.BXVGA];
+  // [BXToolbar headerbarUpdate:self.BXVGA];
 }
 
 /**
  * change image in headerbar
  */
 - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id {
-  [BXToolbar headerbarBXBitmap:btn_id data_id:bmap_id];
+  // [BXToolbar headerbarBXBitmap:btn_id data_id:bmap_id];
 }
 
 - (unsigned)getHeaderbarHeight {
-  return (BXToolbar.height);
+  // return (BXToolbar.height);
 }
 
 /**

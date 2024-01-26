@@ -46,7 +46,7 @@ menu_opts_t menu_options[] = {
   {NULL,                    "Debugger",       YES,  nil,  NO},
   {NULL,                    "Window",         YES,  nil,  YES},
   {"Window",                "Configuration",  NO,   nil,  YES},
-  {"Window",                "VGA Display",    NO,   nil,  NO},
+  {"Window",                "VGA Display",    NO,   nil,  YES},
   {"Window",                "Logger",         NO,   nil,  YES},
   {"Window",                "Debugger",       NO,   nil,  NO},
   {NULL,                    "Help",           YES,  nil,  YES},
@@ -184,7 +184,12 @@ menu_opts_t menu_options[] = {
   }
 
   for (id oldMenuItem in findAt.itemArray) {
-    if ([title isEqualToString:((NSMenuItem *)oldMenuItem).submenu.title]) {
+    // check NSMenu
+    if ([title isEqualToString:[oldMenuItem title]]) {
+      return ((NSMenuItem *)oldMenuItem);
+    }
+    // check NSMenuItem
+    if ([title isEqualToString:[oldMenuItem submenu].title]) {
       return ((NSMenuItem *)oldMenuItem);
     }
   }
@@ -207,6 +212,25 @@ menu_opts_t menu_options[] = {
 
 }
 
+/**
+ * getMenuItemPath
+ */
++ (NSString * _Nonnull)getMenuItemPath:(NSMenuItem * _Nonnull) menuitem {
+
+  NSMenu * curMenu;
+  NSString * menuPath;
+
+  menuPath = menuitem.title;
+  curMenu = menuitem.menu;
+
+  while ((curMenu != nil) & (curMenu.title != nil)) {
+    menuPath = [[NSString alloc] initWithFormat:@"%@.%@", curMenu.title, menuPath];
+    curMenu = curMenu.supermenu;
+  };
+
+  return menuPath;
+
+}
 
 
 

@@ -48,6 +48,7 @@
   typedef struct {
     gui_window_type_t           name;
     id                _Nullable window;
+    NSString *        _Nullable menu_name;
   } gui_window_t;
 
   typedef struct {
@@ -65,6 +66,15 @@
 
   @end
 
+
+  // // Log level defines
+  // typedef enum {
+  //   LOGLEV_DEBUG = 0,
+  //   LOGLEV_INFO,
+  //   LOGLEV_ERROR,
+  //   LOGLEV_PANIC,
+  //   N_LOGLEV
+  // } bx_log_levels;
 
   @interface BXNSLogEntry : NSObject
 
@@ -98,11 +108,13 @@
     @property (nonatomic, readwrite, strong) BXNSPropertyCollection * _Nonnull bx_p_col;
     @property (nonatomic, readwrite, strong) BXNSLogQueue * _Nonnull bx_log_queue;
 
-    - (instancetype _Nonnull)init;
+    - (instancetype _Nonnull)init:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
     - (void)dealloc;
     - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show;
     - (void)activateWindow:(gui_window_type_t) window;
     - (id _Nullable)getWindow:(gui_window_type_t) window;
+    - (NSString * _Nullable)getWindowMenuName:(gui_window_type_t) window;
+    - (gui_window_type_t)getWindowType:(NSString * _Nonnull) name;
     - (int)getProperty:(property_t) p;
 
     - (void)onMenuEvent:(id _Nonnull) sender;
@@ -135,9 +147,11 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSSimulationWindow : BXNSGenericWindow <NSApplicationDelegate>
 
+    @property (nonatomic, readwrite) BXNSHeaderBar * _Nonnull BXToolbar;
+    @property (nonatomic, readwrite, strong) BXVGAdisplay * _Nonnull BXVGA;
     @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
 
-    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller HeaderBarHeight:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
 
   @end
 

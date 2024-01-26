@@ -150,8 +150,14 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
       return event;
     }
     case BX_SYNC_EVT_TICK: {
-      // called periodically by siminterface.
-      event->retcode = 0;
+      // check if stop was set
+      // if so return -1 to exit
+      if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
+        event->retcode = -1;
+      } else {
+        // called periodically by siminterface.
+        event->retcode = 0;
+      }
       // fall into default case
     }
     default: {
