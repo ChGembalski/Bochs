@@ -27,18 +27,23 @@
 
   #define BX_GUI_COCOA_DISPLAY_H
 
+
+
+
   @interface BXVGAImageView : NSView
-    @property (nonatomic, readwrite) unsigned char * VGAdisplay;
+    @property (nonatomic, readwrite) unsigned char * _Nonnull VGAdisplay;
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
 
-    - (instancetype)initWithFrame:(NSRect) frameRect bits:(unsigned) bpp;
-    // - (void)dealloc;
+    - (instancetype _Nonnull)initWithFrame:(NSRect) frameRect bits:(unsigned) bpp;
+    - (void)dealloc;
 
     - (void)updateWithFrame:(NSSize) frameSize bits:(unsigned) bpp;
-    - (void)renderVGAdisplay:(unsigned char *) palette size:(unsigned) palette_size;
+    - (void)renderVGAdisplay:(unsigned char * _Nonnull) palette size:(unsigned) palette_size;
     - (void)renderVGAdisplayRGB;
+    - (void)drawRect:(NSRect)dirtyRect;
+    - (void)updateVGA:(NSRect) dirty;
     - (void)updateVGA:(NSRect) dirty;
 
   @end
@@ -51,24 +56,24 @@
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
-    @property (nonatomic, readonly, getter=VGAdisplayRAM) const unsigned char * VGAdisplayRAM;
-    @property (nonatomic, readwrite) unsigned char * palette;
+    @property (nonatomic, readonly, getter=VGAdisplayRAM) const unsigned char * _Nonnull VGAdisplayRAM;
+    @property (nonatomic, readwrite) unsigned char * _Nonnull palette;
     @property (nonatomic, readwrite) unsigned palette_size;
     @property (nonatomic, readwrite) BOOL dirty;
-    @property (nonatomic, readwrite) unsigned short int *FontA;
-    @property (nonatomic, readwrite) unsigned short int *FontB;
+    @property (nonatomic, readwrite) unsigned short int * _Nonnull FontA;
+    @property (nonatomic, readwrite) unsigned short int * _Nonnull FontB;
 
-    - (instancetype)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh view:(NSView *) v;
-    // - (void)dealloc;
+    - (instancetype _Nonnull)init:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh view:(NSView * _Nonnull) v;
+    - (void)dealloc;
     - (void)changeBPP:(unsigned) bpp width:(unsigned) w height:(unsigned) h font_width:(unsigned) fw font_height:(unsigned) fh;
     - (void)render;
     - (BOOL)setPaletteRGB:(unsigned) index red:(char) r green:(char) g blue:(char) b;
     - (void)clearScreen;
-    - (void)initFonts:(unsigned char *) dataA second:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
-    - (void)updateFontAt:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
+    - (void)initFonts:(unsigned char * _Nonnull) dataA second:(unsigned char * _Nonnull) dataB width:(unsigned char)w height:(unsigned char) h;
+    - (void)updateFontAt:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char * _Nonnull) data;
     - (void)paintChar:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
-    - (void)clipRegion:(unsigned char *) src position:(NSRect) rect;
-    - (const unsigned char *)VGAdisplayRAM;
+    - (void)clipRegion:(unsigned char * _Nonnull) src position:(NSRect) rect;
+    - (const unsigned char * _Nonnull)VGAdisplayRAM;
     - (void)clipRegionPosition:(NSRect) rect;
   @end
 

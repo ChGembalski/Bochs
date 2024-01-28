@@ -35,27 +35,6 @@ unsigned char BXPalette_ColorBW[3*2] = {
 
 extern unsigned char flip_byte(unsigned char b);
 
-// void print_buf(const unsigned char *buf, size_t buf_len)
-// {
-//   NSString *lout;
-//
-//   // BXL_INFO(([NSString stringWithFormat:@"size%d", buf_len]));
-//
-//     size_t i = 0;
-//     lout = @"\n";
-//
-//     for(i = 0; i < buf_len; ++i) {
-//       lout = [NSString stringWithFormat:@"%@%02X%s", lout, buf[i], ( i + 1 ) % (16) == 0 ? "\r\n" : " " ];
-//       if ((i+1)%(16*4)==0) {
-//         BXL_INFO((lout));
-//         lout = @"\n";
-//       }
-//     }
-//     BXL_INFO((lout));
-//
-// }
-
-
 
 /**
  * only holding the converted data and size of image data
@@ -104,7 +83,7 @@ extern unsigned char flip_byte(unsigned char b);
 /**
  * init
  */
-- (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f {
+- (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage * _Nonnull) img func:(void (* _Nullable)()) f {
 
   self = [super init];
   if(self) {
@@ -126,14 +105,6 @@ extern unsigned char flip_byte(unsigned char b);
 
 }
 
-// /**
-//  * BXHeaderbarButton DTor
-//  */
-// - (void)dealloc {
-//   [self.button dealloc];
-//   [super dealloc];
-// }
-
 /**
  * mouseEvent
  */
@@ -147,15 +118,36 @@ extern unsigned char flip_byte(unsigned char b);
 @end
 
 
+@implementation BXNSHeaderBarView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    [self setWantsLayer:YES];
+    [self.layer setBackgroundColor:[NSColor.controlColor CGColor]];
+  }
+
+  return self;
+
+}
+
+@end
+
+
 @implementation BXNSHeaderBar
 
+BXNSHeaderBarView * button_view;
 NSMutableArray<BXNSHeaderBarButtonData *> * button_data;
 NSMutableArray<BXNSHeaderBarButton *> * buttons;
 unsigned last_lx;
 unsigned last_rx;
 
 /**
- * BXHeaderbar CTor
+ * init
  */
 - (instancetype _Nonnull)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y {
 
@@ -164,9 +156,10 @@ unsigned last_rx;
     self.height = headerbar_y;
     self.width = w;
     self.yofs = y;
-    self.visible = NO;
+    self.created = NO;
     last_lx = 0;
     last_rx = self.width;
+    button_view = [[BXNSHeaderBarView alloc] initWithFrame:NSMakeRect(0, y, w, headerbar_y)];
     buttons = [[NSMutableArray alloc] init];
     button_data = [[NSMutableArray alloc] init];
   }
@@ -175,39 +168,30 @@ unsigned last_rx;
 
 }
 
-// /**
-//  * BXHeaderbar DTor
-//  */
-// - (void)dealloc {
-//   [button_data dealloc];
-//   [buttons dealloc];
-//   [super dealloc];
-// }
-
 /**
  * createIcon
+ * (not used)
  */
-- (NSImage *)createIconXPM {
+- (NSImage * _Nonnull)createIconXPM {
 
   unsigned char ColorIcon[32*32*4*sizeof(unsigned char)];
   NSData *imageData;
+  NSImage * image;
 
   // icon_bochs_xpm
   // maybe implement parsing ... now we just skip the headers
   // first string is X Y colorcount images
 
-  // print_buf(icon_bochs_xpm[0], 32);
-
   for (int row=8;row<32+8;row++) {
     const char * rowdata;
     rowdata = icon_bochs_xpm[row];
-    // BXL_INFO(([NSString stringWithFormat:@"data row[%s]", rowdata]));
+
     for(int col=0;col<32;col++) {
       UInt32 rgba;
       unsigned char c;
 
       c = rowdata[col];
-      // BXL_INFO(([NSString stringWithFormat:@"data col[%c]", c]));
+
       switch(c) {
         case ' ': {
           rgba = 0x000000FF;
@@ -238,51 +222,15 @@ unsigned last_rx;
         }
       }
 
-      // print_buf(&icon_bochs_xpm[row], 32);
-
-      // BXL_INFO(([NSString stringWithFormat:@"IMAGE convert org y=%d x=%d c=%02x image y=%d x=%d ofs=%d col=%08x", row, col, c, (row-8), col, ((row-8)*32)+col, rgba]));
-
       ColorIcon[((row-8)*32)+col+1] = rgba >>24;
       ColorIcon[((row-8)*32)+col+2] = (rgba >>16) & 0xFF;
       ColorIcon[((row-8)*32)+col+3] = (rgba >>8) & 0xFF;
-      // ColorIcon[((row-8)*32)+col+3] = 0x00;//rgba & 0xFF;
+
     }
   }
 
-  // print_buf((const unsigned char *)ColorIcon, ((32*4)*32*sizeof(unsigned char)));
-
   imageData = [NSData dataWithBytes:ColorIcon length:32*32*sizeof(UInt32)];
-
-  // NSBitmapImageRep *bitmap;
-  // // bitmap = [[NSBitmapImageRep alloc] initWithData:imageData];
-  // bitmap = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:(unsigned char *)ColorIcon
-  //   pixelsWide:32 pixelsHigh:32
-  //   bitsPerSample:8 samplesPerPixel:4
-  //   hasAlpha:NO isPlanar:NO
-  //   colorSpaceName:NSDeviceRGBColorSpace
-  //   bitmapFormat:NSBitmapFormatThirtyTwoBitBigEndian bytesPerRow:32*4 bitsPerPixel:32
-  // ];
-
-  NSImage * image;
-  // image = [[NSImage alloc] initWithSize:NSMakeSize(32, 32)];
   image =[[NSImage alloc] initWithData:imageData];
-  // [image addRepresentation:bitmap];
-  // image.size = NSMakeSize(32,32);
-  // image.prefersColorMatch = YES;
-
-  BXL_INFO(([NSString stringWithFormat:@"IMAGE Valid %s", image.valid?"YES":"NO"]));
-
-
-
-  // [image setName:NSImageNameApplicationIcon];
-  // NSApp.applicationIconImage = image;
-  // [NSApp setApplicationIconImage:image];
-  // // [NSApp.dockTile display];
-  //
-  // NSAlert *alert = [[[NSAlert alloc] init] autorelease];
-  //     [alert setMessageText:@"Shazam!"];
-  //     [alert runModal];
-
 
   return image;
 }
@@ -291,7 +239,6 @@ unsigned last_rx;
  * createBXBitmap
  */
 - (unsigned)createBXBitmap:(const unsigned char * _Nonnull)bmap xdim:(unsigned) x ydim:(unsigned) y {
-  BXL_INFO(([NSString stringWithFormat:@"createBXBitmap xdim=%d ydim=%d", x, y]));
 
   __block NSUInteger curIdx;
 
@@ -305,7 +252,8 @@ unsigned last_rx;
 
   [button_data addObject:[[BXNSHeaderBarButtonData alloc] init:bmap width:x height:y]];
 
-  BXL_INFO(([NSString stringWithFormat:@"createBXBitmap idx=%lu", curIdx]));
+  BXL_DEBUG(([NSString stringWithFormat:@"createBXBitmap xdim=%d ydim=%d idx=%lu", x, y, curIdx]));
+
   return curIdx;
 
 }
@@ -313,8 +261,7 @@ unsigned last_rx;
 /**
  * headerbarBXBitmap
  */
-- (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
-  BXL_INFO(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d alignment=%d func:%p", bmap_id, align, f]));
+- (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (* _Nullable)()) f {
 
   CGColorSpaceRef colorspace;
   BXNSHeaderBarButtonData * rgbData;
@@ -322,7 +269,7 @@ unsigned last_rx;
   CGImageRef rgbImageRef;
   NSImage * image;
   unsigned x;
-  unsigned y;
+
   __block NSUInteger curIdx;
 
   // create colorspace BW
@@ -345,7 +292,6 @@ unsigned last_rx;
     x = last_rx - rgbData.width;
     last_rx -= (BX_GUI_GAP_SIZE + rgbData.width);
   }
-  y = self.yofs; // - self.height;
 
   curIdx = 0;
   // get last data number
@@ -355,12 +301,11 @@ unsigned last_rx;
     }
   }];
 
-  // BX_LOG(([NSString stringWithFormat:@"headerbarBXBitmap vaild %s", image.isValid?"YES":"NO"]));
+  [buttons addObject: [[BXNSHeaderBarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:0 left:x image:image func:f]];
+  BXL_DEBUG(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d alignment=%d func:%p idx=%lu x=%d", bmap_id, align, f, curIdx, x]));
 
-  [buttons addObject: [[BXNSHeaderBarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:y left:x image:image func:f]];
+  return curIdx;
 
-  BXL_INFO(([NSString stringWithFormat:@"headerbarBXBitmap idx=%lu x=%d y=%d", curIdx, x, y]));
-  return (curIdx);
 }
 
 /**
@@ -389,34 +334,36 @@ unsigned last_rx;
   btn = [buttons objectAtIndex:btn_id];
   [btn.button setImage:image];
 
+  BXL_DEBUG(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d btn_id=%d", bmap_id, btn_id]));
+
 }
 
 /**
  * headerbarCreate
  */
--(void) headerbarCreate:(NSView *) view {
+- (void)headerbarCreate:(NSView * _Nonnull) view {
 
-  BXL_INFO(([NSString stringWithFormat:@"headerbarCreate view %@", view.window.title]));
-
-  if (self.visible) {
+  if (self.created) {
     return;
   }
 
+  [view addSubview:button_view];
+
   [buttons enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
     BXNSHeaderBarButton * btn;
-    BXL_INFO(([NSString stringWithFormat:@"headerbarCreate enable idx=%lu ", idx]));
+    BXL_DEBUG(([NSString stringWithFormat:@"headerbarCreate enable idx=%lu ", idx]));
     btn = [buttons objectAtIndex:idx];
-    [view addSubview:btn.button];
+    [button_view addSubview:btn.button];
   }];
 
-  self.visible = YES;
+  self.created = YES;
 
 }
 
 /**
  * headerbarUpdate
  */
--(void) headerbarUpdate:(BXVGAdisplay *) vga {
+- (void)headerbarUpdate:(BXVGAdisplay * _Nonnull) vga {
 
   // update from vga
   self.width = vga.width;
@@ -426,11 +373,12 @@ unsigned last_rx;
 
   BXL_DEBUG(([NSString stringWithFormat:@"headerbarUpdate width=%d yofs=%d", self.width, self.yofs]));
 
+  button_view.frame = NSMakeRect(0, self.yofs, self.width, self.height);
+
   // update positions
   [buttons enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
     BXNSHeaderBarButton * btn;
     unsigned x;
-    unsigned y;
 
     btn = [buttons objectAtIndex:idx];
     // calculate button position
@@ -442,9 +390,8 @@ unsigned last_rx;
       x = last_rx - btn.size.width;
       last_rx -= (BX_GUI_GAP_SIZE + btn.size.width);
     }
-    y = self.yofs;
 
-    btn.position = NSMakePoint(x, y);
+    btn.position = NSMakePoint(x, 0);
     [btn.button setFrameOrigin:btn.position];
 
   }];

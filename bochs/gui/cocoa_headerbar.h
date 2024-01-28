@@ -36,7 +36,7 @@
 
   @interface BXNSHeaderBarButtonData : NSObject
 
-    @property (nonatomic, readwrite) CFDataRef data;
+    @property (nonatomic, readwrite) CFDataRef _Nonnull data;
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) size_t size;
@@ -53,31 +53,36 @@
     @property (nonatomic, readwrite) unsigned alignment;
     @property (nonatomic, readwrite) NSPoint position;
     @property (nonatomic, readwrite) NSSize size;
-    @property (nonatomic, readwrite) void * func;
+    @property (nonatomic, readwrite) void * _Nullable func;
     @property (nonatomic, readwrite, strong) NSButton * _Nonnull button;
 
-    - (instancetype _Nonnull)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage *) img func:(void (*)()) f;
-    // - (void)dealloc;
+    - (instancetype _Nonnull)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage * _Nonnull) img func:(void (* _Nullable)()) f;
+
     - (void)mouseEvent: (NSButton*)button;
 
   @end
 
+  @interface BXNSHeaderBarView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
 
   @interface BXNSHeaderBar : NSObject
 
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned yofs;
-    @property (nonatomic, readwrite) BOOL visible;
+    @property (nonatomic, readwrite) BOOL created;
 
     - (instancetype _Nonnull)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
-    // - (void)dealloc;
-    - (NSImage *)createIconXPM;
-    -(unsigned) createBXBitmap:(const unsigned char * _Nonnull)bmap xdim:(unsigned) x ydim:(unsigned) y;
-    -(unsigned) headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
+
+    - (NSImage * _Nonnull)createIconXPM;
+    - (unsigned)createBXBitmap:(const unsigned char * _Nonnull)bmap xdim:(unsigned) x ydim:(unsigned) y;
+    - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (* _Nullable)()) f;
     - (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
-    -(void) headerbarCreate:(NSView *) view;
-    -(void) headerbarUpdate:(BXVGAdisplay *) vga;
+    - (void)headerbarCreate:(NSView * _Nonnull) view;
+    - (void)headerbarUpdate:(BXVGAdisplay * _Nonnull) vga;
   @end
 
 #endif /* BX_GUI_COCOA_HEADERBAR_H */

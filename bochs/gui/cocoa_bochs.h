@@ -66,6 +66,7 @@
 
     void getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp);
     void dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp);
+    void clear_screen(void);
 
 
     unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
@@ -77,10 +78,17 @@
     void set_font(bool font2, unsigned pos, unsigned char *charmap);
     void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
     bool palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue);
-    
+
+    void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
+    const unsigned char * getVGAdisplayPtr(void);
+    void graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h);
+
     void render(void);
 
-
+    void captureMouse(bool cap, unsigned x, unsigned y);
+    bool hasMouseCapture(void);
+    bool hasEvent(void);
+    unsigned long getEvent(void);
 
   };
 

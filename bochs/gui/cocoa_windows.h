@@ -103,6 +103,19 @@
   @end
 
 
+  @interface BXNSEventQueue : NSObject
+
+    @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
+
+    - (instancetype _Nonnull)init;
+
+    - (void)enqueue:(UInt64) value;
+    - (UInt64)dequeue;
+    - (BOOL)isEmpty;
+
+  @end
+
+
   @interface BXNSWindowController : NSObject
 
     @property (nonatomic, readwrite, strong) BXNSPropertyCollection * _Nonnull bx_p_col;
@@ -149,9 +162,31 @@
 
     @property (nonatomic, readwrite) BXNSHeaderBar * _Nonnull BXToolbar;
     @property (nonatomic, readwrite, strong) BXVGAdisplay * _Nonnull BXVGA;
+    @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
     @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
+    @property (nonatomic, readwrite) BOOL MouseCaptureActive;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller HeaderBarHeight:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
+
+    - (BOOL)hasEvent;
+    - (UInt64)getEvent;
+    - (void)captureMouse:(BOOL) grab;
+    - (void)captureMouseXY:(NSPoint) XY;
+
+    - (void)keyDown:(NSEvent * _Nonnull)event;
+    - (void)keyUp:(NSEvent * _Nonnull)event;
+
+    - (void)handleMouse:(NSEvent * _Nonnull)event;
+    - (void)mouseMoved:(NSEvent * _Nonnull)event;
+    - (void)mouseDragged:(NSEvent* _Nonnull)event;
+    - (void)rightMouseDragged:(NSEvent * _Nonnull)event;
+    - (void)otherMouseDragged:(NSEvent * _Nonnull)event;
+    - (void)mouseDown:(NSEvent* _Nonnull)event;
+    - (void)rightMouseDown:(NSEvent * _Nonnull)event;
+    - (void)otherMouseDown:(NSEvent * _Nonnull)event;
+    - (void)mouseUp:(NSEvent* _Nonnull)event;
+    - (void)rightMouseUp:(NSEvent * _Nonnull)event;
+    - (void)otherMouseUp:(NSEvent * _Nonnull)event;
 
   @end
 
@@ -198,59 +233,48 @@
 
 
 
-  @interface BXNSEventQueue : NSObject
 
-    @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
 
-    - (instancetype)init;
-    // - (void)dealloc;
-
-    - (void)enqueue:(UInt64) value;
-    - (UInt64)dequeue;
-    - (BOOL)isEmpty;
-
-  @end
-
-  @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
-
-    @property (nonatomic, readwrite, strong) BXVGAdisplay * BXVGA;
-    @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
-    @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
-    @property (nonatomic, readwrite) BOOL MouseCaptureActive;
-    - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
-    // - (void)dealloc;
-
-    - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
-
-    - (void)showAlertMessage:(const char *) msg style:(const char) type;
-
-    - (void)captureMouse:(BOOL) grab;
-    - (void)captureMouseXY:(NSPoint) XY;
-
-    - (NSImage *)createIconXPM;
-    - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
-    - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
-    - (void)headerbarCreate;
-    - (void)headerbarUpdate;
-    - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
-    - (unsigned)getHeaderbarHeight;
-    - (void)renderVGA;
-    - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
-    - (void)clearVGAscreen;
-    - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
-    - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
-    - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
-    - (BOOL)hasEvent;
-    - (UInt64)getEvent;
-    - (void)handleMouse:(NSEvent *)event;
-    - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
-    - (const unsigned char *) getVGAMemory;
-    - (void)clipRegionVGAPosition:(NSRect) rect;
-
-  // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
-  // -(NSArray<NSButton *> *)createToolbar;
-  // -(void)updateToolbar:(NSSize) size;
-  @end
+  // @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
+  //
+  //   @property (nonatomic, readwrite, strong) BXVGAdisplay * BXVGA;
+  //   @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
+  //   @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
+  //   @property (nonatomic, readwrite) BOOL MouseCaptureActive;
+  //   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
+  //   // - (void)dealloc;
+  //
+  //   - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
+  //
+  //   - (void)showAlertMessage:(const char *) msg style:(const char) type;
+  //
+  //   - (void)captureMouse:(BOOL) grab;
+  //   - (void)captureMouseXY:(NSPoint) XY;
+  //
+  //   - (NSImage *)createIconXPM;
+  //   - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
+  //   - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
+  //   - (void)headerbarCreate;
+  //   - (void)headerbarUpdate;
+  //   - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
+  //   - (unsigned)getHeaderbarHeight;
+  //   - (void)renderVGA;
+  //   - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
+  //   - (void)clearVGAscreen;
+  //   - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
+  //   - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
+  //   - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
+  //   - (BOOL)hasEvent;
+  //   - (UInt64)getEvent;
+  //   - (void)handleMouse:(NSEvent *)event;
+  //   - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
+  //   - (const unsigned char *) getVGAMemory;
+  //   - (void)clipRegionVGAPosition:(NSRect) rect;
+  //
+  // // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
+  // // -(NSArray<NSButton *> *)createToolbar;
+  // // -(void)updateToolbar:(NSSize) size;
+  // @end
 
 
 

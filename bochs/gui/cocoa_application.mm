@@ -280,7 +280,12 @@ void BXGuiCocoaApplication::dimension_update(unsigned x, unsigned y, unsigned fw
   });
 }
 
-
+/**
+ * clear_screen
+ */
+void BXGuiCocoaApplication::clear_screen(void) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] clearScreen];
+}
 
 
 
@@ -312,7 +317,7 @@ void BXGuiCocoaApplication::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
  */
 void BXGuiCocoaApplication::show_headerbar(void) {
   dispatch_sync(dispatch_get_main_queue(), ^(void){
-  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarCreate:[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] contentView]];
+    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarCreate:[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] contentView]];
   });
 }
 
@@ -349,6 +354,28 @@ bool BXGuiCocoaApplication::palette_change(unsigned char index, unsigned char re
 
 
 
+/**
+ * graphics_tile_update
+ */
+void BXGuiCocoaApplication::graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] clipRegion:tile position:NSMakeRect(x, y, w, h)];
+}
+
+/**
+ * getVGAdisplayPtr
+ */
+const unsigned char * BXGuiCocoaApplication::BXGuiCocoaApplication::getVGAdisplayPtr(void) {
+  return [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA].VGAdisplayRAM;
+}
+
+/**
+ * graphics_tile_update_in_place
+ */
+void BXGuiCocoaApplication::graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h) {
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] clipRegionPosition:NSMakeRect(x, y, w, h)];
+}
+
+
 
 
 
@@ -356,15 +383,40 @@ bool BXGuiCocoaApplication::palette_change(unsigned char index, unsigned char re
  * render
  */
 void BXGuiCocoaApplication::render(void) {
-  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] render];
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] render];
+  });
 }
 
 
+/**
+ * captureMouse
+ */
+void BXGuiCocoaApplication::captureMouse(bool cap, unsigned x, unsigned y) {
+  [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] captureMouse:cap];
+  [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] captureMouseXY:NSMakePoint(x, y)];
+}
 
+/**
+ * hasMouseCapture
+ */
+bool BXGuiCocoaApplication::hasMouseCapture(void) {
+  return [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] MouseCaptureActive];
+}
 
+/**
+ * hasEvent
+ */
+bool BXGuiCocoaApplication::hasEvent(void) {
+  return [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] hasEvent];
+}
 
-
-
+/**
+ * getEvent
+ */
+unsigned long BXGuiCocoaApplication::getEvent(void) {
+  return [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] getEvent];
+}
 
 
 

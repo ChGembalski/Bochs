@@ -213,6 +213,77 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
 @end
 
 
+@implementation BXNSEventQueue
+
+NSMutableArray<NSNumber *> * queue;
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+
+  self = [super init];
+  if(self) {
+
+    queue = [[NSMutableArray alloc] init];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * enqueue
+ */
+- (void)enqueue:(UInt64) value {
+
+  NSNumber *obj;
+
+  obj = [NSNumber numberWithUnsignedLong:value];
+  @synchronized(self) {
+    [queue addObject:obj];
+  }
+
+}
+
+/**
+ * dequeue
+ */
+- (UInt64)dequeue {
+
+  NSNumber *obj;
+
+  @synchronized(self) {
+    if ([queue count] == 0) {
+      return (0);
+    }
+    obj = [queue objectAtIndex:0];
+    if (obj == nil) {
+      return (0);
+    }
+
+    [queue removeObjectAtIndex:0];
+  }
+
+  return obj.unsignedLongValue;
+
+}
+
+/**
+ * isEmpty
+ */
+- (BOOL)isEmpty {
+
+  @synchronized(self) {
+    return [queue count] == 0;
+  }
+
+}
+
+@end
+
+
 @implementation BXNSWindowController
 
 BXNSMenuBar * menubar;
@@ -546,13 +617,15 @@ NSLog(@"init BXNSConfigurationWindow");
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSSimulationWindow
 
+BXNSEventQueue * BXEventQueue;
+
 /**
  * init
  */
 - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller HeaderBarHeight:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres {
 
   self = [super initWithBXController:controller
-       contentRect: NSMakeRect(0, 0, vga_xres, vga_yres)
+       contentRect: NSMakeRect(0, 0, vga_xres, vga_yres + headerbar_y)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
                     NSWindowStyleMaskMiniaturizable
@@ -561,14 +634,17 @@ NSLog(@"init BXNSConfigurationWindow");
   ];
 
   if (self) {
-NSLog(@"init BXNSSimulationWindow");
+
     [self setTitle:BOCHS_WINDOW_NAME];
 
+    BXEventQueue = [[BXNSEventQueue alloc] init];
+
     self.MouseCaptureAbsolute = NO;
-NSLog(@"setup VGA");
+    self.MouseCaptureActive = NO;
+
     // Setup VGA display
     self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga_xres height:vga_yres font_width:0 font_height:0 view:[self contentView]];
-NSLog(@"setup Toolbar");
+
     // setup Toolbar
     self.BXToolbar = [[BXNSHeaderBar alloc] init:headerbar_y width:vga_xres yofs:vga_yres];
 
@@ -580,6 +656,204 @@ NSLog(@"setup Toolbar");
   return self;
 
 }
+
+/**
+ * getter hasEvent
+ */
+- (BOOL)hasEvent {
+  return !BXEventQueue.isEmpty;
+}
+
+/**
+ * return the Event
+ * if none exist return 0
+ */
+- (UInt64)getEvent {
+  return [BXEventQueue dequeue];
+}
+
+/**
+ * captureMouse ON / OFF
+ */
+- (void)captureMouse:(BOOL) grab {
+
+  self.MouseCaptureActive = grab;
+  if (self.MouseCaptureActive) {
+    CGAssociateMouseAndMouseCursorPosition(NO);
+    CGDisplayHideCursor(kCGDirectMainDisplay);
+  } else {
+    CGAssociateMouseAndMouseCursorPosition(YES);
+    CGDisplayShowCursor(kCGDirectMainDisplay);
+  }
+
+}
+
+/**
+ * capture mouse to XY
+ */
+- (void)captureMouseXY:(NSPoint) XY {
+
+  NSPoint screenXY;
+  int y;
+
+  y = XY.y;
+  XY.y = 0;
+
+  screenXY = [self convertPointToScreen:XY];
+  CGWarpMouseCursorPosition(NSMakePoint(screenXY.x, self.screen.frame.size.height - screenXY.y + y - self.BXVGA.height));
+
+}
+
+/**
+ * keyDown
+ */
+- (void)keyDown:(NSEvent * _Nonnull)event {
+
+  BXL_DEBUG(([NSString stringWithFormat:@"keyDown window event.keyCode=%x char=%c event.modifierFlags=%lx",
+    event.keyCode,
+    event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+    (unsigned long)event.modifierFlags
+  ]));
+  [BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+
+}
+
+/**
+ * keyUp
+ */
+- (void)keyUp:(NSEvent * _Nonnull)event {
+
+  BXL_DEBUG(([NSString stringWithFormat:@"keyUp window event.keyCode=%x char=%c event.modifierFlags=%lx",
+    event.keyCode,
+    event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+    (unsigned long)event.modifierFlags
+  ]));
+  [BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+
+}
+
+
+/**
+ * Mouse event handling
+ */
+- (void)handleMouse:(NSEvent * _Nonnull)event {
+
+  NSPoint mouseXY;
+  UInt64 evt;
+  UInt64 mx;
+  UInt64 my;
+  UInt64 mb;
+  UInt64 mf;
+  NSUInteger mouseBTN;
+
+  mouseXY = event.locationInWindow;
+
+  if (self.MouseCaptureAbsolute) {
+    mouseXY.y = self.BXVGA.height - (unsigned)mouseXY.y;
+    if (((UInt32)mouseXY.y < 0) || ((UInt32)mouseXY.y > self.BXVGA.height) || ((UInt32)mouseXY.x < 0) || ((UInt32)mouseXY.x > self.BXVGA.width))  {
+     return;
+    }
+  } else {
+    SInt32 dx;
+    SInt32 dy;
+
+    CGGetLastMouseDelta(&dx, &dy);
+    if ((dx < -100) | (dx > 100) | (dy < -100) | (dy > 100)) {
+      return;
+    }
+    mouseXY = NSMakePoint(dx, dy*-1);
+
+  }
+  mouseBTN = [NSEvent pressedMouseButtons];
+
+  mf = (event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16;
+
+  mx = ((SInt16)mouseXY.x) & 0xFFFF;
+  my = ((SInt16)mouseXY.y) & 0xFFFF;
+  mb = (UInt8)(mouseBTN & 0xFF);
+
+  evt = MACOS_NSEventModifierFlagMouse |
+    mb << 48 |
+    mf << 32 |
+    mx << 16 |
+    my;
+  BXL_DEBUG(([NSString stringWithFormat:@"handleMouse x=%lld y=%lld btn=%llx flag=%llx evt=%llx abs=%s",
+    mx, my, mb, mf, evt, self.MouseCaptureAbsolute?"YES":"NO"]));
+  [BXEventQueue enqueue:evt];
+
+}
+
+/**
+ * mouseMoved
+ */
+- (void)mouseMoved:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * mouseDragged
+ */
+- (void) mouseDragged:(NSEvent* _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * rightMouseDragged
+ */
+- (void)rightMouseDragged:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * otherMouseDragged
+ */
+- (void)otherMouseDragged:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * mouseDown
+ */
+- (void) mouseDown:(NSEvent* _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * rightMouseDown
+ */
+- (void)rightMouseDown:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * otherMouseDown
+ */
+- (void)otherMouseDown:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * mouseUp
+ */
+- (void) mouseUp:(NSEvent* _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * rightMouseUp
+ */
+- (void)rightMouseUp:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+/**
+ * otherMouseUp
+ */
+- (void)otherMouseUp:(NSEvent * _Nonnull)event {
+  [self handleMouse:event];
+}
+
+
 
 @end
 
@@ -788,60 +1062,7 @@ UInt8 loglevelMask;
 //
 // @end
 
-@implementation BXNSEventQueue
 
-NSMutableArray<NSNumber *> * queue;
-
-/**
- * BXNSEventQueue
- */
-- (instancetype)init {
-  self = [super init];
-  if(self) {
-
-    queue = [[NSMutableArray alloc] init];
-
-  }
-  return self;
-}
-
-// /**
-//  * BXNSEventQueue DTor
-//  */
-// - (void)dealloc {
-//   // [queue dealloc];
-//   [super dealloc];
-// }
-
-- (void)enqueue:(UInt64) value {
-  NSNumber *obj;
-
-  obj = [NSNumber numberWithUnsignedLong:value];
-  [queue addObject:obj];
-}
-
-- (UInt64)dequeue {
-  NSNumber *obj;
-
-  if ([queue count] == 0) {
-    return (0);
-  }
-  obj = [queue objectAtIndex:0];
-  if (obj == nil) {
-    return (0);
-  }
-
-  // [[obj retain] autorelease];
-  [queue removeObjectAtIndex:0];
-
-  return obj.unsignedLongValue;
-}
-
-- (BOOL)isEmpty {
-  return [queue count] == 0;
-}
-
-@end
 
 
 // @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
@@ -885,426 +1106,426 @@ NSMutableArray<NSNumber *> * queue;
 // // -(void)updateToolbar:(NSSize) size;
 // @end
 
-@implementation BXGuiCocoaNSWindow
-
-// BXHeaderbar * BXToolbar;
-BXNSEventQueue * BXEventQueue;
-
-
-/**
- * BXGuiCocoaNSWindow CTor
- */
-- (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga {
-
-  BXL_DEBUG(@"BXGuiCocoaNSWindow::init");
-
-  self = [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
-         styleMask: NSWindowStyleMaskTitled |
-                    NSWindowStyleMaskClosable |
-                    NSWindowStyleMaskMiniaturizable
-           backing: NSBackingStoreBuffered
-             defer: NO
-  ];
-// |                    NSWindowStyleMaskResizable
-  [NSApp setDelegate:self];
-  [NSApp setDelegate:[self contentView]];
-  [self setTitle:BOCHS_WINDOW_NAME];
-
-  // [self contentView].wantsLayer = YES;
-
-  BXEventQueue = [[BXNSEventQueue alloc] init];
-
-  self.MouseCaptureAbsolute = NO;
-
-  // Setup VGA display
-  self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga.width height:vga.height font_width:0 font_height:0 view:[self contentView]];
-
-  // setup Toolbar
-  // BXToolbar = [[BXHeaderbar alloc] init:headerbar_y width:self.BXVGA.width yofs:self.BXVGA.height];
-
-
-
-  [self center];
-  [self setIsVisible:YES];
-  [self makeKeyAndOrderFront:self];
-  [self setAcceptsMouseMovedEvents:YES];
-  // [self makeFirstResponder: [self contentView] ];
-
-
-  BXL_INFO(([NSString stringWithFormat:@"keyWindow %s", self.keyWindow?"YES":"NO"]));
-
-  return self;
-}
-
+// @implementation BXGuiCocoaNSWindow
+//
+// // BXHeaderbar * BXToolbar;
+// // BXNSEventQueue * BXEventQueue;
+//
+//
 // /**
-//  * BXGuiCocoaNSWindow DTor
+//  * BXGuiCocoaNSWindow CTor
 //  */
-// - (void)dealloc {
-//   [BXEventQueue dealloc];
-//   [self.BXVGA dealloc];
-//   [BXToolbar dealloc];
-//   [super dealloc];
+// - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga {
+//
+//   BXL_DEBUG(@"BXGuiCocoaNSWindow::init");
+//
+//   self = [super initWithContentRect:NSMakeRect(0, 0, vga.width, vga.height + headerbar_y)
+//          styleMask: NSWindowStyleMaskTitled |
+//                     NSWindowStyleMaskClosable |
+//                     NSWindowStyleMaskMiniaturizable
+//            backing: NSBackingStoreBuffered
+//              defer: NO
+//   ];
+// // |                    NSWindowStyleMaskResizable
+//   [NSApp setDelegate:self];
+//   [NSApp setDelegate:[self contentView]];
+//   [self setTitle:BOCHS_WINDOW_NAME];
+//
+//   // [self contentView].wantsLayer = YES;
+//
+//   // BXEventQueue = [[BXNSEventQueue alloc] init];
+//
+//   self.MouseCaptureAbsolute = NO;
+//
+//   // Setup VGA display
+//   self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga.width height:vga.height font_width:0 font_height:0 view:[self contentView]];
+//
+//   // setup Toolbar
+//   // BXToolbar = [[BXHeaderbar alloc] init:headerbar_y width:self.BXVGA.width yofs:self.BXVGA.height];
+//
+//
+//
+//   [self center];
+//   [self setIsVisible:YES];
+//   [self makeKeyAndOrderFront:self];
+//   [self setAcceptsMouseMovedEvents:YES];
+//   // [self makeFirstResponder: [self contentView] ];
+//
+//
+//   BXL_INFO(([NSString stringWithFormat:@"keyWindow %s", self.keyWindow?"YES":"NO"]));
+//
+//   return self;
 // }
-
-- (BOOL)windowShouldClose:(id)sender {
-  [NSApp terminate:sender];
-  return YES;
-}
-
-- (BOOL)canBecomeKeyWindow {
-    return YES;
-}
-
-- (BOOL)canBecomeMainWindow {
-    return YES;
-}
-
-- (void)keyDown:(NSEvent *)event {
-
-  BXL_DEBUG(([NSString stringWithFormat:@"keyDown window event.keyCode=%x char=%c event.modifierFlags=%lx",
-    event.keyCode,
-    event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
-    (unsigned long)event.modifierFlags
-  ]));
-  [BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
-
-}
-
-- (void)keyUp:(NSEvent *)event {
-
-  BXL_DEBUG(([NSString stringWithFormat:@"keyUp window event.keyCode=%x char=%c event.modifierFlags=%lx",
-    event.keyCode,
-    event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
-    (unsigned long)event.modifierFlags
-  ]));
-  [BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
-
-}
-
-/**
- * Mouse event handling
- */
-- (void)handleMouse:(NSEvent *)event {
-  NSPoint mouseXY;
-  UInt64 evt;
-  UInt64 mx;
-  UInt64 my;
-  UInt64 mb;
-  UInt64 mf;
-  NSUInteger mouseBTN;
-
-  mouseXY = event.locationInWindow;
-
-  if (self.MouseCaptureAbsolute) {
-    mouseXY.y = self.BXVGA.height - (unsigned)mouseXY.y;
-    if (((UInt32)mouseXY.y < 0) || ((UInt32)mouseXY.y > self.BXVGA.height) || ((UInt32)mouseXY.x < 0) || ((UInt32)mouseXY.x > self.BXVGA.width))  {
-     return;
-    }
-  } else {
-    SInt32 dx;
-    SInt32 dy;
-
-    CGGetLastMouseDelta(&dx, &dy);
-    if ((dx < -100) | (dx > 100) | (dy < -100) | (dy > 100)) {
-      return;
-    }
-    mouseXY = NSMakePoint(dx, dy*-1);
-
-  }
-  mouseBTN = [NSEvent pressedMouseButtons];
-
-  mf = (event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16;
-
-  mx = ((SInt16)mouseXY.x) & 0xFFFF;
-  my = ((SInt16)mouseXY.y) & 0xFFFF;
-  mb = (UInt8)(mouseBTN & 0xFF);
-
-  evt = MACOS_NSEventModifierFlagMouse |
-    mb << 48 |
-    mf << 32 |
-    mx << 16 |
-    my;
-  BXL_DEBUG(([NSString stringWithFormat:@"handleMouse x=%lld y=%lld btn=%llx flag=%llx evt=%llx abs=%s",
-    mx, my, mb, mf, evt, self.MouseCaptureAbsolute?"YES":"NO"]));
-  [BXEventQueue enqueue:evt];
-
-}
-
-- (void)mouseMoved:(NSEvent *)event {
-  [self handleMouse:event];
-}
-- (void) mouseDragged:(NSEvent*)event {
-  [self handleMouse:event];
-}
-- (void)rightMouseDragged:(NSEvent *)event {
-  [self handleMouse:event];
-}
-- (void)otherMouseDragged:(NSEvent *)event {
-  [self handleMouse:event];
-}
-- (void) mouseDown:(NSEvent*)event {
-  [self handleMouse:event];
-}
-- (void)rightMouseDown:(NSEvent *)event {
-  [self handleMouse:event];
-}
-- (void)otherMouseDown:(NSEvent *)event {
-  [self handleMouse:event];
-}
-- (void) mouseUp:(NSEvent*)event {
-  [self handleMouse:event];
-}
-- (void)rightMouseUp:(NSEvent *)event {
-  [self handleMouse:event];
-}
-- (void)otherMouseUp:(NSEvent *)event {
-  [self handleMouse:event];
-}
-
-
-/**
- * showAlertMessage
- * show a modal Alert Message
- */
-- (void)showAlertMessage:(const char *) msg style:(const char) type {
-
-  NSAlert * alert;
-  NSString * aMsg;
-  NSAlertStyle aStyle;
-
-  if ((msg == NULL) | (msg == nil)) {
-    aMsg = @"No msg supplied ...";
-  } else {
-    BXL_INFO(([NSString stringWithFormat:@"showAlertMessage %s", msg]));
-    // NSMutableData * dmsg;
-    // dmsg = [[[NSMutableData alloc] initWithLength:(strlen(msg)+1)] autorelease];
-    // [dmsg replaceBytesInRange:NSMakeRange(0, strlen(msg)) withBytes:msg];
-    // aMsg = [[[NSString alloc] initWithData:(NSData *)dmsg encoding:NSUTF8StringEncoding] autorelease];
-    aMsg = @"No msg supplied ...";
-  }
-  switch (type) {
-    case BX_ALERT_MSG_STYLE_INFO: {
-      aStyle = NSAlertStyleInformational;
-      break;
-    }
-    case BX_ALERT_MSG_STYLE_CRIT: {
-      aStyle = NSAlertStyleCritical;
-      break;
-    }
-    default: {
-      aStyle = NSAlertStyleWarning;
-    }
-  }
-
-  alert = [[NSAlert alloc] init];
-  alert.alertStyle = aStyle;
-  alert.messageText = aMsg;
-  alert.informativeText = @"thats the Info!";
-  alert.icon = nil;
-
-  [alert runModal];
-
-}
-
-
-/**
- * captureMouse ON / OFF
- */
-- (void)captureMouse:(BOOL) grab {
-  self.MouseCaptureActive = grab;
-  if (self.MouseCaptureActive) {
-    CGAssociateMouseAndMouseCursorPosition(NO);
-    CGDisplayHideCursor(kCGDirectMainDisplay);
-  } else {
-    CGAssociateMouseAndMouseCursorPosition(YES);
-    CGDisplayShowCursor(kCGDirectMainDisplay);
-  }
-}
-
-/**
- * capture mouse to XY
- */
-- (void)captureMouseXY:(NSPoint) XY {
-  NSPoint screenXY;
-  int y;
-
-  y = XY.y;
-  XY.y = 0;
-
-  screenXY = [self convertPointToScreen:XY];
-  CGWarpMouseCursorPosition(NSMakePoint(screenXY.x, self.screen.frame.size.height - screenXY.y + y - self.BXVGA.height));
-  BXL_DEBUG(([NSString stringWithFormat:@"captureMouse x=%d y=%d orgx=%d orgy=%d w.y=%d s.h=%d",
-  (int)screenXY.x, (int)screenXY.y, (int)XY.x, (int)XY.y, (int)self.frame.origin.y, (int)self.screen.frame.size.height]));
-
-}
-
-/**
- * getMaxScreenResolution
- */
-- (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h {
-
-  NSArray * screens;
-
-  screens = [NSScreen screens];
-
-  [screens enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
-
-    NSScreen * screen;
-    NSRect frame;
-    NSInteger sBpp;
-
-    screen = [screens objectAtIndex: idx];
-    frame = [screen visibleFrame];
-    sBpp = NSBitsPerPixelFromDepth(screen.depth);
-
-    if (((unsigned int)frame.size.width > *w) | ((unsigned int)frame.size.height > *h) | (sBpp > *bpp)) {
-      *bpp = (unsigned char)sBpp;
-      *w = (unsigned int)frame.size.width;
-      *h = (unsigned int)frame.size.height;
-    }
-
-  }];
-
-  BXL_DEBUG(([NSString stringWithFormat:@"ScreenResolution bpp=%d width=%d height=%d", *bpp, *w, *h]));
-
-}
-
-
-
-
-
-
-
-
-/**
- * createIconXPM forwarding
- */
-- (NSImage *)createIconXPM {
-  // return [BXToolbar createIconXPM];
-}
-
-
-/**
- * createBXBitmap forwarding
- */
-- (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y {
-  // return ([BXToolbar createBXBitmap:bmap xdim:x ydim:y]);
-}
-
-/**
- * headerbarBXBitmap forwarding
- */
-- (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
-  // return ([BXToolbar headerbarBXBitmap:bmap_id alignment:align func:f]);
-}
-
-/**
- * create new headerbar
- * multiple calls allowed
- */
-- (void)headerbarCreate {
-  // [BXToolbar headerbarCreate:[self contentView]];
-}
-
-/**
- * update headerbar
- */
-- (void)headerbarUpdate {
-  // [BXToolbar headerbarUpdate:self.BXVGA];
-}
-
-/**
- * change image in headerbar
- */
-- (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id {
-  // [BXToolbar headerbarBXBitmap:btn_id data_id:bmap_id];
-}
-
-- (unsigned)getHeaderbarHeight {
-  // return (BXToolbar.height);
-}
-
-/**
- * render VGA display
- */
-- (void)renderVGA {
-  [self.BXVGA render];
-}
-
-/**
- * change one VGA palette entry
- */
-- (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b {
-  return [self.BXVGA setPaletteRGB:index red:r green:g blue:b];
-}
-
-/**
- * clear the VGA screen
- */
-- (void)clearVGAscreen {
-  [self.BXVGA clearScreen];
-}
-
-/**
- * init charmap data
- */
-- (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h {
-  [self.BXVGA initFonts:dataA second:dataB width:w height:h];
-}
-
-/**
- * update charmap data at
- */
-- (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data {
-  [self.BXVGA updateFontAt:pos isFont2:font2 map:data];
-}
-
-/**
- * paint char on VGA display
- */
-- (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
-  [self.BXVGA paintChar:charpos isCrsr:crsr font2:f2 bgcolor:bg fgcolor:fg position:rect];
-}
-
-/**
- * getter hasEvent
- */
-- (BOOL)hasEvent {
-  return !BXEventQueue.isEmpty;
-}
-
-/**
- * return the Event
- * if none exist return 0
- */
-- (UInt64)getEvent {
-  return [BXEventQueue dequeue];
-}
-
-/**
- * clip bitmap region into VGA display
- */
-- (void)clipRegionVGA:(unsigned char *)src position:(NSRect) rect {
-  [self.BXVGA clipRegion:src position:rect];
-}
-
-/**
- * getVGAMemory Ptr
- */
-- (const unsigned char *) getVGAMemory {
-  return self.BXVGA.VGAdisplayRAM;
-}
-
-/**
- * clip region from local Memory
- */
-- (void)clipRegionVGAPosition:(NSRect) rect {
-  [self.BXVGA clipRegionPosition:rect];
-}
-
-
-
-@end
+//
+// // /**
+// //  * BXGuiCocoaNSWindow DTor
+// //  */
+// // - (void)dealloc {
+// //   [BXEventQueue dealloc];
+// //   [self.BXVGA dealloc];
+// //   [BXToolbar dealloc];
+// //   [super dealloc];
+// // }
+//
+// - (BOOL)windowShouldClose:(id)sender {
+//   [NSApp terminate:sender];
+//   return YES;
+// }
+//
+// - (BOOL)canBecomeKeyWindow {
+//     return YES;
+// }
+//
+// - (BOOL)canBecomeMainWindow {
+//     return YES;
+// }
+//
+// - (void)keyDown:(NSEvent *)event {
+//
+//   BXL_DEBUG(([NSString stringWithFormat:@"keyDown window event.keyCode=%x char=%c event.modifierFlags=%lx",
+//     event.keyCode,
+//     event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+//     (unsigned long)event.modifierFlags
+//   ]));
+//   [BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+//
+// }
+//
+// - (void)keyUp:(NSEvent *)event {
+//
+//   BXL_DEBUG(([NSString stringWithFormat:@"keyUp window event.keyCode=%x char=%c event.modifierFlags=%lx",
+//     event.keyCode,
+//     event.charactersIgnoringModifiers==nil?'?':event.charactersIgnoringModifiers.length ==0?'?':[event.characters characterAtIndex:0],
+//     (unsigned long)event.modifierFlags
+//   ]));
+//   [BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+//
+// }
+//
+// /**
+//  * Mouse event handling
+//  */
+// - (void)handleMouse:(NSEvent *)event {
+//   NSPoint mouseXY;
+//   UInt64 evt;
+//   UInt64 mx;
+//   UInt64 my;
+//   UInt64 mb;
+//   UInt64 mf;
+//   NSUInteger mouseBTN;
+//
+//   mouseXY = event.locationInWindow;
+//
+//   if (self.MouseCaptureAbsolute) {
+//     mouseXY.y = self.BXVGA.height - (unsigned)mouseXY.y;
+//     if (((UInt32)mouseXY.y < 0) || ((UInt32)mouseXY.y > self.BXVGA.height) || ((UInt32)mouseXY.x < 0) || ((UInt32)mouseXY.x > self.BXVGA.width))  {
+//      return;
+//     }
+//   } else {
+//     SInt32 dx;
+//     SInt32 dy;
+//
+//     CGGetLastMouseDelta(&dx, &dy);
+//     if ((dx < -100) | (dx > 100) | (dy < -100) | (dy > 100)) {
+//       return;
+//     }
+//     mouseXY = NSMakePoint(dx, dy*-1);
+//
+//   }
+//   mouseBTN = [NSEvent pressedMouseButtons];
+//
+//   mf = (event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) >> 16;
+//
+//   mx = ((SInt16)mouseXY.x) & 0xFFFF;
+//   my = ((SInt16)mouseXY.y) & 0xFFFF;
+//   mb = (UInt8)(mouseBTN & 0xFF);
+//
+//   evt = MACOS_NSEventModifierFlagMouse |
+//     mb << 48 |
+//     mf << 32 |
+//     mx << 16 |
+//     my;
+//   BXL_DEBUG(([NSString stringWithFormat:@"handleMouse x=%lld y=%lld btn=%llx flag=%llx evt=%llx abs=%s",
+//     mx, my, mb, mf, evt, self.MouseCaptureAbsolute?"YES":"NO"]));
+//   [BXEventQueue enqueue:evt];
+//
+// }
+//
+// - (void)mouseMoved:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+// - (void) mouseDragged:(NSEvent*)event {
+//   [self handleMouse:event];
+// }
+// - (void)rightMouseDragged:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+// - (void)otherMouseDragged:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+// - (void) mouseDown:(NSEvent*)event {
+//   [self handleMouse:event];
+// }
+// - (void)rightMouseDown:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+// - (void)otherMouseDown:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+// - (void) mouseUp:(NSEvent*)event {
+//   [self handleMouse:event];
+// }
+// - (void)rightMouseUp:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+// - (void)otherMouseUp:(NSEvent *)event {
+//   [self handleMouse:event];
+// }
+//
+//
+// /**
+//  * showAlertMessage
+//  * show a modal Alert Message
+//  */
+// - (void)showAlertMessage:(const char *) msg style:(const char) type {
+//
+//   NSAlert * alert;
+//   NSString * aMsg;
+//   NSAlertStyle aStyle;
+//
+//   if ((msg == NULL) | (msg == nil)) {
+//     aMsg = @"No msg supplied ...";
+//   } else {
+//     BXL_INFO(([NSString stringWithFormat:@"showAlertMessage %s", msg]));
+//     // NSMutableData * dmsg;
+//     // dmsg = [[[NSMutableData alloc] initWithLength:(strlen(msg)+1)] autorelease];
+//     // [dmsg replaceBytesInRange:NSMakeRange(0, strlen(msg)) withBytes:msg];
+//     // aMsg = [[[NSString alloc] initWithData:(NSData *)dmsg encoding:NSUTF8StringEncoding] autorelease];
+//     aMsg = @"No msg supplied ...";
+//   }
+//   switch (type) {
+//     case BX_ALERT_MSG_STYLE_INFO: {
+//       aStyle = NSAlertStyleInformational;
+//       break;
+//     }
+//     case BX_ALERT_MSG_STYLE_CRIT: {
+//       aStyle = NSAlertStyleCritical;
+//       break;
+//     }
+//     default: {
+//       aStyle = NSAlertStyleWarning;
+//     }
+//   }
+//
+//   alert = [[NSAlert alloc] init];
+//   alert.alertStyle = aStyle;
+//   alert.messageText = aMsg;
+//   alert.informativeText = @"thats the Info!";
+//   alert.icon = nil;
+//
+//   [alert runModal];
+//
+// }
+//
+//
+// /**
+//  * captureMouse ON / OFF
+//  */
+// - (void)captureMouse:(BOOL) grab {
+//   self.MouseCaptureActive = grab;
+//   if (self.MouseCaptureActive) {
+//     CGAssociateMouseAndMouseCursorPosition(NO);
+//     CGDisplayHideCursor(kCGDirectMainDisplay);
+//   } else {
+//     CGAssociateMouseAndMouseCursorPosition(YES);
+//     CGDisplayShowCursor(kCGDirectMainDisplay);
+//   }
+// }
+//
+// /**
+//  * capture mouse to XY
+//  */
+// - (void)captureMouseXY:(NSPoint) XY {
+//   NSPoint screenXY;
+//   int y;
+//
+//   y = XY.y;
+//   XY.y = 0;
+//
+//   screenXY = [self convertPointToScreen:XY];
+//   CGWarpMouseCursorPosition(NSMakePoint(screenXY.x, self.screen.frame.size.height - screenXY.y + y - self.BXVGA.height));
+//   BXL_DEBUG(([NSString stringWithFormat:@"captureMouse x=%d y=%d orgx=%d orgy=%d w.y=%d s.h=%d",
+//   (int)screenXY.x, (int)screenXY.y, (int)XY.x, (int)XY.y, (int)self.frame.origin.y, (int)self.screen.frame.size.height]));
+//
+// }
+//
+// /**
+//  * getMaxScreenResolution
+//  */
+// - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h {
+//
+//   NSArray * screens;
+//
+//   screens = [NSScreen screens];
+//
+//   [screens enumerateObjectsUsingBlock:^(id object, NSUInteger idx, BOOL *stop) {
+//
+//     NSScreen * screen;
+//     NSRect frame;
+//     NSInteger sBpp;
+//
+//     screen = [screens objectAtIndex: idx];
+//     frame = [screen visibleFrame];
+//     sBpp = NSBitsPerPixelFromDepth(screen.depth);
+//
+//     if (((unsigned int)frame.size.width > *w) | ((unsigned int)frame.size.height > *h) | (sBpp > *bpp)) {
+//       *bpp = (unsigned char)sBpp;
+//       *w = (unsigned int)frame.size.width;
+//       *h = (unsigned int)frame.size.height;
+//     }
+//
+//   }];
+//
+//   BXL_DEBUG(([NSString stringWithFormat:@"ScreenResolution bpp=%d width=%d height=%d", *bpp, *w, *h]));
+//
+// }
+//
+//
+//
+//
+//
+//
+//
+//
+// /**
+//  * createIconXPM forwarding
+//  */
+// - (NSImage *)createIconXPM {
+//   // return [BXToolbar createIconXPM];
+// }
+//
+//
+// /**
+//  * createBXBitmap forwarding
+//  */
+// - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y {
+//   // return ([BXToolbar createBXBitmap:bmap xdim:x ydim:y]);
+// }
+//
+// /**
+//  * headerbarBXBitmap forwarding
+//  */
+// - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f {
+//   // return ([BXToolbar headerbarBXBitmap:bmap_id alignment:align func:f]);
+// }
+//
+// /**
+//  * create new headerbar
+//  * multiple calls allowed
+//  */
+// - (void)headerbarCreate {
+//   // [BXToolbar headerbarCreate:[self contentView]];
+// }
+//
+// /**
+//  * update headerbar
+//  */
+// - (void)headerbarUpdate {
+//   // [BXToolbar headerbarUpdate:self.BXVGA];
+// }
+//
+// /**
+//  * change image in headerbar
+//  */
+// - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id {
+//   // [BXToolbar headerbarBXBitmap:btn_id data_id:bmap_id];
+// }
+//
+// - (unsigned)getHeaderbarHeight {
+//   // return (BXToolbar.height);
+// }
+//
+// /**
+//  * render VGA display
+//  */
+// - (void)renderVGA {
+//   [self.BXVGA render];
+// }
+//
+// /**
+//  * change one VGA palette entry
+//  */
+// - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b {
+//   return [self.BXVGA setPaletteRGB:index red:r green:g blue:b];
+// }
+//
+// /**
+//  * clear the VGA screen
+//  */
+// - (void)clearVGAscreen {
+//   [self.BXVGA clearScreen];
+// }
+//
+// /**
+//  * init charmap data
+//  */
+// - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h {
+//   [self.BXVGA initFonts:dataA second:dataB width:w height:h];
+// }
+//
+// /**
+//  * update charmap data at
+//  */
+// - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data {
+//   [self.BXVGA updateFontAt:pos isFont2:font2 map:data];
+// }
+//
+// /**
+//  * paint char on VGA display
+//  */
+// - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect {
+//   [self.BXVGA paintChar:charpos isCrsr:crsr font2:f2 bgcolor:bg fgcolor:fg position:rect];
+// }
+//
+// /**
+//  * getter hasEvent
+//  */
+// - (BOOL)hasEvent {
+//   return !BXEventQueue.isEmpty;
+// }
+//
+// /**
+//  * return the Event
+//  * if none exist return 0
+//  */
+// - (UInt64)getEvent {
+//   return [BXEventQueue dequeue];
+// }
+//
+// /**
+//  * clip bitmap region into VGA display
+//  */
+// - (void)clipRegionVGA:(unsigned char *)src position:(NSRect) rect {
+//   [self.BXVGA clipRegion:src position:rect];
+// }
+//
+// /**
+//  * getVGAMemory Ptr
+//  */
+// - (const unsigned char *) getVGAMemory {
+//   return self.BXVGA.VGAdisplayRAM;
+// }
+//
+// /**
+//  * clip region from local Memory
+//  */
+// - (void)clipRegionVGAPosition:(NSRect) rect {
+//   [self.BXVGA clipRegionPosition:rect];
+// }
+//
+//
+//
+// @end
 
 // // C++ Wrapper for BXGuiCocoaNSWindow : NSWindow
 //
