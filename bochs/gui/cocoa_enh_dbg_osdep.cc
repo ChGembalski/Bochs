@@ -30,35 +30,54 @@
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
 
-#warning not implemented ...
+#include "cocoa_bochs.h"
+
+#warning not fully implemented ...
 
 void MoveLists() {}
-void SetStatusText(int column, const char *buf) {} // should it be here ?
+void SetStatusText(int column, const char *buf) {
+  printf("BX_DEBUGGER_GUI SetStatusText %d %s\n", column, buf);
+} // should it be here ?
 void MakeListsGray() {}
-void DispMessage(const char *msg, const char *title) {}
+void DispMessage(const char *msg, const char *title) {
+  printf("BX_DEBUGGER_GUI DispMessage %s %s\n", msg, title);
+}
 void InsertListRow(char *ColumnText[], int ColumnCount, int listnum, int LineCount, int grouping) {}
 void StartListUpdate(int listnum) {}
 void EndListUpdate(int listnum) {}
 void RedrawColumns(int listnum) {}
 void Invalidate(int i) {}
 void TakeInputFocus() {}
-bool ShowAskDialog() {}
-bool NewFont() {}
+bool ShowAskDialog() {
+  printf("BX_DEBUGGER_GUI ShowAskDialog\n");
+}
+bool NewFont() {
+  printf("BX_DEBUGGER_GUI NewFont\n");
+  return (false);
+}
 void GrayMenuItem(int flag, int CmdIndex) {}
-void ShowMemData(bool initting) {}
+void ShowMemData(bool initting) {
+
+}
 void SetMenuCheckmark (int flag, int CmdIndex) {}
 void ClearInputWindow() {}
 void VSizeChange() {}
 void ToggleWSchecks(int newWS, int oldWS) {}
-void SetOutWinTxt() {}
+void SetOutWinTxt() {
+  bxcocoagui->dbg_addOutputText(OutWindow);
+}
 void ShowFW() {}
 void GetInputEntry(char *buf) {}
 void SelectHistory(int UpDown) {}
 // void DelWatchpoint(bx_watchpoint *wp_array, unsigned *TotEntries, int i) {}
 // void SetWatchpoint(unsigned *num_watchpoints, bx_watchpoint *watchpoint) {}
 
-void HideTree() {}
-void FillPTree() {}
+void HideTree() {
+  printf("BX_DEBUGGER_GUI HideTree\n");
+}
+void FillPTree() {
+  printf("BX_DEBUGGER_GUI FillPTree\n");
+}
 
 int GetASMTopIdx() {}
 void ScrollASM(int pixels) {}
@@ -67,18 +86,35 @@ void GetLIText(int listnum, int itemnum, int column, char *buf) {}
 void SetLIState(int listnum, int itemnum, bool Select) {}
 int GetNextSelectedLI(int listnum, int StartPt) {}
 
-bool OSInit() {}
-void SpecialInit() {}
-void CloseDialog() {}
-bool ParseOSSettings(const char *param, const char *value) {}
-void WriteOSSettings(FILE *fd) {}
+bool OSInit() {
+  printf("BX_DEBUGGER_GUI OSInit\n");
+
+  // bxcocoagui initialized by cocoaconfig
+  bxcocoagui->showWindow(BX_GUI_WINDOW_DEBUGGER, true);
+  bxcocoagui->activateWindow(BX_GUI_WINDOW_DEBUGGER);
+
+  return (true);
+}
+void SpecialInit() {
+  // set all TRUE flags to checked in the Options menu, gray out unsupported features
+}
+void CloseDialog() {
+  bxcocoagui->showWindow(BX_GUI_WINDOW_DEBUGGER, false);
+  // close debug window
+}
+bool ParseOSSettings(const char *param, const char *value) {
+  printf("BX_DEBUGGER_GUI param=%s value=%s\n", param, value);
+}
+void WriteOSSettings(FILE *fd) {
+  printf("BX_DEBUGGER_GUI someone trying save settings\n");
+}
 
 void HitBreak() {}
 // void ParseIDText(const char *x) {}
 
 
 
-
+// running an action by ActivateMenuItem
 
 
 

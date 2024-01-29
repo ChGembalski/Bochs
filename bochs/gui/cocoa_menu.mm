@@ -28,29 +28,35 @@
 
 
 menu_opts_t menu_options[] = {
-  {NULL,                    "Bochs",          YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Bochs",                 "Configuration",  YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Bochs.Configuration",   "Load",           NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Bochs.Configuration",   "Save",           NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {"Bochs.Configuration",   "Reset",          NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {"Bochs",                 "About",          NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Bochs",                 "-",              NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Bochs",                 "Quit",           NO,   @"q", YES,  BX_PROPERTY_UNDEFINED},
-  {NULL,                    "Simulation",     YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Simulation",            "Start",          NO,   nil,  YES,  BX_PROPERTY_START_SIM},
-  {"Simulation",            "Stop",           NO,   nil,  NO,   BX_PROPERTY_EXIT_SIM},
-  {"Simulation",            "-",              NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Simulation",            "Clipboard",      YES,  nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {"Simulation.Clipboard",  "Copy",           NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {"Simulation.Clipboard",  "Paste",          NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {NULL,                    "Debugger",       YES,  nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {NULL,                    "Window",         YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Window",                "Configuration",  NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Window",                "VGA Display",    NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Window",                "Logger",         NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {"Window",                "Debugger",       NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
-  {NULL,                    "Help",           YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
-  {NULL,                    NULL,             NO,   nil,  NO,   BX_PROPERTY_UNDEFINED}
+  {NULL,                    "Bochs",          YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "Configuration",  YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs.Configuration",   "Load",           NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs.Configuration",   "Save",           NO,   nil,  0,                          NO,   BX_PROPERTY_UNDEFINED},
+  {"Bochs.Configuration",   "Reset",          NO,   nil,  0,                          NO,   BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "About",          NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "-",              NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "Quit",           NO,   @"q", NSEventModifierFlagCommand, YES,  BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Simulation",     YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Simulation",            "Start",          NO,   nil,  0,                          YES,  BX_PROPERTY_START_SIM},
+  {"Simulation",            "Stop",           NO,   nil,  0,                          NO,   BX_PROPERTY_EXIT_SIM},
+  {"Simulation",            "-",              NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Simulation",            "Clipboard",      YES,  nil,  0,                          NO,   BX_PROPERTY_UNDEFINED},
+  {"Simulation.Clipboard",  "Copy",           NO,   @"c", NSEventModifierFlagCommand, NO,   BX_PROPERTY_UNDEFINED},
+  {"Simulation.Clipboard",  "Paste",          NO,   @"v", NSEventModifierFlagCommand, NO,   BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Debugger",       YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Debugger",              "Simulation",     YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Debugger.Simulation",   "Continue",       NO,   @"c", NSEventModifierFlagControl, NO,   BX_PROPERTY_UNDEFINED},
+  {"Debugger.Simulation",   "Step",           NO,   @"s", NSEventModifierFlagControl, NO,   BX_PROPERTY_UNDEFINED},
+  {"Debugger.Simulation",   "Step N",         NO,   nil,  0,                          NO,   BX_PROPERTY_UNDEFINED},
+  {"Debugger.Simulation",   "Break",          NO,   @"x", NSEventModifierFlagControl, NO,   BX_PROPERTY_BREAK_SIM},
+
+  {NULL,                    "Window",         YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Configuration",  NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "VGA Display",    NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Logger",         NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Debugger",       NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Help",           YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {NULL,                    NULL,             NO,   nil,  0,                          NO,   BX_PROPERTY_UNDEFINED}
 };
 
 
@@ -117,6 +123,9 @@ menu_opts_t menu_options[] = {
       [parent addItem:[NSMenuItem separatorItem]];
     } else {
       newMenuItem = [[NSMenuItem alloc] initWithTitle:title action:@selector(onMenuEvent:) keyEquivalent:opt->key==nil?@"":opt->key];
+      if (opt->key_modifier != 0) {
+        newMenuItem.keyEquivalentModifierMask = opt->key_modifier;
+      }
       newMenuItem.target = target;
       [newMenuItem setEnabled:opt->enabled];
       [parent addItem:newMenuItem];

@@ -39,10 +39,14 @@
 
   #if BX_SUPPORT_X86_64
     #define BOCHS_WINDOW_NAME @"Bochs x86-64 emulator MacOS X"
+    #define BOCHS_WINDOW_CONFIG_NAME @"Bochs x86-64 configurator MacOS X"
     #define BOCHS_WINDOW_LOGGER_NAME @"Bochs x86-64 logger MacOS X"
+    #define BOCHS_WINDOW_DEBUGGER_NAME @"Bochs x86-64 debugger MacOS X"
   #else
     #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
+    #define BOCHS_WINDOW_CONFIG_NAME @"Bochs x86 configurator MacOS X"
     #define BOCHS_WINDOW_LOGGER_NAME @"Bochs x86 logger MacOS X"
+    #define BOCHS_WINDOW_DEBUGGER_NAME @"Bochs x86 debugger MacOS X"
   #endif
 
   typedef struct {
@@ -56,6 +60,10 @@
     NSString *        _Nonnull  name;
   } property_entry_t;
 
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSPropertyCollection
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSPropertyCollection : NSObject
 
     - (instancetype _Nonnull)init;
@@ -76,6 +84,9 @@
   //   N_LOGLEV
   // } bx_log_levels;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSLogEntry
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSLogEntry : NSObject
 
     @property (nonatomic, readwrite) UInt8 level;
@@ -89,6 +100,9 @@
   @end
 
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSLogQueue
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSLogQueue : NSObject
 
     @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
@@ -103,6 +117,9 @@
   @end
 
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSEventQueue
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSEventQueue : NSObject
 
     @property (nonatomic, readonly, getter=isEmpty) BOOL isEmpty;
@@ -116,6 +133,9 @@
   @end
 
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSWindowController
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSWindowController : NSObject
 
     @property (nonatomic, readwrite, strong) BXNSPropertyCollection * _Nonnull bx_p_col;
@@ -139,6 +159,9 @@
   @end
 
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSGenericWindow
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSGenericWindow : NSWindow <NSApplicationDelegate>
 
     @property (nonatomic, readwrite) BXNSWindowController * _Nonnull bx_controller;
@@ -146,12 +169,13 @@
     - (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag;
 
     - (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender;
+    - (BOOL)onMenuEvent:(NSString * _Nonnull) path;
 
   @end
 
 
   ////////////////////////////////////////////////////////////////////////////////
-  // TEMP Configuration Window
+  // BXNSConfigurationWindow
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSConfigurationWindow : BXNSGenericWindow <NSApplicationDelegate>
 
@@ -160,7 +184,7 @@
   @end
 
   ////////////////////////////////////////////////////////////////////////////////
-  // TEMP Simulation Window
+  // BXNSSimulationWindow
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSSimulationWindow : BXNSGenericWindow <NSApplicationDelegate>
 
@@ -195,7 +219,7 @@
   @end
 
   ////////////////////////////////////////////////////////////////////////////////
-  // TEMP Logging Window
+  // BXNSLoggingWindow
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSLoggingWindow : BXNSGenericWindow <NSApplicationDelegate>
 
@@ -209,9 +233,92 @@
 
 
   ////////////////////////////////////////////////////////////////////////////////
-  // TEMP Debugger Window
+  // BXNSDebuggerWindow
   ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSVerticalSplitView : NSSplitView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSHorizontalSplitView : NSSplitView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSTabView : NSTabView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSMemoryView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSGDTView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSIDTView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSLDTView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSPagingView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNStackView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSInstructionView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSBreakpointView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSRegisterView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+  @interface BXNSOutputView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    - (void)appendText:(NSString * _Nonnull) msg;
+
+  @end
+
+
   @interface BXNSDebuggerWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    @property (nonatomic, readwrite, strong) BXNSOutputView * _Nonnull outputView;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
 

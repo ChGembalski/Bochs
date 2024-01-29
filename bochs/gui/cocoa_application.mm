@@ -62,6 +62,8 @@ extern int bxmain(void);
   NSLog(@"bochs thread started");
   bxmain();
   NSLog(@"bochs thread stopped");
+  // force app terminate ? direct or bypass it delayed on the main thread?
+  [NSApp terminate:self];
 
 }
 
@@ -439,6 +441,27 @@ bool BXGuiCocoaApplication::hasEvent(void) {
 unsigned long BXGuiCocoaApplication::getEvent(void) {
   return [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] getEvent];
 }
+
+
+
+
+
+
+
+// DEBUGGER
+
+/**
+ * dbg_addOutputText
+ */
+void BXGuiCocoaApplication::dbg_addOutputText(char * txt) {
+  NSLog(@"dbg_addOutputText");
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_DEBUGGER] outputView] appendText:[NSString stringWithUTF8String:txt]];
+});
+}
+
+
+
 
 
 

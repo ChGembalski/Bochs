@@ -35,6 +35,7 @@
     const char * _Nullable name;
     bool                   childs;
     NSString   * _Nullable key;
+    NSUInteger             key_modifier;
     bool                   enabled;
     property_t             type;
   } menu_opts_t;

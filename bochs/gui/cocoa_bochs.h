@@ -41,6 +41,7 @@
     BX_PROPERTY_UNDEFINED = -1,
     BX_PROPERTY_START_SIM,
     BX_PROPERTY_EXIT_SIM,
+    BX_PROPERTY_BREAK_SIM,
   } property_t;
 
   typedef struct {
@@ -92,6 +93,9 @@
     bool hasMouseCapture(void);
     bool hasEvent(void);
     unsigned long getEvent(void);
+
+    // Debugger
+    void dbg_addOutputText(char * txt);
 
   };
 

@@ -27,7 +27,12 @@
 #include "cocoa_logging.h"
 #include "cocoa_windows.h"
 #include "cocoa_menu.h"
+#include "config.h"
 
+#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#include "bx_debug/debug.h"
+#include "enh_dbg.h"
+#endif /* BX_DEBUGGER && BX_DEBUGGER_GUI */
 
 property_entry_t mapping[] = {
   {BX_PROPERTY_START_SIM,    @"Simulation.Start"},
@@ -36,6 +41,9 @@ property_entry_t mapping[] = {
 };
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXNSPropertyCollection
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSPropertyCollection
 
 NSMutableDictionary<NSString *, NSNumber *> * map;
@@ -59,6 +67,9 @@ NSMutableDictionary<NSString *, NSNumber *> * map;
 - (NSString * _Nullable)propertyToString:(property_t) property {
 
   int i;
+
+  // TODO : first resolve menu properties
+  // if nil use cusom window properties - how to handle getProperty ?
 
   i=0;
   while (mapping[i].type != BX_PROPERTY_UNDEFINED) {
@@ -102,6 +113,9 @@ NSMutableDictionary<NSString *, NSNumber *> * map;
 @end
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXNSLogEntry
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSLogEntry
 
 /**
@@ -213,6 +227,9 @@ NSMutableArray<BXNSLogEntry *> * logqueue;
 @end
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXNSEventQueue
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSEventQueue
 
 NSMutableArray<NSNumber *> * queue;
@@ -284,6 +301,9 @@ NSMutableArray<NSNumber *> * queue;
 @end
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXNSWindowController
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSWindowController
 
 BXNSMenuBar * menubar;
@@ -391,6 +411,7 @@ gui_window_t window_list[] = {
   curWindow = [self getWindow:window];
   if (curWindow != nil) {
     [curWindow makeKeyAndOrderFront:nil];
+    [curWindow makeMainWindow];
   }
 
 }
@@ -499,6 +520,7 @@ gui_window_t window_list[] = {
   NSString * senderPath;
   BXNSGenericWindow * curWindow;
   gui_window_type_t curWindowType;
+  int i;
 
   // resolve the sender
   senderPath = [BXNSMenuBar getMenuItemPath:(NSMenuItem *)sender];
@@ -515,11 +537,25 @@ gui_window_t window_list[] = {
   NSLog(@"Hit that menu %@", senderPath);
   [self.bx_p_col setProperty:senderPath value:1];
 
+  // propagate to windows
+
+  i=0;
+  while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
+    if (![((BXNSGenericWindow *)window_list[i].window) onMenuEvent:senderPath]) {
+      break;
+    }
+    i++;
+  }
+
+
 }
 
 @end
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXNSGenericWindow
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSGenericWindow
 
 /**
@@ -542,6 +578,15 @@ gui_window_t window_list[] = {
 - (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender {
   [self setIsVisible:NO];
   return NO;
+}
+
+/**
+ * onMenuEvent
+ */
+- (BOOL)onMenuEvent:(NSString * _Nonnull) path {
+  // to process Menu events by Window override
+  // return TRUE to stop sending to other windows
+  return FALSE;
 }
 
 @end
@@ -620,7 +665,7 @@ NSLog(@"init BXNSConfigurationWindow");
 
       [NSApp setDelegate:self];
       [NSApp setDelegate:[self contentView]];
-      [self setTitle:BOCHS_WINDOW_NAME];
+      [self setTitle:BOCHS_WINDOW_CONFIG_NAME];
 
 
 
@@ -642,7 +687,7 @@ NSLog(@"init BXNSConfigurationWindow");
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// TEMP Simulation Window
+// BXNSSimulationWindow
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSSimulationWindow
 
@@ -891,7 +936,7 @@ BXNSEventQueue * BXEventQueue;
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
-// TEMP Logging Window
+// BXNSLoggingWindow
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSLoggingWindow
 
@@ -1027,9 +1072,345 @@ UInt8 loglevelMask;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// TEMP Debugger Window
+// BXNSDebuggerWindow
 ////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSVerticalSplitView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.arrangesAllSubviews = YES;
+    self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSHorizontalSplitView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.vertical = YES;
+    self.arrangesAllSubviews = YES;
+    self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSTabView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSMemoryView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSGDTView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSIDTView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSLDTView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSPagingView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNStackView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSInstructionView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSBreakpointView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSRegisterView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+@implementation BXNSOutputView
+
+NSScrollView * outputScrollView;
+NSTextView * outputText;
+NSDictionary * outputAttributesText;
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    outputScrollView = [[NSScrollView alloc] initWithFrame:frameRect];
+    outputScrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    // [outputScrollView setBorderType:NSNoBorder];
+    [outputScrollView setHasVerticalScroller:YES];
+
+    outputText = [[NSTextView alloc] initWithFrame:frameRect];
+    outputText.autoresizingMask = NSViewWidthSizable;
+    [outputText setMinSize:frameRect.size];
+    [outputText setMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
+    [outputText setVerticallyResizable:YES];
+    [outputText setHorizontallyResizable:NO];
+    [outputText setTextColor:NSColor.textColor];
+    [outputText setEditable:NO];
+    [[outputText textContainer] setContainerSize:NSMakeSize(frameRect.size.width, FLT_MAX)];
+    [[outputText textContainer] setWidthTracksTextView:YES];
+    [[outputText textContainer] setHeightTracksTextView:NO];
+
+    outputAttributesText = @{NSForegroundColorAttributeName:NSColor.textColor,
+    NSFontAttributeName:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular]};
+
+    [outputScrollView setDocumentView:outputText];
+    [self addSubview:outputScrollView];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * appendText
+ */
+- (void)appendText:(NSString * _Nonnull) msg {
+
+  NSAttributedString * amsg;
+
+  amsg = [[NSAttributedString alloc] initWithString:msg attributes:outputAttributesText];
+
+  [[outputText textStorage] appendAttributedString:amsg];
+  [outputText scrollRangeToVisible:NSMakeRange([[messagesText string] length], 0)];
+
+}
+
+@end
+
+
 @implementation BXNSDebuggerWindow
+
+BXNSVerticalSplitView * verticalSplitView;
+BXNSHorizontalSplitView * horizontalSplitViewTop;
+BXNSHorizontalSplitView * horizontalSplitViewBottom;
+BXNSTabView * tabViewTopLeft;
+BXNSTabView * tabViewTopRight;
+BXNSTabView * tabViewBottom;
+
+BXNSMemoryView * memoryView;
+BXNSGDTView * gdtView;
+BXNSIDTView * idtView;
+BXNSLDTView * ldtView;
+BXNSPagingView * pagingView;
+BXNStackView * stackView;
+BXNSInstructionView * instructionView;
+BXNSBreakpointView * breakpointView;
+BXNSRegisterView * registerView;
+
+
 
 /**
  * init
@@ -1037,7 +1418,7 @@ UInt8 loglevelMask;
 - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
 
   self = [super initWithBXController:controller
-       contentRect: NSMakeRect(0, 0, 640, 480)
+       contentRect: NSMakeRect(0, 0, 1024, 768)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
                     NSWindowStyleMaskMiniaturizable |
@@ -1047,6 +1428,60 @@ UInt8 loglevelMask;
   ];
 
   if (self) {
+
+    [self setTitle:BOCHS_WINDOW_DEBUGGER_NAME];
+
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    verticalSplitView = [[BXNSVerticalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    verticalSplitView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self.contentView addSubview:verticalSplitView];
+
+    horizontalSplitViewTop = [[BXNSHorizontalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 640)];
+    horizontalSplitViewBottom = [[BXNSHorizontalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 128)];
+    [verticalSplitView addSubview:horizontalSplitViewTop];
+    [verticalSplitView addSubview:horizontalSplitViewBottom];
+
+    tabViewTopLeft = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 512, 640)];
+    tabViewTopRight = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 512, 640)];
+    [horizontalSplitViewTop addSubview:tabViewTopLeft];
+    [horizontalSplitViewTop addSubview:tabViewTopRight];
+    tabViewBottom = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 128)];
+    [horizontalSplitViewBottom addSubview:tabViewBottom];
+
+    registerView = [[BXNSRegisterView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
+    NSTabViewItem * registerViewItem = [[NSTabViewItem alloc] init];
+    registerViewItem.label = @"Register";
+    registerViewItem.view = registerView;
+    [tabViewTopLeft addTabViewItem:registerViewItem];
+
+    memoryView = [[BXNSMemoryView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
+    NSTabViewItem * memoryViewItem = [[NSTabViewItem alloc] init];
+    memoryViewItem.label = @"Memory";
+    memoryViewItem.view = memoryView;
+    [tabViewTopLeft addTabViewItem:memoryViewItem];
+
+
+
+    instructionView = [[BXNSInstructionView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
+    NSTabViewItem * instructionViewItem = [[NSTabViewItem alloc] init];
+    instructionViewItem.label = @"Instruction";
+    instructionViewItem.view = instructionView;
+    [tabViewTopRight addTabViewItem:instructionViewItem];
+
+    breakpointView = [[BXNSBreakpointView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
+    NSTabViewItem * breakpointViewItem = [[NSTabViewItem alloc] init];
+    breakpointViewItem.label = @"Breakpoint";
+    breakpointViewItem.view = breakpointView;
+    [tabViewTopRight addTabViewItem:breakpointViewItem];
+
+
+
+    self.outputView = [[BXNSOutputView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 128)];
+    NSTabViewItem * outputViewItem = [[NSTabViewItem alloc] init];
+    outputViewItem.label = @"Output";
+    outputViewItem.view = self.outputView;
+    [tabViewBottom addTabViewItem:outputViewItem];
 
   }
 

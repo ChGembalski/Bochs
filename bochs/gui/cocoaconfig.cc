@@ -87,6 +87,7 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
         if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, true) == 1) {
           bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
           bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
+          bxcocoagui->activateMenu(BX_PROPERTY_BREAK_SIM, true);
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
           SIM->begin_simulation(main_argc, main_argv);
         }
@@ -142,18 +143,24 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
       return event;
     }
     case BX_SYNC_EVT_LOG_DLG: {
+      printf("BX_SYNC_EVT_LOG_DLG level=%d [%s] [%s] [%s] mode=%d",
+      event->u.logmsg.level, SIM->get_log_level_name(event->u.logmsg.level), event->u.logmsg.prefix, event->u.logmsg.msg, event->u.logmsg.mode);
       return event;
     }
     case BX_SYNC_EVT_MSG_BOX: {
+      printf("BX_SYNC_EVT_MSG_BOX");
       return event;
     }
     case BX_SYNC_EVT_ML_MSG_BOX: {
+      printf("BX_SYNC_EVT_ML_MSG_BOX");
       return event;
     }
     case BX_SYNC_EVT_ML_MSG_BOX_KILL: {
+      printf("BX_SYNC_EVT_ML_MSG_BOX_KILL");
       return event;
     }
     case BX_SYNC_EVT_ASK_PARAM: {
+      printf("BX_SYNC_EVT_ASK_PARAM");
       return event;
     }
     case BX_SYNC_EVT_TICK: {
