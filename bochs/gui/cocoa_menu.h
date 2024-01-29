@@ -28,6 +28,7 @@
   #define BX_GUI_COCOA_MENU_H
 
   #include "cocoa_windows.h"
+  #include "cocoa_bochs.h"
 
   typedef struct {
     const char * _Nullable parent;
@@ -35,6 +36,7 @@
     bool                   childs;
     NSString   * _Nullable key;
     bool                   enabled;
+    property_t             type;
   } menu_opts_t;
 
   @interface BXNSMenuBar : NSObject
@@ -46,6 +48,7 @@
   + (NSMenuItem * _Nullable)findMenuItem:(NSString * _Nonnull) title startAt:(NSMenu * _Nullable) start;
   + (void)showMenu:(NSString * _Nonnull) title doShow:(BOOL) show;
   + (NSString * _Nonnull)getMenuItemPath:(NSMenuItem * _Nonnull) menuitem;
+  + (NSString * _Nullable)getMenuItemTypePath:(property_t) type;
 
   @end
 

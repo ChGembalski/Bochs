@@ -58,8 +58,11 @@
     BXGuiCocoaApplication();
     ~BXGuiCocoaApplication();
 
+    void onBochsThreadExit();
+
     void showWindow(gui_window_type_t window, bool bShow);
     void activateWindow(gui_window_type_t window);
+    void activateMenu(property_t type, bool bActivate);
     int getProperty(property_t property, bool bWait);
 
     void postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg);

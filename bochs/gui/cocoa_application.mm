@@ -41,7 +41,7 @@ extern int bxmain(void);
 /**
  * BXBochsThread CTor
  */
-- (instancetype)init {
+- (instancetype _Nonnull)init {
   self = [super init];
   if(self) {
 
@@ -111,7 +111,7 @@ vga_settings_t default_vga_settings = {
 /**
  * terminate
  */
-- (void)terminate:(id)sender {
+- (void)terminate:(id _Nullable)sender {
 
   // TODO : cleanup everithing else
   if (bochsThread != nil) {
@@ -197,6 +197,18 @@ BXGuiCocoaApplication::~BXGuiCocoaApplication() {
 }
 
 /**
+ * onBochsThreadExit
+ */
+void BXGuiCocoaApplication::onBochsThreadExit() {
+  NSLog(@"BXGuiCocoaApplication::onBochsThreadExit");
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller onBochsThreadExit];
+  });
+}
+
+
+
+/**
  * showWindow
  */
 void BXGuiCocoaApplication::showWindow(gui_window_type_t window, bool bShow) {
@@ -213,6 +225,16 @@ void BXGuiCocoaApplication::activateWindow(gui_window_type_t window) {
   NSLog(@"BXGuiCocoaApplication::activateWindow");
   dispatch_sync(dispatch_get_main_queue(), ^(void){
     [BXCocoaApplication->BXNSApp.bx_window_controller activateWindow:window];
+  });
+}
+
+/**
+ * activateMenu
+ */
+void BXGuiCocoaApplication::activateMenu(property_t type, bool bActivate) {
+  NSLog(@"BXGuiCocoaApplication::activateMenu");
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller activateMenu:type doActivate:bActivate];
   });
 }
 

@@ -353,6 +353,13 @@ gui_window_t window_list[] = {
 }
 
 /**
+ * onBochsThreadExit
+ */
+- (void)onBochsThreadExit {
+  // TODO : set all to stop somehow ...
+}
+
+/**
  * showWindow
  */
 - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show {
@@ -442,6 +449,28 @@ gui_window_t window_list[] = {
   }
 
   return BX_GUI_WINDOW_UNDEFINED;
+
+}
+
+/**
+ * activateMenu
+ */
+- (void)activateMenu:(property_t) type doActivate:(BOOL) activate {
+
+  NSString * menuPath;
+  NSMenuItem * curMenuItem;
+
+  menuPath = [BXNSMenuBar getMenuItemTypePath:type];
+  if (menuPath == nil) {
+    return;
+  }
+
+  curMenuItem = [BXNSMenuBar findMenuItem:menuPath startAt:nil];
+  if (curMenuItem == nil) {
+    return;
+  }
+
+  [curMenuItem setEnabled:activate];
 
 }
 
@@ -745,6 +774,10 @@ BXNSEventQueue * BXEventQueue;
   UInt64 mb;
   UInt64 mf;
   NSUInteger mouseBTN;
+
+  if (!self.MouseCaptureActive) {
+    return;
+  }
 
   mouseXY = event.locationInWindow;
 

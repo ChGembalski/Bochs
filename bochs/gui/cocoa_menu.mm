@@ -28,29 +28,29 @@
 
 
 menu_opts_t menu_options[] = {
-  {NULL,                    "Bochs",          YES,  nil,  YES},
-  {"Bochs",                 "Configuration",  YES,  nil,  YES},
-  {"Bochs.Configuration",   "Load",           NO,   nil,  YES},
-  {"Bochs.Configuration",   "Save",           NO,   nil,  NO},
-  {"Bochs.Configuration",   "Reset",          NO,   nil,  NO},
-  {"Bochs",                 "About",          NO,   nil,  YES},
-  {"Bochs",                 "-",              NO,   nil,  YES},
-  {"Bochs",                 "Quit",           NO,   @"q", YES},
-  {NULL,                    "Simulation",     YES,  nil,  YES},
-  {"Simulation",            "Start",          NO,   nil,  YES},
-  {"Simulation",            "Stop",           NO,   nil,  NO},
-  {"Simulation",            "-",              NO,   nil,  YES},
-  {"Simulation",            "Clipboard",      YES,  nil,  NO},
-  {"Simulation.Clipboard",  "Copy",           NO,   nil,  NO},
-  {"Simulation.Clipboard",  "Paste",          NO,   nil,  NO},
-  {NULL,                    "Debugger",       YES,  nil,  NO},
-  {NULL,                    "Window",         YES,  nil,  YES},
-  {"Window",                "Configuration",  NO,   nil,  YES},
-  {"Window",                "VGA Display",    NO,   nil,  YES},
-  {"Window",                "Logger",         NO,   nil,  YES},
-  {"Window",                "Debugger",       NO,   nil,  NO},
-  {NULL,                    "Help",           YES,  nil,  YES},
-  {NULL,                    NULL,             NO,   nil,  NO}
+  {NULL,                    "Bochs",          YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "Configuration",  YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs.Configuration",   "Load",           NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs.Configuration",   "Save",           NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {"Bochs.Configuration",   "Reset",          NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "About",          NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "-",              NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "Quit",           NO,   @"q", YES,  BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Simulation",     YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Simulation",            "Start",          NO,   nil,  YES,  BX_PROPERTY_START_SIM},
+  {"Simulation",            "Stop",           NO,   nil,  NO,   BX_PROPERTY_EXIT_SIM},
+  {"Simulation",            "-",              NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Simulation",            "Clipboard",      YES,  nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {"Simulation.Clipboard",  "Copy",           NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {"Simulation.Clipboard",  "Paste",          NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Debugger",       YES,  nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Window",         YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Configuration",  NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "VGA Display",    NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Logger",         NO,   nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Debugger",       NO,   nil,  NO,   BX_PROPERTY_UNDEFINED},
+  {NULL,                    "Help",           YES,  nil,  YES,  BX_PROPERTY_UNDEFINED},
+  {NULL,                    NULL,             NO,   nil,  NO,   BX_PROPERTY_UNDEFINED}
 };
 
 
@@ -79,6 +79,7 @@ menu_opts_t menu_options[] = {
     }
 
   }
+
   return self;
 
 }
@@ -232,7 +233,25 @@ menu_opts_t menu_options[] = {
 
 }
 
+/**
+ * getMenuItemTypePath
+ */
++ (NSString * _Nullable)getMenuItemTypePath:(property_t) type {
 
+  int i;
+
+  i = 0;
+
+  while ((menu_options[i].parent != NULL) | (menu_options[i].name != NULL)) {
+    if (type == menu_options[i].type) {
+      return [[NSString alloc] initWithFormat:@"%s.%s", menu_options[i].parent, menu_options[i].name];
+    }
+    i++;
+  }
+
+  return nil;
+
+}
 
 
 

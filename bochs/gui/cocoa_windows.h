@@ -123,11 +123,15 @@
 
     - (instancetype _Nonnull)init:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
     - (void)dealloc;
+
+    - (void)onBochsThreadExit;
+
     - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show;
     - (void)activateWindow:(gui_window_type_t) window;
     - (id _Nullable)getWindow:(gui_window_type_t) window;
     - (NSString * _Nullable)getWindowMenuName:(gui_window_type_t) window;
     - (gui_window_type_t)getWindowType:(NSString * _Nonnull) name;
+    - (void)activateMenu:(property_t) type doActivate:(BOOL) activate;
     - (int)getProperty:(property_t) p;
 
     - (void)onMenuEvent:(id _Nonnull) sender;

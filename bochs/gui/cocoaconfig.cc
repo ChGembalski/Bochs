@@ -75,6 +75,9 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
   {
     case CI_START: {
       if (SIM->get_param_enum(BXPN_BOCHS_START)->get() == BX_QUICK_START) {
+        bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
+        bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
+        bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
         SIM->begin_simulation(main_argc, main_argv);
         // we don't expect it to return, but if it does, quit
         SIM->quit_sim(1);
@@ -82,6 +85,8 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
         if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, true) == 1) {
+          bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
+          bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
           SIM->begin_simulation(main_argc, main_argv);
         }
@@ -94,6 +99,8 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
         if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
+          bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, false);
+          bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, true);
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
           bx_user_quit = 1;
 #if !BX_DEBUGGER

@@ -31,17 +31,17 @@
 
   @interface BXBochsThread : NSThread
 
-    - (instancetype)init;
+    - (instancetype _Nonnull)init;
     - (void)main;
 
   @end
 
   @interface BXNSApplication : NSApplication
 
-    @property (nonatomic, readwrite, strong) BXNSWindowController * bx_window_controller;
+    @property (nonatomic, readwrite, strong) BXNSWindowController * _Nonnull bx_window_controller;
 
     - (void)finishLaunching;
-    - (void)terminate:(id)sender;
+    - (void)terminate:(id _Nullable)sender;
 
     - (void)getMaxScreenResolution:(unsigned char * _Nonnull) bpp width:(unsigned int * _Nonnull) w height:(unsigned int * _Nonnull) h;
 
@@ -49,7 +49,7 @@
 
   // C++ Wrapper for BXNSApplication
   struct BXNSApplicationImpl {
-    BXNSApplication * BXNSApp;
+    BXNSApplication * _Nonnull BXNSApp;
   };
 
 #endif /* BX_GUI_COCOA_APPLICATION_H */

@@ -58,7 +58,7 @@
 
     - (instancetype _Nonnull)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage * _Nonnull) img func:(void (* _Nullable)()) f;
 
-    - (void)mouseEvent: (NSButton*)button;
+    - (void)mouseEvent: (NSButton* _Nonnull)button;
 
   @end
 

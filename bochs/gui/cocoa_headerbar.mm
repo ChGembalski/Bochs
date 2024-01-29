@@ -108,7 +108,7 @@ extern unsigned char flip_byte(unsigned char b);
 /**
  * mouseEvent
  */
-- (void)mouseEvent: (NSButton*)button {
+- (void)mouseEvent: (NSButton* _Nonnull)button {
   if (self.func != nil) {
     BXL_DEBUG((@"Mouse Event Button"));
     ((void (*)())self.func)();
