@@ -1043,7 +1043,7 @@ Bit8u bx_gui_c::get_mouse_headerbar_id()
   return BX_GUI_THIS mouse_hbar_id;
 }
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && (BX_DEBUGGER_GUI || BX_NEW_DEBUGGER_GUI)
 void bx_gui_c::init_debug_dialog()
 {
   extern void InitDebugDialog();

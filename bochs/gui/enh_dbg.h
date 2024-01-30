@@ -14,7 +14,7 @@
 #ifndef BX_ENH_DBG_DEF_H
 #define BX_ENH_DBG_DEF_H
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && BX_DEBUGGER_GUI && !BX_NEW_DEBUGGER_GUI
 
 #ifndef IS_WIN98
 // workaround broken code if IS_WIN98 not defined

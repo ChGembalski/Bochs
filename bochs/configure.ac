@@ -859,8 +859,26 @@ AC_ARG_ENABLE(debugger-gui,
       AC_DEFINE(BX_DEBUGGER_GUI, 0)
       gui_debugger=0
     fi
-    ]
-  )
+  ]
+)
+
+AC_MSG_CHECKING(enable Bochs new internal debugger GUI)
+AC_ARG_ENABLE(new-debugger-gui,
+  AS_HELP_STRING([--enable-new-debugger-gui], [compile in support for Bochs internal debugger GUI (no)]),
+  [if test "$enableval" = yes; then
+    AC_MSG_RESULT(yes)
+    new_gui_debugger=1
+  else
+    AC_MSG_RESULT(no)
+    AC_DEFINE(BX_NEW_DEBUGGER_GUI, 0)
+    new_gui_debugger=0
+  fi],
+  [
+    AC_MSG_RESULT(no)
+    AC_DEFINE(BX_NEW_DEBUGGER_GUI, 0)
+    new_gui_debugger=0
+  ]
+)
 
 bx_gdb_stub=0
 AC_MSG_CHECKING(for gdb stub enable)
@@ -2921,6 +2939,23 @@ AC_SUBST(BXHUB_FLAG)
 AC_SUBST(BXHUB_LINK_OPTS)
 AC_SUBST(CXXFLAGS_CONSOLE)
 
+XTD_DBG_OBJS=""
+if test "$new_gui_debugger" = 1; then
+  if test "$DEFAULT_GUI" = cocoa; then
+    XTD_DBG_OBJS="new_dbg.o cocoa_new_dbg_osdep.o"
+    AC_DEFINE(BX_NEW_DEBUGGER_GUI, 1)
+    AC_DEFINE(BX_DEBUGGER_GUI, 0)
+    if test "$gui_debugger" = 1; then
+      gui_debugger=0
+    fi
+  else
+    AC_MSG_WARN([The Bochs new debugger gui cannot be compiled here, disabling it])
+    AC_DEFINE(BX_NEW_DEBUGGER_GUI, 0)
+  fi
+fi
+AC_SUBST(XTD_DBG_OBJS)
+
+
 ENH_DBG_OBJS=""
 if test "$gui_debugger" = 1; then
   if test "$bx_have_gtk_version" -ge 2; then
@@ -2930,8 +2965,7 @@ if test "$gui_debugger" = 1; then
     ENH_DBG_OBJS="enh_dbg.o win32_enh_dbg_osdep.o"
     AC_DEFINE(BX_DEBUGGER_GUI, 1)
   elif test "$DEFAULT_GUI" = cocoa; then
-    ENH_DBG_OBJS="enh_dbg.o cocoa_enh_dbg_osdep.o"
-    AC_DEFINE(BX_DEBUGGER_GUI, 1)
+    AC_DEFINE(BX_DEBUGGER_GUI, 0)
   else
     AC_MSG_WARN([The Bochs debugger gui cannot be compiled here, disabling it])
     AC_DEFINE(BX_DEBUGGER_GUI, 0)

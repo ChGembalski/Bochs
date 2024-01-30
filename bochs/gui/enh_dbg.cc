@@ -12,7 +12,7 @@
 
 #include "config.h"
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && BX_DEBUGGER_GUI && !BX_NEW_DEBUGGER_GUI
 
 #include <math.h>
 

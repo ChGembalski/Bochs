@@ -72,7 +72,7 @@ CI_OBJS_WIN32_SUPPORT = win32paramdlg.o scrollwin.o
 CI_OBJS_COCOA = cocoaconfig.o
 
 GUI_DLL_TARGETS = @GUI_DLL_TARGETS@
-OBJS_THAT_CANNOT_BE_PLUGINS = keymap.o gui.o siminterface.o paramtree.o @ENH_DBG_OBJS@
+OBJS_THAT_CANNOT_BE_PLUGINS = keymap.o gui.o siminterface.o paramtree.o @ENH_DBG_OBJS@ @XTD_DBG_OBJS@
 
 X_LIBS = @X_LIBS@
 X_PRE_LIBS = @X_PRE_LIBS@
@@ -252,9 +252,10 @@ cocoaconfig.o: cocoaconfig.@CPP_SUFFIX@ \
  ../config.h ../bochs.h ../osdep.h ../gui/paramtree.h ../logio.h \
  ../misc/bswap.h ../bx_debug/debug.h ../param_names.h gui.h \
  ../gui/siminterface.h ../plugin.h ../extplugin.h
-cocoa_enh_dbg_osdep.o: cocoa_enh_dbg_osdep.@CPP_SUFFIX@ \
+cocoa_new_dbg_osdep.o: cocoa_new_dbg_osdep.@CPP_SUFFIX@ \
  ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h ../logio.h \
- ../misc/bswap.h ../bx_debug/debug.h siminterface.h enh_dbg.h
+ ../misc/bswap.h ../bx_debug/debug.h siminterface.h new_dbg.h
+new_dbg.o: new_dbg.@CPP_SUFFIX@ ../config.h ../gui/new_dbg.h
 enh_dbg.o: enh_dbg.@CPP_SUFFIX@ ../config.h
 gtk_enh_dbg_osdep.o: gtk_enh_dbg_osdep.@CPP_SUFFIX@ ../bochs.h ../config.h \
  ../osdep.h ../gui/paramtree.h ../logio.h \
