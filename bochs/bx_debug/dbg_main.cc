@@ -144,7 +144,7 @@ void dbg_printf(const char *fmt, ...)
     fprintf(debugger_log,"%s", buf);
     fflush(debugger_log);
   }
-  SIM->debug_puts(buf); // send to debugger, which will free buf when done.
+  SIM->debug_puts(buf); // send to debugger
 }
 
 void bx_dbg_init_infile(void)
