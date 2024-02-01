@@ -29,19 +29,26 @@
 
   struct BXNSApplicationImpl;
 
+  typedef void (* ButtonHandler) (void);
+
   typedef enum {
     BX_GUI_WINDOW_UNDEFINED,
     BX_GUI_WINDOW_CONFIGURATION,
     BX_GUI_WINDOW_VGA_DISPLAY,
     BX_GUI_WINDOW_LOGGING,
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
     BX_GUI_WINDOW_DEBUGGER
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   } gui_window_type_t;
 
   typedef enum {
     BX_PROPERTY_UNDEFINED = -1,
     BX_PROPERTY_START_SIM,
-    BX_PROPERTY_EXIT_SIM,
+    BX_PROPERTY_CONT_SIM,
+    BX_PROPERTY_STEP_SIM,
+    BX_PROPERTY_STEP_N_SIM,
     BX_PROPERTY_BREAK_SIM,
+    BX_PROPERTY_EXIT_SIM,
   } property_t;
 
   typedef struct {
@@ -49,6 +56,14 @@
     unsigned short  xres;
     unsigned short  yres;
   } vga_settings_t;
+
+  typedef enum {
+    SIM_STOP,
+    SIM_PAUSE,
+    SIM_RUN,
+    SIM_TERMINATE
+  } simulation_state_t;
+
 
   class BXGuiCocoaApplication {
 
@@ -65,6 +80,10 @@
     void activateWindow(gui_window_type_t window);
     void activateMenu(property_t type, bool bActivate);
     int getProperty(property_t property, bool bWait);
+    bool getPropertySet(bool bWait, unsigned cnt, unsigned property, ...);
+
+    void setSimulationState(simulation_state_t new_state);
+    void showModalInfo(unsigned char level, const char * prefix, const char * msg);
 
     void postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg);
 
@@ -74,7 +93,7 @@
 
 
     unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
-    unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
+    unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, ButtonHandler handler);
     void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
     void show_headerbar(void);
 
@@ -95,7 +114,11 @@
     unsigned long getEvent(void);
 
     // Debugger
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+
     void dbg_addOutputText(char * txt);
+
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
   };
 

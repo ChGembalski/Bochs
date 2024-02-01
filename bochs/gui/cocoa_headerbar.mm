@@ -83,7 +83,7 @@ extern unsigned char flip_byte(unsigned char b);
 /**
  * init
  */
-- (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage * _Nonnull) img func:(void (* _Nullable)()) f {
+- (instancetype)init:(NSUInteger) data_id width:(size_t) w height:(size_t) h alignment:(char) align top:(size_t) y left:(size_t) x image:(NSImage * _Nonnull) img func:(ButtonHandler _Nullable) handler {
 
   self = [super init];
   if(self) {
@@ -92,7 +92,7 @@ extern unsigned char flip_byte(unsigned char b);
     self.alignment = align;
     self.position = NSMakePoint(x, y);
     self.size = NSMakeSize(w, h);
-    self.func = (void *)f; // TODO :fix me
+    self.handler = handler;
     self.button = [[NSButton alloc] initWithFrame:NSMakeRect(x, y, w, h)];
     [self.button setImage:img];
     [self.button setImagePosition:NSImageOnly];
@@ -109,10 +109,13 @@ extern unsigned char flip_byte(unsigned char b);
  * mouseEvent
  */
 - (void)mouseEvent: (NSButton* _Nonnull)button {
-  if (self.func != nil) {
-    BXL_DEBUG((@"Mouse Event Button"));
-    ((void (*)())self.func)();
+
+  if (self.handler != nil) {
+    [[[NSThread alloc] initWithBlock:^{
+      self.handler();
+    }] start];
   }
+
 }
 
 @end
@@ -261,7 +264,7 @@ unsigned last_rx;
 /**
  * headerbarBXBitmap
  */
-- (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (* _Nullable)()) f {
+- (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(ButtonHandler _Nullable) handler {
 
   CGColorSpaceRef colorspace;
   BXNSHeaderBarButtonData * rgbData;
@@ -301,8 +304,8 @@ unsigned last_rx;
     }
   }];
 
-  [buttons addObject: [[BXNSHeaderBarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:0 left:x image:image func:f]];
-  BXL_DEBUG(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d alignment=%d func:%p idx=%lu x=%d", bmap_id, align, f, curIdx, x]));
+  [buttons addObject: [[BXNSHeaderBarButton alloc] init:bmap_id width:rgbData.width height:rgbData.height alignment:align top:0 left:x image:image func:handler]];
+  BXL_DEBUG(([NSString stringWithFormat:@"headerbarBXBitmap bmap_id=%d alignment=%d func:%p idx=%lu x=%d", bmap_id, align, handler, curIdx, x]));
 
   return curIdx;
 
