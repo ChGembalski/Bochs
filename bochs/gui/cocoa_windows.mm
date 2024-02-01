@@ -28,17 +28,39 @@
 #include "cocoa_windows.h"
 #include "cocoa_menu.h"
 #include "config.h"
+#include "siminterface.h"
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
 #include "bx_debug/debug.h"
 #include "enh_dbg.h"
 #endif /* BX_DEBUGGER && BX_DEBUGGER_GUI */
 
-property_entry_t mapping[] = {
-  {BX_PROPERTY_START_SIM,    @"Simulation.Start"},
-  {BX_PROPERTY_EXIT_SIM,     @"Simulation.Stop"},
-  {BX_PROPERTY_UNDEFINED,    @""}
+
+edit_opts_t root_options[] = {
+  { @"General options",                     "general" },
+  { @"Optional plugin control",             "#" },
+  { @"Logfile options",                     "log" },
+  { @"Log options for all devices",         "#" },
+  { @"Log options for individual devices",  "#" },
+  { @"CPU options",                         "cpu" },
+  { @"CPUID options",                       "cpuid" },
+  { @"Memory options",                      "memory" },
+  { @"Clock & CMOS options",                "clock_cmos" },
+  { @"PCI options",                         "pci" },
+  { @"Bochs Display & Interface options",   "display" },
+  { @"Keyboard & Mouse options",            "keyboard_mouse" },
+  { @"Boot options",                        "boot_params" },
+  { @"Disk options",                        "#" },
+  { @"Serial / Parallel / USB options",     "ports" },
+  { @"Network card options",                "network" },
+  { @"Sound card options",                  "sound" },
+  { @"Other options",                       "misc" },
+#if BX_PLUGINS
+  { @"User-defined options",                "user" },
+#endif /* BX_PLUGINS */
+  { nil,                                    NULL }
 };
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,28 +80,6 @@ NSMutableDictionary<NSString *, NSNumber *> * map;
     map = [[NSMutableDictionary alloc] init];
   }
   return self;
-
-}
-
-/*
- * propertyToString
- */
-- (NSString * _Nullable)propertyToString:(property_t) property {
-
-  int i;
-
-  // TODO : first resolve menu properties
-  // if nil use cusom window properties - how to handle getProperty ?
-
-  i=0;
-  while (mapping[i].type != BX_PROPERTY_UNDEFINED) {
-    if (mapping[i].type == property) {
-      return mapping[i].name;
-    }
-    i++;
-  }
-
-  return nil;
 
 }
 
@@ -312,7 +312,9 @@ gui_window_t window_list[] = {
   {BX_GUI_WINDOW_CONFIGURATION, NULL, @"Window.Configuration"},
   {BX_GUI_WINDOW_VGA_DISPLAY,   NULL, @"Window.VGA Display"},
   {BX_GUI_WINDOW_LOGGING,       NULL, @"Window.Logger"},
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
   {BX_GUI_WINDOW_DEBUGGER,      NULL, @"Window.Debugger"},
+#endif /** BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   {BX_GUI_WINDOW_UNDEFINED,     NULL, nil}
 };
 
@@ -323,6 +325,8 @@ gui_window_t window_list[] = {
 
   self = [super init];
   if(self) {
+
+    self.simulation_state = SIM_STOP;
 
     // Menue Bar
     menubar = [[BXNSMenuBar alloc] init:self];
@@ -346,10 +350,11 @@ gui_window_t window_list[] = {
     [((NSWindow *)window_list[2].window) center];
     [window_list[2].window setIsVisible:NO];
 
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
     window_list[3].window = [[BXNSDebuggerWindow alloc] init:self];
     [((NSWindow *)window_list[3].window) center];
     [window_list[3].window setIsVisible:NO];
-
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
   }
 
@@ -372,10 +377,101 @@ gui_window_t window_list[] = {
 
 }
 
+
+/**
+ * showModalInfoDialog
+ */
++ (void)showModalInfoDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg {
+
+  NSAlert * alert;
+  NSAlertStyle aStyle;
+
+  switch (level) {
+    case BX_ALERT_MSG_STYLE_INFO: {
+      aStyle = NSAlertStyleInformational;
+      break;
+    }
+    case BX_ALERT_MSG_STYLE_CRIT: {
+      aStyle = NSAlertStyleCritical;
+      break;
+    }
+    default: {
+      aStyle = NSAlertStyleWarning;
+    }
+  }
+
+  alert = [[NSAlert alloc] init];
+  alert.alertStyle = aStyle;
+  alert.informativeText = title;
+  alert.messageText = msg;
+  alert.icon = nil;
+
+  [alert runModal];
+
+}
+
+/**
+ * showModalQuestionDialog
+ */
++ (int)showModalQuestionDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg {
+
+  NSAlert * alert;
+  NSAlertStyle aStyle;
+  NSModalResponse aResponse;
+
+  switch (level) {
+    case BX_ALERT_MSG_STYLE_INFO: {
+      aStyle = NSAlertStyleInformational;
+      break;
+    }
+    case BX_ALERT_MSG_STYLE_CRIT: {
+      aStyle = NSAlertStyleCritical;
+      break;
+    }
+    default: {
+      aStyle = NSAlertStyleWarning;
+    }
+  }
+
+  alert = [[NSAlert alloc] init];
+  alert.alertStyle = aStyle;
+  alert.informativeText = title;
+  alert.messageText = msg;
+  alert.icon = nil;
+
+  // add Buttons
+  [alert addButtonWithTitle:@"Continue"];
+  [alert addButtonWithTitle:@"Always Continue"];
+  [alert addButtonWithTitle:@"Exit Bochs"];
+  [alert addButtonWithTitle:@"Dump Core"];
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+  [alert addButtonWithTitle:@"Debug"];
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
+
+  aResponse = [alert runModal];
+
+  switch (aResponse) {
+    case NSAlertFirstButtonReturn: return BX_LOG_ASK_CHOICE_CONTINUE;
+    case NSAlertSecondButtonReturn: return BX_LOG_ASK_CHOICE_CONTINUE_ALWAYS;
+    case NSAlertThirdButtonReturn: return BX_LOG_ASK_CHOICE_DIE;
+    case NSAlertThirdButtonReturn + 1: return BX_LOG_ASK_CHOICE_DUMP_CORE;
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+    case NSAlertThirdButtonReturn + 2: return BX_LOG_ASK_CHOICE_ENTER_DEBUG;
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
+    default : return BX_LOG_ASK_CHOICE_DIE;
+  }
+
+}
+
+
+
+
+
 /**
  * onBochsThreadExit
  */
 - (void)onBochsThreadExit {
+  self.simulation_state = SIM_TERMINATE;
   // TODO : set all to stop somehow ...
 }
 
@@ -502,7 +598,7 @@ gui_window_t window_list[] = {
 
   NSString * property;
 
-  property = [self.bx_p_col propertyToString:p];
+  property = [BXNSMenuBar getMenuItemTypePath:p];
   if (property == nil) {
     return BX_PROPERTY_UNDEFINED;
   }
@@ -541,7 +637,7 @@ gui_window_t window_list[] = {
 
   i=0;
   while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
-    if (![((BXNSGenericWindow *)window_list[i].window) onMenuEvent:senderPath]) {
+    if ([((BXNSGenericWindow *)window_list[i].window) onMenuEvent:senderPath]) {
       break;
     }
     i++;
@@ -589,92 +685,305 @@ gui_window_t window_list[] = {
   return FALSE;
 }
 
-@end
+/**
+ * setEnabled
+ */
+- (void)setEnabled:(BOOL)enabled {
 
+  // maybe need some new idea here
 
-
-////////////////////////////////////////////////////////////////////////////////
-// TEMP Configuration Window
-////////////////////////////////////////////////////////////////////////////////
-
-@interface BXldata : NSObject <NSTableViewDataSource, NSTableViewDelegate>
-@end
-
-@implementation BXldata
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
-  return 10;
 }
 
-- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
-  NSTextField *result = [tableView makeViewWithIdentifier:@"Col1" owner:self];
-  if (result == nil) {
-    result = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 100, 10)];
-    result.identifier = @"Col1";
+@end
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSConfigurationWindow
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSBrowserCell
+
+/**
+ * initTextCell
+ */
+- (instancetype _Nonnull)initTextCell:(NSString *)string {
+
+  self = [super initTextCell:string];
+  if (self) {
+
+    self.isLeaf = YES;
+    self.param_name = nil;
+    self.path = @"";
+
   }
-  result.stringValue = @"Data for me";//[self.nameArray objectAtIndex:row];
-  return result;
+
+  return self;
+
 }
+
+/**
+ * initTextCell
+ */
+- (instancetype _Nonnull)initTextCell:(NSString *)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name {
+
+  self = [super initTextCell:string];
+  if (self) {
+
+    self.isLeaf = leaf;
+    self.param_name = param_name;
+    if (path.length == 0) {
+      self.path = [[NSString alloc] initWithUTF8String:param_name];
+    } else {
+      self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
+    }
+
+  }
+
+  return self;
+
+}
+
+
+
 @end
+
+
+@implementation BXNSBrowser
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.hasHorizontalScroller = YES;
+    self.columnResizingType = NSBrowserAutoColumnResizing;
+    self.pathSeparator = @".";
+    self.allowsMultipleSelection = NO;
+    self.maxVisibleColumns = 3;
+    [self setCellClass:[BXNSBrowserCell class]];
+
+    self.delegate = self;
+
+  }
+
+  return self;
+
+}
+
+/**
+ * browser
+ */
+// - (void)browser:(NSBrowser * _Nonnull)sender createRowsForColumn:(NSInteger)column inMatrix:(NSMatrix * _Nonnull)matrix {
+//
+//   NSLog(@"matrix column:%d cols:%d rows:%d", column, matrix.numberOfColumns, matrix.numberOfRows);
+//
+//   // request 0 column
+//   if (column == 0) {
+//
+//     // bx_list_c * root;
+//     unsigned count;
+//     unsigned rowNo;
+//
+//
+//     // get no of entries
+//     count = 0;
+//     while (root_options[count].param != NULL) {
+//       count++;
+//     }
+//     [matrix renewRows:count columns:2];
+//
+//     rowNo = 0;
+//     while (root_options[rowNo].param != NULL) {
+//       id cell;
+//
+//       cell = [matrix cellAtRow:rowNo column: 0];
+//       [cell setStringValue:root_options[rowNo].title];
+//
+//       rowNo++;
+//     }
+//
+//     // [matrix sizeToCells];
+//     //
+//     // SIM->get_param(".", NULL)
+//     // get_size
+//     //
+//     //
+//     //
+//     //
+//     //
+//     //
+//     // NSLog(@"[matrix renewRows];");
+//     // [matrix renewRows:1 columns:2];
+//     // NSLog(@"matrix cols:%d rows:%d", matrix.numberOfColumns, matrix.numberOfRows);
+//     // NSLog(@"cell = [matrix cellAtRow: 0 column: 0];");
+//     // cell = [matrix cellAtRow: 0 column: 0];
+//     // NSLog(@"[cell setStringValue:");
+//     // [cell setStringValue:@"test"];
+//     // // [cell setRepresentedObject: @"test"];
+//     // NSLog(@"[cell setLeaf: YES];");
+//     // [cell setLeaf: YES];
+//     //
+//     // [matrix sizeToCells];
+//     //
+//     // NSLog(@"Someone hit me here");
+//   }
+//
+// }
+
+// - (void)browser: (NSBrowser *)sender willDisplayCell: (id)cell atRow: (int)row column: (int)column {
+//   NSLog(@"willDisplayCell");
+// }
+
+- (NSInteger)browser:(NSBrowser * _Nonnull)browser numberOfChildrenOfItem:(id _Nullable)item {
+
+  bx_param_c * param;
+
+  if (item == nil) {
+    NSInteger count;
+
+    count = 0;
+    while (root_options[count].param != NULL) {
+      count++;
+    }
+    NSLog(@"numberOfChildrenOfItem %d", count);
+    return count;
+  }
+
+  if ([item path].UTF8String[0] == '#') {
+    return 0;
+  }
+
+  param = SIM->get_param([item path].UTF8String, NULL);
+  if (param == NULL) {
+    return 0;
+  }
+  switch (param->get_type()) {
+    case BXT_LIST: {
+      int size;
+
+      size = ((bx_list_c *) param)->get_size();
+      NSLog(@"numberOfChildrenOfItem %@ %d", [item path], size);
+      return size;
+    }
+    default: {
+      NSLog(@"numberOfChildrenOfItem %@ %d", [item path], 0);
+      return 0;
+    }
+  }
+
+}
+
+- (id)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item {
+
+  BXNSBrowserCell * cell;
+  bx_param_c * param;
+  BOOL leaf;
+
+  if (item == nil) {
+    if (root_options[index].param[0] != '#') {
+      param = SIM->get_param(root_options[index].param, NULL);
+      leaf =  param == NULL;
+    } else {
+      leaf = YES;
+    }
+    cell = [[BXNSBrowserCell alloc] initTextCell:root_options[index].title isLeaf:leaf PredPath:@"" SimParamName:root_options[index].param];
+  } else {
+    // some params start with #
+    NSLog(@">>>>>%@", [item path]);
+    // if ()
+    param = SIM->get_param([item path].UTF8String, NULL);
+    switch (param->get_type()) {
+      case BXT_LIST: {
+        bx_list_c * list;
+        bx_param_c * child;
+        const char * label;
+
+        NSLog(@"process list");
+        list = (bx_list_c *)param;
+        child = list->get((int)index);
+        NSLog(@"got list");
+        label = child->get_label();
+        if (label == NULL) {
+          label = child->get_name();
+        }
+        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label] isLeaf:NO PredPath:[item path] SimParamName:child->get_name()];
+        NSLog(@"cell created %@", [cell path]);
+        break;
+      }
+      default: {
+        // need impl the other
+        NSLog(@"process other");
+        cell = [[BXNSBrowserCell alloc] initTextCell:@"something else" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+        break;
+      }
+    }
+  }
+
+  NSLog(@"child [%d] [%@] [%@] %@",
+  index, [cell path], [NSString stringWithUTF8String:[cell param_name]], [item class]);
+  return cell;
+
+}
+
+- (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item {
+
+  if (item != nil) {
+    NSLog(@"isLeafItem %@ %@ %@", [item class], [item path], [item isLeaf]?@"YES":@"NO");
+    return [item isLeaf];
+  }
+
+  NSLog(@"isLeafItem %@ %@", [item class], @"NO");
+  return YES;
+
+}
+
+- (id)browser:(NSBrowser *)browser objectValueForItem:(id _Nullable)item {
+  NSLog(@"objectValueForItem %@ %@", [item path], [item class]);
+  return item;
+}
+
+@end
+
 
 @implementation BXNSConfigurationWindow
 
-  NSBox * configBox;
-  NSTableView * editOptionsTable;
-  BXldata * eotdata;
+/**
+ * init
+ */
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller; {
 
-  - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller; {
+  self = [super initWithBXController:controller
+       contentRect: NSMakeRect(0, 0, 1024, 768)
+         styleMask: NSWindowStyleMaskTitled |
+                    NSWindowStyleMaskClosable |
+                    NSWindowStyleMaskMiniaturizable |
+                    NSWindowStyleMaskResizable
+           backing: NSBackingStoreBuffered
+             defer: NO
+  ];
 
-    self = [super initWithBXController:controller
-         contentRect: NSMakeRect(0, 0, 400, 200)
-           styleMask: NSWindowStyleMaskTitled |
-                      NSWindowStyleMaskClosable |
-                      NSWindowStyleMaskMiniaturizable
-             backing: NSBackingStoreBuffered
-               defer: NO
-    ];
-  // |                    NSWindowStyleMaskResizable
+  if (self) {
 
-    if (self) {
-NSLog(@"init BXNSConfigurationWindow");
-      configBox = [[NSBox alloc] init];
-      [configBox setFrameFromContentFrame:NSMakeRect(20,100,100,50)];
-      configBox.title = @"Configuration";
+    [self setTitle:BOCHS_WINDOW_CONFIG_NAME];
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-      [self.contentView addSubview:configBox];
+    self.config = [[BXNSBrowser alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
 
-      NSScrollView * tableContainer = [[NSScrollView alloc] initWithFrame:NSMakeRect(200,000,150,200)];
-
-      editOptionsTable = [[NSTableView alloc] initWithFrame:NSMakeRect(200,000,150,200)];
-      NSTableColumn * column1 = [[NSTableColumn alloc] initWithIdentifier:@"Col1"];
-      [column1 setWidth:180];
-      [editOptionsTable addTableColumn:column1];
-      editOptionsTable.headerView = nil;
-
-      eotdata = [[BXldata alloc] init];
-      [editOptionsTable setDelegate:eotdata];
-      [editOptionsTable setDataSource:eotdata];
-      // editOptionsTable.dataSource = eotdata;
-      [editOptionsTable reloadData];
-
-      [tableContainer setDocumentView:editOptionsTable];
-      [tableContainer setHasVerticalScroller:YES];
-
-      [self.contentView addSubview:tableContainer];
+    [self.contentView addSubview:self.config];
 
 
 
-      [NSApp setDelegate:self];
-      [NSApp setDelegate:[self contentView]];
-      [self setTitle:BOCHS_WINDOW_CONFIG_NAME];
+    [NSApp setDelegate:self];
+    [NSApp setDelegate:[self contentView]];
 
-
-
-
-
-    }
-
-    return self;
   }
+
+  return self;
+}
 
 
 
@@ -1488,6 +1797,34 @@ BXNSRegisterView * registerView;
   return self;
 
 }
+// extern void ActivateMenuItem (int LW);
+/**
+ * onMenuEvent
+ */
+- (BOOL)onMenuEvent:(NSString * _Nonnull) path {
+
+  property_t p;
+
+  p = [BXNSMenuBar getMenuItemProperty:path];
+  if (p == BX_PROPERTY_UNDEFINED) {
+    return NO;
+  }
+NSLog(@"onMenuEvent path=%@ property=%d", path, p);
+  switch (p) {
+    case BX_PROPERTY_BREAK_SIM: {
+      //ActivateMenuItem(CMD_CONT);
+      return YES;
+    }
+    default:
+      break;
+  }
+
+  return NO;
+
+}
+
+
+
 
 @end
 

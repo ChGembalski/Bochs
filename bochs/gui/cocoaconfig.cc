@@ -50,6 +50,8 @@ PLUGIN_ENTRY_FOR_MODULE(cocoaconfig)
     SIM->set_log_viewer(true);
     // this callback is captured by cocoa.cc
     SIM->set_notify_callback(cocoa_notify_callback, NULL);
+  } else if (mode == PLUGIN_FINI) {
+    delete bxcocoagui;
   } else if (mode == PLUGIN_PROBE) {
     return (int)PLUGTYPE_CI;
   }
@@ -75,20 +77,26 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
   {
     case CI_START: {
       if (SIM->get_param_enum(BXPN_BOCHS_START)->get() == BX_QUICK_START) {
+        bxcocoagui->resetConfigurationWindow();
+        bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, false);
         bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
         bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
+        bxcocoagui->setSimulationState(SIM_RUN);
         SIM->begin_simulation(main_argc, main_argv);
         // we don't expect it to return, but if it does, quit
         SIM->quit_sim(1);
       } else {
+        bxcocoagui->resetConfigurationWindow();
+        bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, true);
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
         if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, true) == 1) {
           bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
           bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
-          bxcocoagui->activateMenu(BX_PROPERTY_BREAK_SIM, true);
+          // bxcocoagui->activateMenu(BX_PROPERTY_BREAK_SIM, true);
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
+          bxcocoagui->setSimulationState(SIM_RUN);
           SIM->begin_simulation(main_argc, main_argv);
         }
         SIM->quit_sim(1);
@@ -96,29 +104,58 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
       break;
     }
     case CI_RUNTIME_CONFIG: {
+      // WARNING !!! this is called from the BX_GUI_WINDOW_VGA_DISPLAY
+      // now on a separate thread
+      // so we have to stop the simulation
+      // hide the sim window -> bring up the config
+      // set state to pause -> and then ? how to get it back running again?
       if (!bx_gui->has_gui_console()) {
+        // TODO : get Simulation State
+        bxcocoagui->setSimulationState(SIM_PAUSE);
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
-        if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
-          bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, false);
-          bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, true);
-          bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
-          bx_user_quit = 1;
-#if !BX_DEBUGGER
-          bx_atexit();
-          SIM->quit_sim(1);
-#else
-          bx_dbg_exit(1);
-#endif
-          return -1;
+        // need to wait for one of BX_PROPERTY_START_SIM | BX_PROPERTY_EXIT_SIM | BX_PROPERTY_CONT_SIM
+loopOn:
+        bxcocoagui->getPropertySet(true, 3, BX_PROPERTY_START_SIM, BX_PROPERTY_EXIT_SIM, BX_PROPERTY_CONT_SIM);
+        // check the properties
+        if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, false) == 1) {
+          printf("BX_PROPERTY_START_SIM");
+        } else if (bxcocoagui->getProperty(BX_PROPERTY_CONT_SIM, false) == 1) {
+          printf("BX_PROPERTY_CONT_SIM");
+        } else if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
+          printf("BX_PROPERTY_EXIT_SIM");
+        } else {
+          printf("NON VALID");
+          sleep(1);
+          goto loopOn;
         }
+
+
+
+//         if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
+//           bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, false);
+//           bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, true);
+//           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
+//           bx_user_quit = 1;
+// #if !BX_DEBUGGER
+//           bx_atexit();
+//           SIM->quit_sim(1);
+// #else
+//           bx_dbg_exit(1);
+// #endif
+//           return -1;
+//         } else {
+//           printf("NO CONSOLE GUI!!!!!!!!");
+//         }
       }
       break;
     }
     case CI_SHUTDOWN: {
+      printf("someone hit us to terminate");
+      bxcocoagui->setSimulationState(SIM_TERMINATE);
       // cleanup here?
       // send a cleanup call to bxcocoagui ?????
-      delete bxcocoagui;
+      //delete bxcocoagui;
       break;
     }
   }
@@ -137,30 +174,31 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
   {
     case BX_ASYNC_EVT_DBG_MSG:
     case BX_ASYNC_EVT_LOG_MSG: {
+      // simulator -> CI
       bxcocoagui->postLogMessage(event->u.logmsg.level, event->u.logmsg.mode, event->u.logmsg.prefix, event->u.logmsg.msg);
-      // TODO : do we need to delete the msg ???
-      event->retcode = 0;
+      event->retcode = 0;// is ignored
       return event;
     }
     case BX_SYNC_EVT_LOG_DLG: {
-      printf("BX_SYNC_EVT_LOG_DLG level=%d [%s] [%s] [%s] mode=%d",
-      event->u.logmsg.level, SIM->get_log_level_name(event->u.logmsg.level), event->u.logmsg.prefix, event->u.logmsg.msg, event->u.logmsg.mode);
+      // simulator -> CI, wait for response.
+      bxcocoagui->showModalQuestion(event->u.logmsg.level, event->u.logmsg.prefix, event->u.logmsg.msg, &event->retcode);
       return event;
     }
     case BX_SYNC_EVT_MSG_BOX: {
-      printf("BX_SYNC_EVT_MSG_BOX");
+      printf("BX_SYNC_EVT_MSG_BOX\n");
       return event;
     }
     case BX_SYNC_EVT_ML_MSG_BOX: {
-      printf("BX_SYNC_EVT_ML_MSG_BOX");
+      printf("BX_SYNC_EVT_ML_MSG_BOX\n");
       return event;
     }
     case BX_SYNC_EVT_ML_MSG_BOX_KILL: {
-      printf("BX_SYNC_EVT_ML_MSG_BOX_KILL");
+      printf("BX_SYNC_EVT_ML_MSG_BOX_KILL\n");
       return event;
     }
     case BX_SYNC_EVT_ASK_PARAM: {
-      printf("BX_SYNC_EVT_ASK_PARAM");
+      printf("BX_SYNC_EVT_ASK_PARAM\n");
+      bxcocoagui->showModalParamRequest(&event->u.param, &event->retcode);
       return event;
     }
     case BX_SYNC_EVT_TICK: {

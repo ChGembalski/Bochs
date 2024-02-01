@@ -56,9 +56,9 @@
   } gui_window_t;
 
   typedef struct {
-    property_t                  type;
-    NSString *        _Nonnull  name;
-  } property_entry_t;
+    NSString *    _Nullable title;
+    const char *  _Nullable param;
+  } edit_opts_t;
 
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,6 @@
 
     - (instancetype _Nonnull)init;
 
-    - (NSString * _Nullable)propertyToString:(property_t) property;
     - (void)setProperty:(NSString * _Nonnull) name value:(NSInteger) val;
     - (NSInteger)getProperty:(NSString * _Nonnull) name;
 
@@ -138,11 +137,15 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSWindowController : NSObject
 
+    @property (atomic, readwrite) simulation_state_t simulation_state;
     @property (nonatomic, readwrite, strong) BXNSPropertyCollection * _Nonnull bx_p_col;
     @property (nonatomic, readwrite, strong) BXNSLogQueue * _Nonnull bx_log_queue;
 
     - (instancetype _Nonnull)init:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
     - (void)dealloc;
+
+    + (void)showModalInfoDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg;
+    + (int)showModalQuestionDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg;
 
     - (void)onBochsThreadExit;
 
@@ -170,6 +173,7 @@
 
     - (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender;
     - (BOOL)onMenuEvent:(NSString * _Nonnull) path;
+    - (void)setEnabled:(BOOL)enabled;
 
   @end
 
@@ -177,7 +181,32 @@
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSConfigurationWindow
   ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSBrowserCell : NSBrowserCell
+
+    @property (nonatomic, readwrite) BOOL isLeaf;
+    @property (nonatomic, readwrite) NSString * _Nonnull path;
+    @property (nonatomic, readwrite) const char * _Nullable param_name;
+    // @property (nonatomic, readwrite) bx_param_c * _Nullable pred_param;
+
+    - (instancetype _Nonnull)initTextCell:(NSString *)string;
+    - (instancetype _Nonnull)initTextCell:(NSString *)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name;
+
+  @end
+
+  @interface BXNSBrowser : NSBrowser <NSBrowserDelegate>
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    // - (void)browser:(NSBrowser * _Nonnull)sender createRowsForColumn:(NSInteger)column inMatrix:(NSMatrix * _Nonnull)matrix;
+    - (NSInteger)browser:(NSBrowser * _Nonnull)browser numberOfChildrenOfItem:(id _Nullable)item;
+    - (id)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item;
+    - (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item;
+
+  @end
+
   @interface BXNSConfigurationWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    @property (nonatomic, readwrite, strong) BXNSBrowser * _Nonnull config;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
 
@@ -321,6 +350,8 @@
     @property (nonatomic, readwrite, strong) BXNSOutputView * _Nonnull outputView;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
+
+    - (BOOL)onMenuEvent:(NSString * _Nonnull) path;
 
   @end
 

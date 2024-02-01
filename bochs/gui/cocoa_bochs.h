@@ -74,6 +74,7 @@
     BXGuiCocoaApplication();
     ~BXGuiCocoaApplication();
 
+    void resetConfigurationWindow();
     void onBochsThreadExit();
 
     void showWindow(gui_window_type_t window, bool bShow);
@@ -84,6 +85,8 @@
 
     void setSimulationState(simulation_state_t new_state);
     void showModalInfo(unsigned char level, const char * prefix, const char * msg);
+    void showModalQuestion(unsigned char level, const char * prefix, const char * msg, int * result);
+    void showModalParamRequest(void * vparam, int * result);
 
     void postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg);
 

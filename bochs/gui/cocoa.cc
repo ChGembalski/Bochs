@@ -307,7 +307,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 {
   Bit8u max_bpp;
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
   bool cocoa_with_debug_gui = 0;
 #endif
 
@@ -343,7 +343,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   assert(old_callback != NULL);
   SIM->set_notify_callback(cocoa_notify_callback, NULL);
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
   cocoa_with_debug_gui = 0;//1;
 #else
   SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
@@ -359,7 +359,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   dialog_caps = BX_GUI_DLG_ALL;
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
   // initialize debugger gui
   if (cocoa_with_debug_gui) {
     SIM->set_debug_gui(1);
@@ -453,7 +453,7 @@ void bx_cocoa_gui_c::handle_events(void)
         mf = (event >> 32) % 0xFF;
         mx = (event >> 16) & 0xFFFF;
         my = event & 0xFFFF;
-        BX_DEBUG((">>> event mouse event=%lx x=%d y=%d mb=%d mf=%x x=%x y=%x mb=%x", event, mx, my, mb, mf, mx, my, mb));
+        BX_INFO((">>> event mouse event=%lx x=%d y=%d mb=%d mf=%x x=%x y=%x mb=%x", event, mx, my, mb, mf, mx, my, mb));
 
         if (bxcocoagui->hasMouseCapture() & ((mf & 0x10) == 0x10) & (mb == 1)) {
           SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(false);
@@ -702,7 +702,7 @@ void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 void bx_cocoa_gui_c::exit(void)
 {
 BX_INFO(("bx_cocoa_gui_c::exit"));
-// #if BX_DEBUGGER && BX_DEBUGGER_GUI
+// #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 //   if (SIM->has_debug_gui()) {
 //     close_debug_dialog();
 //   }
@@ -712,6 +712,7 @@ BX_INFO(("bx_cocoa_gui_c::exit"));
 //     device->run_terminate();
 //     delete device;
 //   }
+  bxcocoagui->onBochsThreadExit();
 
 }
 
@@ -863,6 +864,106 @@ BxEvent * bx_cocoa_gui_c::notify_callback(void *unused, BxEvent *event) {
   // bx_param_c *param;
 
   switch (event->type) {
+    case BX_SYNC_EVT_GET_PARAM: {
+      // CI -> simulator -> CI
+      printf("notify_callback BX_SYNC_EVT_GET_PARAM\n");
+      break;
+    }
+    case BX_SYNC_EVT_ASK_PARAM: {
+      // simulator -> CI -> simulator
+      printf("notify_callback BX_SYNC_EVT_ASK_PARAM\n");
+      break;
+    }
+    case BX_SYNC_EVT_TICK: {
+      // simulator -> CI, wait for response.
+      // printf("notify_callback BX_SYNC_EVT_TICK\n");
+      break;
+    }
+    case BX_SYNC_EVT_LOG_DLG: {
+      // simulator -> CI, wait for response.
+      // mode is one of BX_LOG_DLG_ASK, BX_LOG_DLG_WARN, BX_LOG_DLG_QUIT
+      printf("notify_callback BX_SYNC_EVT_LOG_DLG\n");
+      break;
+    }
+    case BX_SYNC_EVT_GET_DBG_COMMAND: {
+      // simulator -> CI, wait for response.
+      printf("notify_callback BX_SYNC_EVT_GET_DBG_COMMAND\n");
+      break;
+    }
+    case BX_SYNC_EVT_MSG_BOX: {
+      // simulator -> CI, wait for response.
+      // mode not used
+      bxcocoagui->showModalInfo(event->u.logmsg.mode, event->u.logmsg.prefix, event->u.logmsg.msg);
+      // printf("notify_callback BX_SYNC_EVT_MSG_BOX level=%d mode=%d prefix=%s msg=%s\n",
+      // event->u.logmsg.level,
+      // event->u.logmsg.mode,
+      // event->u.logmsg.prefix,
+      // event->u.logmsg.msg
+      // );
+      break;
+    }
+    case BX_SYNC_EVT_ML_MSG_BOX: {
+      // simulator -> CI, do not wait for response.
+      printf("notify_callback BX_SYNC_EVT_ML_MSG_BOX\n");
+      break;
+    }
+    case BX_SYNC_EVT_ML_MSG_BOX_KILL: {
+      // simulator -> CI, do not wait for response.
+      printf("notify_callback BX_SYNC_EVT_ML_MSG_BOX_KILL\n");
+      break;
+    }
+
+    case BX_ASYNC_EVT_KEY: {
+      // vga window -> simulator
+      printf("notify_callback BX_ASYNC_EVT_KEY\n");
+      break;
+    }
+    case BX_ASYNC_EVT_MOUSE: {
+      // vga window -> simulator
+      printf("notify_callback BX_ASYNC_EVT_MOUSE\n");
+      break;
+    }
+    case BX_ASYNC_EVT_SET_PARAM: {
+      // CI -> simulator
+      printf("notify_callback BX_ASYNC_EVT_SET_PARAM\n");
+      break;
+    }
+    case BX_ASYNC_EVT_LOG_MSG: {
+      // simulator -> CI
+      // processed by cocoaconsole.cc
+      break;
+    }
+    case BX_ASYNC_EVT_DBG_MSG: {
+      // simulator -> CI
+      printf("notify_callback BX_ASYNC_EVT_DBG_MSG\n");
+      break;
+    }
+    case BX_ASYNC_EVT_VALUE_CHANGED: {
+      // simulator -> CI
+      printf("notify_callback BX_ASYNC_EVT_VALUE_CHANGED\n");
+      break;
+    }
+    case BX_ASYNC_EVT_TOOLBAR: {
+      // CI -> simulator
+      printf("notify_callback BX_ASYNC_EVT_TOOLBAR\n");
+      break;
+    }
+    case BX_ASYNC_EVT_STATUSBAR: {
+      // simulator -> CI
+      printf("notify_callback BX_ASYNC_EVT_STATUSBAR\n");
+      break;
+    }
+    case BX_ASYNC_EVT_REFRESH: {
+      // simulator -> CI
+      printf("notify_callback BX_ASYNC_EVT_REFRESH\n");
+      break;
+    }
+    case BX_ASYNC_EVT_QUIT_SIM: {
+      // simulator -> CI
+      printf("notify_callback BX_ASYNC_EVT_QUIT_SIM\n");
+      break;
+    }
+
     // case BX_SYNC_EVT_LOG_DLG: {
     //   device->showAlertMessage(event->u.logmsg.msg, BX_ALERT_MSG_STYLE_CRIT);
     //   return event;
@@ -884,13 +985,15 @@ BxEvent * bx_cocoa_gui_c::notify_callback(void *unused, BxEvent *event) {
     //   return event;
     // }
 
-    case BX_ASYNC_EVT_LOG_MSG: // maybe have a window collecting the logs ?
-    case BX_SYNC_EVT_TICK: // called periodically by siminterface.
-    case BX_ASYNC_EVT_REFRESH: // called when some bx_param_c parameters have changed.
+    // case BX_ASYNC_EVT_LOG_MSG: // maybe have a window collecting the logs ?
+    // case BX_SYNC_EVT_TICK: // called periodically by siminterface.
+    // case BX_ASYNC_EVT_REFRESH: // called when some bx_param_c parameters have changed.
       // fall into default case
     default:
       return (*old_callback)(old_callback_arg, event);
   }
+
+  return (*old_callback)(old_callback_arg, event);
 
 }
 
