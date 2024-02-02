@@ -943,6 +943,9 @@ gui_window_t window_list[] = {
 
 @implementation BXNSNumberSelector
 
+/**
+ * initWithBrowser
+ */
 - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param {
 
   self = [super initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,100)];
@@ -988,12 +991,90 @@ gui_window_t window_list[] = {
 }
 
 - (void)valueChanged:(id)sender {
-
+// TODO : ... change it
 }
 
 @end
 
+@implementation BXNSStringSelector
 
+/**
+ * initWithBrowser
+ */
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param {
+
+  bx_param_string_c * string_param;
+
+  string_param = (bx_param_string_c *)param;
+  NSAssert(string_param->get_type() == BXT_PARAM_STRING, @"Invalid param type! expected : BXT_PARAM_STRING");
+
+  self = [super initWithFrame:NSMakeRect(10,20,(unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 20,50)];
+  if (self) {
+
+    self.text = [NSTextField textFieldWithString:[NSString stringWithUTF8String:string_param->getptr()]];
+    self.text.autoresizingMask = NSViewWidthSizable;
+
+    [self addArrangedSubview:self.text];
+
+    self.button = nil;
+    if (string_param->get_options() == string_param->IS_FILENAME) {
+      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonPressed:)];
+      [self addArrangedSubview:self.button];
+    }
+
+    self.autoresizingMask = NSViewWidthSizable;//NSViewMinXMargin | NSViewMaxXMargin;
+    self.param = param;
+
+    [self.text setAction:@selector(valueChanged:)];
+    [self.text setTarget:self];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * valueChanged
+ */
+- (void)valueChanged:(id)sender {
+
+  if (strcmp(self.text.stringValue.UTF8String, ((bx_param_string_c *)self.param)->getptr()) != 0) {
+    ((bx_param_string_c *)self.param)->set(self.text.stringValue.UTF8String);
+  }
+
+}
+
+/**
+ * buttonPressed
+ */
+- (void)buttonPressed:(id)sender {
+
+  NSOpenPanel * panel;
+
+  panel = [NSOpenPanel openPanel];
+  panel.canChooseFiles = YES;
+  panel.canChooseDirectories = NO;
+  panel.resolvesAliases = YES;
+  panel.allowsMultipleSelection = NO;
+  panel.accessoryViewDisclosed = YES;
+  panel.directoryURL = [NSURL URLWithString:self.text.stringValue];
+
+  if ([panel runModal] == NSOKButton) {
+    NSArray * urls;
+    NSURL * url;
+
+    urls = [panel URLs];
+    if ([urls count] != 0) {
+      url = [urls objectAtIndex:0];
+      self.text.stringValue = url.path;
+      [self valueChanged:self];
+    }
+  }
+
+}
+
+@end
 
 
 
@@ -1067,7 +1148,7 @@ gui_window_t window_list[] = {
     }
     default: {
       NSLog(@"numberOfChildrenOfItem default %@ %d %@", [item path], 0, [item sub_control] == nil?@"nil":[[item sub_control] class]);
-      return 0;//[item sub_control] == nil?0:1;
+      return 0;
     }
   }
 
@@ -1143,7 +1224,6 @@ gui_window_t window_list[] = {
           isLeaf:YES PredPath:[item path] SimParamName:bool_param->get_name()
           Control:yesno
         ];
-        NSLog(@"cell created %@ [%s][%s][%s]", [cell path], bool_param->get_name(), bool_param->get_label(), bool_param->get_description());
         break;
       }
       case BXT_PARAM_ENUM: {
@@ -1168,12 +1248,22 @@ gui_window_t window_list[] = {
       }
       case BXT_PARAM_STRING: {
         bx_param_string_c * string_param;
+        const char * label;
+        BXNSStringSelector * string;
 
         string_param = (bx_param_string_c *)child;
         NSLog(@"process string");
+        label = string_param->get_label();
+        if (label == NULL) {
+          label = string_param->get_description();
+        }
 
+        string = [[BXNSStringSelector alloc] initWithBrowser:browser Param:string_param];
 
-        cell = [[BXNSBrowserCell alloc] initTextCell:@">>>STRING<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+          isLeaf:YES PredPath:[item path] SimParamName:string_param->get_name()
+          Control:string
+        ];
         break;
       }
       case BXT_PARAM_BYTESTRING: {

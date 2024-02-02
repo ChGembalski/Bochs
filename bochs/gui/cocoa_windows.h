@@ -242,6 +242,19 @@
 
   @end
 
+  @interface BXNSStringSelector : NSStackView
+
+    @property (nonatomic, readwrite) void * _Nonnull param;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull text;
+    @property (nonatomic, readwrite, strong) NSButton * _Nullable button;
+
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
+
+    - (void)valueChanged:(id)sender;
+    - (void)buttonPressed:(id)sender;
+
+  @end
+
   @interface BXNSBrowser : NSBrowser <NSBrowserDelegate>
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
