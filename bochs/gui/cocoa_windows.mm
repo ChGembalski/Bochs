@@ -661,7 +661,9 @@ gui_window_t window_list[] = {
 
   self = [super initWithContentRect:rect styleMask:style backing:backingStoreType defer:flag];
   if (self) {
+
     self.bx_controller = controller;
+
   }
 
   return self;
@@ -706,7 +708,7 @@ gui_window_t window_list[] = {
 /**
  * initTextCell
  */
-- (instancetype _Nonnull)initTextCell:(NSString *)string {
+- (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string {
 
   self = [super initTextCell:string];
   if (self) {
@@ -714,6 +716,7 @@ gui_window_t window_list[] = {
     self.isLeaf = YES;
     self.param_name = nil;
     self.path = @"";
+    self.sub_control = nil;
 
   }
 
@@ -724,7 +727,7 @@ gui_window_t window_list[] = {
 /**
  * initTextCell
  */
-- (instancetype _Nonnull)initTextCell:(NSString *)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name {
+- (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name {
 
   self = [super initTextCell:string];
   if (self) {
@@ -736,6 +739,7 @@ gui_window_t window_list[] = {
     } else {
       self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
     }
+    self.sub_control = nil;
 
   }
 
@@ -743,9 +747,259 @@ gui_window_t window_list[] = {
 
 }
 
+/**
+ * initTextCell
+ */
+- (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name Control:(id _Nonnull) ctrl {
 
+  self = [super initTextCell:string];
+  if (self) {
+
+    self.isLeaf = leaf;
+    self.param_name = param_name;
+    if (path.length == 0) {
+      self.path = [[NSString alloc] initWithUTF8String:param_name];
+    } else {
+      self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
+    }
+    self.sub_control = ctrl;
+
+  }
+
+  return self;
+
+}
 
 @end
+
+
+@implementation BXNSPreView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:NSMakeRect(0, 0, (unsigned)frameRect.size.width, (unsigned)frameRect.size.height)];
+  if (self) {
+
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+  }
+
+  return self;
+
+}
+
+/**
+ * isFlipped
+ */
+- (BOOL) isFlipped {
+
+  return YES;
+
+}
+
+@end
+
+
+@implementation BXNSPreviewController
+
+/**
+ * initWithView
+ */
+- (instancetype _Nonnull)initWithView:(NSRect) rect Control:(id _Nonnull) object {
+
+  self = [super init];
+  if (self) {
+
+    self.view = [[BXNSPreView alloc] initWithFrame:rect];
+    [self.view addSubview:object];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * loadView
+ */
+- (void)loadView {
+
+}
+
+/**
+ * loadViewIfNeeded
+ */
+- (void)loadViewIfNeeded {
+
+}
+
+@end
+
+
+@implementation BXNSYesNoSelector
+
+/**
+ * initWithBrowser
+ */
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param {
+
+  self = [super initWithFrame:NSMakeRect(((unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 100) / 2,0,100,50)];
+  if (self) {
+
+    NSAssert(((bx_param_c *)param)->get_type() == BXT_PARAM_BOOL, @"Invalid param type! expected : BXT_PARAM_BOOL");
+
+    NSTextField * yesF;
+    NSTextField * noF;
+
+    yesF = [NSTextField labelWithString:@"YES"];
+    noF = [NSTextField labelWithString:@"NO"];
+    self.yesno = [[NSSwitch alloc] init];
+
+    [self addArrangedSubview:noF];
+    [self addArrangedSubview:self.yesno];
+    [self addArrangedSubview:yesF];
+
+    self.autoresizingMask = NSViewMinXMargin | NSViewMaxXMargin;
+    self.param = param;
+    self.yesno.state = (((bx_param_bool_c *)self.param)->get() > 0) ? NSControlStateValueOn : NSControlStateValueOff;
+    [self.yesno setAction:@selector(valueChanged:)];
+    [self.yesno setTarget:self];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * valueChanged
+ */
+- (void)valueChanged:(id)sender {
+
+  if ((((bx_param_bool_c *)self.param)->get() > 0) && (self.yesno.state == NSControlStateValueOff)) {
+    ((bx_param_bool_c *)self.param)->set(0);
+  }
+  if ((((bx_param_bool_c *)self.param)->get() == 0) && (self.yesno.state == NSControlStateValueOn)) {
+    ((bx_param_bool_c *)self.param)->set(1);
+  }
+
+}
+
+@end
+
+
+@implementation BXNSChoiceSelector
+
+/**
+ * initWithBrowser
+ */
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param {
+
+  self = [super initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,50) pullsDown:NO];
+  if (self) {
+
+    bx_param_enum_c * enum_param;
+    unsigned i;
+    const char * choice;
+
+    enum_param = (bx_param_enum_c *)param;
+    NSAssert(enum_param->get_type() == BXT_PARAM_ENUM, @"Invalid param type! expected : BXT_PARAM_ENUM");
+    self.autoresizingMask = NSViewWidthSizable;
+    i=0;
+    while ((choice = enum_param->get_choice(i)) != NULL) {
+      [self addItemWithTitle:[NSString stringWithUTF8String:choice]];
+      i++;
+    }
+    self.param = param;
+    self.objectValue = [NSNumber numberWithInt:enum_param->get() - enum_param->get_min()];
+    [self setAction:@selector(valueChanged:)];
+    [self setTarget:self];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * valueChanged
+ */
+- (void)valueChanged:(id)sender {
+
+  NSInteger curSel;
+
+  curSel = [sender indexOfSelectedItem];
+  if (curSel + ((bx_param_enum_c *)self.param)->get_min() != ((bx_param_enum_c *)self.param)->get()) {
+    ((bx_param_enum_c *)self.param)->set(curSel + ((bx_param_enum_c *)self.param)->get_min());
+  }
+
+}
+
+@end
+
+
+@implementation BXNSNumberSelector
+
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param {
+
+  self = [super initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,100)];
+  if (self) {
+
+    bx_param_num_c * num_param;
+
+    num_param = (bx_param_num_c *)param;
+    NSAssert(num_param->get_type() == BXT_PARAM_NUM, @"Invalid param type! expected : BXT_PARAM_NUM");
+    self.autoresizingMask = NSViewWidthSizable;
+    self.minValue = num_param->get_min();
+    self.maxValue = num_param->get_max();
+    self.intValue = num_param->get();
+
+    if (num_param->get_base() == BASE_HEX) {
+      NSLog(@"### I Am HEX");
+    }
+    NSLog(@"NUMBER OPT = %x [%x]", num_param->get_options(), num_param->USE_SPIN_CONTROL);
+    if (num_param->get_options() & num_param->USE_SPIN_CONTROL) {
+      NSLog(@"### OK USE Spin Control");
+      self.sliderType = NSSliderTypeCircular;
+    }
+
+    if ((num_param->get_max() - num_param->get_min()) < 100) {
+      self.numberOfTickMarks = num_param->get_max() - num_param->get_min();
+      NSLog(@"### MARKS %d", (unsigned)self.numberOfTickMarks);
+      self.tickMarkPosition = NSTickMarkPositionAbove;
+      self.allowsTickMarkValuesOnly = YES;
+    }
+    // [self addItemWithTitle:@"NO"];
+    // [self addItemWithTitle:@"YES"];
+    self.param = param;
+    // if (((bx_param_bool_c *)self.param)->get() > 0) {
+    //   self.objectValue = [NSNumber numberWithInt:1];
+    // }
+    [self setAction:@selector(valueChanged:)];
+    [self setTarget:self];
+
+  }
+
+  return self;
+
+}
+
+- (void)valueChanged:(id)sender {
+
+}
+
+@end
+
+
+
+
+
+
+
+
 
 
 @implementation BXNSBrowser
@@ -775,69 +1029,8 @@ gui_window_t window_list[] = {
 }
 
 /**
- * browser
+ * browser numberOfChildrenOfItem
  */
-// - (void)browser:(NSBrowser * _Nonnull)sender createRowsForColumn:(NSInteger)column inMatrix:(NSMatrix * _Nonnull)matrix {
-//
-//   NSLog(@"matrix column:%d cols:%d rows:%d", column, matrix.numberOfColumns, matrix.numberOfRows);
-//
-//   // request 0 column
-//   if (column == 0) {
-//
-//     // bx_list_c * root;
-//     unsigned count;
-//     unsigned rowNo;
-//
-//
-//     // get no of entries
-//     count = 0;
-//     while (root_options[count].param != NULL) {
-//       count++;
-//     }
-//     [matrix renewRows:count columns:2];
-//
-//     rowNo = 0;
-//     while (root_options[rowNo].param != NULL) {
-//       id cell;
-//
-//       cell = [matrix cellAtRow:rowNo column: 0];
-//       [cell setStringValue:root_options[rowNo].title];
-//
-//       rowNo++;
-//     }
-//
-//     // [matrix sizeToCells];
-//     //
-//     // SIM->get_param(".", NULL)
-//     // get_size
-//     //
-//     //
-//     //
-//     //
-//     //
-//     //
-//     // NSLog(@"[matrix renewRows];");
-//     // [matrix renewRows:1 columns:2];
-//     // NSLog(@"matrix cols:%d rows:%d", matrix.numberOfColumns, matrix.numberOfRows);
-//     // NSLog(@"cell = [matrix cellAtRow: 0 column: 0];");
-//     // cell = [matrix cellAtRow: 0 column: 0];
-//     // NSLog(@"[cell setStringValue:");
-//     // [cell setStringValue:@"test"];
-//     // // [cell setRepresentedObject: @"test"];
-//     // NSLog(@"[cell setLeaf: YES];");
-//     // [cell setLeaf: YES];
-//     //
-//     // [matrix sizeToCells];
-//     //
-//     // NSLog(@"Someone hit me here");
-//   }
-//
-// }
-
-// - (void)browser: (NSBrowser *)sender willDisplayCell: (id)cell atRow: (int)row column: (int)column {
-//   NSLog(@"willDisplayCell");
-// }
-
 - (NSInteger)browser:(NSBrowser * _Nonnull)browser numberOfChildrenOfItem:(id _Nullable)item {
 
   bx_param_c * param;
@@ -854,11 +1047,14 @@ gui_window_t window_list[] = {
   }
 
   if ([item path].UTF8String[0] == '#') {
+    // TODO : special handling
+    NSLog(@"numberOfChildrenOfItem %@ %d", [item path], 0);
     return 0;
   }
 
   param = SIM->get_param([item path].UTF8String, NULL);
   if (param == NULL) {
+    NSLog(@"numberOfChildrenOfItem param == NULL %@ %d %@", [item path], 0, [item sub_control] == nil?@"nil":[[item sub_control] class]);
     return 0;
   }
   switch (param->get_type()) {
@@ -870,14 +1066,17 @@ gui_window_t window_list[] = {
       return size;
     }
     default: {
-      NSLog(@"numberOfChildrenOfItem %@ %d", [item path], 0);
-      return 0;
+      NSLog(@"numberOfChildrenOfItem default %@ %d %@", [item path], 0, [item sub_control] == nil?@"nil":[[item sub_control] class]);
+      return 0;//[item sub_control] == nil?0:1;
     }
   }
 
 }
 
-- (id)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item {
+/**
+ * browser child
+ */
+- (id _Nonnull)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item {
 
   BXNSBrowserCell * cell;
   bx_param_c * param;
@@ -892,35 +1091,145 @@ gui_window_t window_list[] = {
     }
     cell = [[BXNSBrowserCell alloc] initTextCell:root_options[index].title isLeaf:leaf PredPath:@"" SimParamName:root_options[index].param];
   } else {
-    // some params start with #
-    NSLog(@">>>>>%@", [item path]);
-    // if ()
+    bx_param_c * child;
+
+    NSLog(@"[%d]>>>>>%@<<<<<%@>>>>>>>%@", index, [item path], [item class], [item sub_control] == nil?@"nil":[[item sub_control] class]);
+
+    // if ([item sub_control] != nil) {
+    //   NSLog(@"return a sub control [%@]", [[item sub_control] class]);
+    //   return [item sub_control];
+    // }
+
     param = SIM->get_param([item path].UTF8String, NULL);
-    switch (param->get_type()) {
+    child = ((bx_list_c *)param)->get((int)index);
+
+    switch (child->get_type()) {
+
+      case BXT_PARAM_NUM: {
+        bx_param_num_c * num_param;
+        const char * label;
+        BXNSNumberSelector * numeric;
+
+        num_param = (bx_param_num_c *)child;
+        NSLog(@"process number");
+        label = num_param->get_label();
+        if (label == NULL) {
+          label = num_param->get_description();
+        }
+
+        numeric = [[BXNSNumberSelector alloc] initWithBrowser:browser Param:num_param];
+
+        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+          isLeaf:YES PredPath:[item path] SimParamName:num_param->get_name()
+          Control:numeric
+        ];
+        break;
+      }
+      case BXT_PARAM_BOOL: {
+        bx_param_bool_c * bool_param;
+        const char * label;
+        BXNSYesNoSelector * yesno;
+
+        bool_param = (bx_param_bool_c *)child;
+        NSLog(@"process bool");
+        label = bool_param->get_label();
+        if (label == NULL) {
+          label = bool_param->get_description();
+        }
+
+        yesno = [[BXNSYesNoSelector alloc] initWithBrowser:browser Param:bool_param];
+
+        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+          isLeaf:YES PredPath:[item path] SimParamName:bool_param->get_name()
+          Control:yesno
+        ];
+        NSLog(@"cell created %@ [%s][%s][%s]", [cell path], bool_param->get_name(), bool_param->get_label(), bool_param->get_description());
+        break;
+      }
+      case BXT_PARAM_ENUM: {
+        bx_param_enum_c * enum_param;
+        const char * label;
+        BXNSChoiceSelector * choice;
+
+        enum_param = (bx_param_enum_c *)child;
+        NSLog(@"process enum");
+        label = enum_param->get_label();
+        if (label == NULL) {
+          label = enum_param->get_description();
+        }
+
+        choice = [[BXNSChoiceSelector alloc] initWithBrowser:browser Param:enum_param];
+
+        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+          isLeaf:YES PredPath:[item path] SimParamName:enum_param->get_name()
+          Control:choice
+        ];
+        break;
+      }
+      case BXT_PARAM_STRING: {
+        bx_param_string_c * string_param;
+
+        string_param = (bx_param_string_c *)child;
+        NSLog(@"process string");
+
+
+        cell = [[BXNSBrowserCell alloc] initTextCell:@">>>STRING<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+        break;
+      }
+      case BXT_PARAM_BYTESTRING: {
+        bx_param_bytestring_c * bytestring_param;
+
+        bytestring_param = (bx_param_bytestring_c *)child;
+        NSLog(@"process bytestring");
+
+
+        cell = [[BXNSBrowserCell alloc] initTextCell:@">>>BYTE STRING<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+        break;
+      }
+      case BXT_PARAM_FILEDATA: {
+        bx_param_filename_c * filename_param;
+
+        filename_param = (bx_param_filename_c *)child;
+        NSLog(@"process filename");
+
+        cell = [[BXNSBrowserCell alloc] initTextCell:@">>>FILENAME<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+        break;
+      }
+
+
+
+
+
       case BXT_LIST: {
-        bx_list_c * list;
-        bx_param_c * child;
+        bx_list_c * list_param;
         const char * label;
 
+        list_param = (bx_list_c *)child;
+
         NSLog(@"process list");
-        list = (bx_list_c *)param;
-        child = list->get((int)index);
-        NSLog(@"got list");
-        label = child->get_label();
+        label = list_param->get_title();
         if (label == NULL) {
-          label = child->get_name();
+          label = list_param->get_label();
         }
-        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label] isLeaf:NO PredPath:[item path] SimParamName:child->get_name()];
-        NSLog(@"cell created %@", [cell path]);
+        if (label == NULL) {
+          label = list_param->get_name();
+        }
+
+        cell = [[BXNSBrowserCell alloc]
+          initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+          isLeaf:NO PredPath:[item path] SimParamName:list_param->get_name()
+        ];
+        NSLog(@"cell created %@ [%s][%s][%s]", [cell path], list_param->get_title(), list_param->get_label(), list_param->get_name());
         break;
       }
       default: {
-        // need impl the other
         NSLog(@"process other");
-        cell = [[BXNSBrowserCell alloc] initTextCell:@"something else" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+        cell = [[BXNSBrowserCell alloc] initTextCell:@"NOT IMPLEMENTED" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
         break;
       }
+
     }
+
   }
 
   NSLog(@"child [%d] [%@] [%@] %@",
@@ -929,6 +1238,9 @@ gui_window_t window_list[] = {
 
 }
 
+/**
+ * browser isLeafItem
+ */
 - (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item {
 
   if (item != nil) {
@@ -941,9 +1253,29 @@ gui_window_t window_list[] = {
 
 }
 
-- (id)browser:(NSBrowser *)browser objectValueForItem:(id _Nullable)item {
-  NSLog(@"objectValueForItem %@ %@", [item path], [item class]);
+/**
+ * browser objectValueForItem
+ */
+- (id _Nonnull)browser:(NSBrowser * _Nonnull)browser objectValueForItem:(id _Nullable)item {
+
   return item;
+
+}
+
+/**
+ * browser previewViewControllerForLeafItem
+ */
+- (NSViewController * _Nullable)browser:(NSBrowser * _Nonnull)browser previewViewControllerForLeafItem:(id _Nullable)item {
+
+  if (item == nil) {
+    return nil;
+  }
+  if ([item sub_control] == nil) {
+    return nil;
+  }
+
+  return [[BXNSPreviewController alloc] initWithView:[self frameOfInsideOfColumn:self.lastVisibleColumn] Control:[item sub_control]];
+
 }
 
 @end

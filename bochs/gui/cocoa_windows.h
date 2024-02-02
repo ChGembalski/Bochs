@@ -186,10 +186,59 @@
     @property (nonatomic, readwrite) BOOL isLeaf;
     @property (nonatomic, readwrite) NSString * _Nonnull path;
     @property (nonatomic, readwrite) const char * _Nullable param_name;
-    // @property (nonatomic, readwrite) bx_param_c * _Nullable pred_param;
+    @property (nonatomic, readwrite, strong) id _Nullable sub_control;
 
-    - (instancetype _Nonnull)initTextCell:(NSString *)string;
-    - (instancetype _Nonnull)initTextCell:(NSString *)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name;
+    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string;
+    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name;
+    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name Control:(id _Nonnull) ctrl;
+
+  @end
+
+  @interface BXNSPreView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    - (BOOL) isFlipped;
+
+  @end
+
+  @interface BXNSPreviewController : NSViewController
+
+    - (instancetype _Nonnull)initWithView:(NSRect) rect Control:(id _Nonnull) object;
+
+    - (void)loadView;
+    - (void)loadViewIfNeeded;
+
+  @end
+
+  @interface BXNSYesNoSelector : NSStackView//NSSwitch //NSPopUpButton
+
+    @property (nonatomic, readwrite) void * _Nonnull param;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull yesno;
+
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
+
+    - (void)valueChanged:(id)sender;
+
+  @end
+
+  @interface BXNSChoiceSelector : NSPopUpButton
+
+    @property (nonatomic, readwrite) void * _Nonnull param;
+
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
+
+    - (void)valueChanged:(id)sender;
+
+  @end
+
+  @interface BXNSNumberSelector : NSSlider
+
+    @property (nonatomic, readwrite) void * _Nonnull param;
+
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
+
+    - (void)valueChanged:(id)sender;
 
   @end
 
@@ -197,10 +246,11 @@
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
-    // - (void)browser:(NSBrowser * _Nonnull)sender createRowsForColumn:(NSInteger)column inMatrix:(NSMatrix * _Nonnull)matrix;
     - (NSInteger)browser:(NSBrowser * _Nonnull)browser numberOfChildrenOfItem:(id _Nullable)item;
-    - (id)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item;
+    - (id _Nonnull)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item;
     - (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item;
+    - (id _Nonnull)browser:(NSBrowser * _Nonnull)browser objectValueForItem:(id _Nullable)item;
+    - (NSViewController * _Nullable)browser:(NSBrowser * _Nonnull)browser previewViewControllerForLeafItem:(id _Nullable)item;
 
   @end
 
