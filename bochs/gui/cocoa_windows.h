@@ -232,15 +232,33 @@
 
   @end
 
-  @interface BXNSNumberSelector : NSStackView//NSSlider
+  @interface BXNSNumberFormatter : NSNumberFormatter
+
+  - (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error;
+
+  @end
+
+  @interface BXNSHexNumberFormatter : NSNumberFormatter
+
+  - (instancetype _Nonnull)init;
+
+  - (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error;
+  - (BOOL)getObjectValue:(out id  _Nullable *)obj forString:(NSString *)string errorDescription:(out NSString * _Nullable *)error;
+
+  @end
+
+  @interface BXNSNumberSelector : NSStackView
 
     @property (nonatomic, readwrite) void * _Nonnull param;
     @property (nonatomic, readwrite, strong) NSSlider * _Nullable slider;
-    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull text;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nullable text;
+    @property (nonatomic, readwrite, strong) NSDatePicker * _Nullable date;
 
     - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
 
+    - (void)sliderChanged:(id)sender;
     - (void)valueChanged:(id)sender;
+    - (void)dateChanged:(id)sender;
 
   @end
 

@@ -907,11 +907,26 @@ gui_window_t window_list[] = {
 
     enum_param = (bx_param_enum_c *)param;
     NSAssert(enum_param->get_type() == BXT_PARAM_ENUM, @"Invalid param type! expected : BXT_PARAM_ENUM");
+
+    NSLog(@"##ENUM##>> min=%d max=%d max-min=%d val64=%d val32=%d base=%d opt=%x",
+      enum_param->get_min(), enum_param->get_max(), (enum_param->get_max() - enum_param->get_min()),
+      enum_param->get64(), enum_param->get(), enum_param->get_base(), enum_param->get_options());
+
     self.autoresizingMask = NSViewWidthSizable;
+
+    /* temp bugfix : something overwrites the end value of bx_param_enum_c "start_mode" so we fix it here
+     * the NULL termination is missing
+     */
+
     i=0;
     while ((choice = enum_param->get_choice(i)) != NULL) {
       [self addItemWithTitle:[NSString stringWithUTF8String:choice]];
       i++;
+      if (enum_param->get_min() == BX_QUICK_START) {
+        if (strcmp("start_mode", enum_param->get_name()) == 0) {
+          if (i==4) break;
+        }
+      }
     }
     self.param = param;
     self.objectValue = [NSNumber numberWithInt:enum_param->get() - enum_param->get_min()];
@@ -941,6 +956,84 @@ gui_window_t window_list[] = {
 @end
 
 
+@implementation BXNSNumberFormatter
+
+/**
+ * isPartialStringValid
+ */
+- (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error {
+
+  NSScanner * scanner;
+
+  if([partialString length] == 0) {
+    return YES;
+  }
+
+  scanner = [NSScanner scannerWithString:partialString];
+  if(!([scanner scanInt:nil] && [scanner isAtEnd])) {
+    NSBeep();
+    return NO;
+  }
+
+  return YES;
+
+}
+
+@end
+
+
+@implementation BXNSHexNumberFormatter
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+
+  self = [super init];
+  if (self) {
+
+    self.numberStyle = NSNumberFormatterNoStyle;
+    self.generatesDecimalNumbers = NO;
+    self.format = @"%X";
+  }
+
+  return self;
+
+}
+
+/**
+ * isPartialStringValid
+ */
+- (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error {
+
+  NSScanner * scanner;
+
+  if([partialString length] == 0) {
+    return YES;
+  }
+
+  scanner = [NSScanner scannerWithString:partialString];
+  if(!([scanner scanHexInt:nil] && [scanner isAtEnd])) {
+    NSBeep();
+    return NO;
+  }
+
+  return YES;
+
+}
+
+/**
+ * getObjectValue
+ */
+- (BOOL)getObjectValue:(out id  _Nullable *)obj forString:(NSString *)string errorDescription:(out NSString * _Nullable *)error {
+
+  return YES;
+
+}
+
+@end
+
+
 @implementation BXNSNumberSelector
 
 /**
@@ -949,108 +1042,112 @@ gui_window_t window_list[] = {
 - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param {
 
   // self = [super initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,100)];
-  self = [super initWithFrame:NSMakeRect(10,10,(unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 20,50)];
+  self = [super initWithFrame:NSMakeRect(10,10,(unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 20,
+    (unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.height -20
+  )];
   if (self) {
 
     bx_param_num_c * num_param;
+    BOOL noMinVal;
     BOOL noMaxVal;
     BOOL withEdit;
+    BOOL smallRange;
+    NSString * str_fmt;
+    NSString * str_val;
+    NSStackView * inner;
 
     num_param = (bx_param_num_c *)param;
     NSAssert(num_param->get_type() == BXT_PARAM_NUM, @"Invalid param type! expected : BXT_PARAM_NUM");
 
     self.autoresizingMask = NSViewWidthSizable;
-
     self.param = param;
+    // set orientation vertical
+    self.orientation = NSUserInterfaceLayoutOrientationVertical;
 
-    self.slider = [[NSSlider alloc] initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,50)];
-    self.slider.autoresizingMask = NSViewWidthSizable;
+    // special case date
+    if ([[NSString stringWithUTF8String:num_param->get_name()] hasPrefix:@"time"]) {
+      // place an Date Control
+      self.date = [[NSDatePicker alloc] init];
+      self.date.datePickerMode = NSDatePickerModeSingle;
+      self.date.datePickerStyle = NSDatePickerStyleClockAndCalendar;
+      if (num_param->get64() == 1) {
+        self.date.dateValue = [NSDate now];
+        num_param->set((UInt64)self.date.dateValue.timeIntervalSince1970);
+      } else {
+        self.date.dateValue = [NSDate dateWithTimeIntervalSince1970:num_param->get64()];
+      }
+      [self addArrangedSubview:self.date];
+      [self.date setTarget:self];
+      [self.date setAction:@selector(dateChanged:)];
+      return self;
+    }
 
+    self.date = nil;
     noMaxVal = num_param->get_max() == 0xffffffff;
+    noMinVal = num_param->get_min() == 0xffffffff;
     withEdit = (!noMaxVal && ((num_param->get_max() - num_param->get_min()) > 15));
+    smallRange = ((num_param->get_max() - num_param->get_min()) <= 15);
 
     NSLog(@"##>> min=%d max=%d max-min=%d val64=%d val32=%d base=%d opt=%x",
       num_param->get_min(), num_param->get_max(), (num_param->get_max() - num_param->get_min()),
       num_param->get64(), num_param->get(), num_param->get_base(), num_param->get_options());
 
     // no Max Value -> Edit Field (num) with < > ?
-NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
-    if (noMaxVal) {
-      NSString * str_val;
+    NSLog(@"noMinVal=%d noMaxVal=%d withEdit=%d", noMinVal, noMaxVal, withEdit);
 
-      if (num_param->get_base() == BASE_HEX) {
-        [self addArrangedSubview:[NSTextField labelWithString:@"0x"]];
-        str_val = [NSString stringWithFormat:@"%016X", num_param->get64()];
-      } else {
-        str_val = [NSString stringWithFormat:@"%d", num_param->get64()];
-      }
-      self.text = [NSTextField textFieldWithString:str_val];
-      self.text.autoresizingMask = NSViewWidthSizable;
+    // create a horizontal stack
+    inner = [[NSStackView alloc] initWithFrame:NSMakeRect(0,0,(unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 20,50)];
+    [self addArrangedSubview:inner];
 
-      [self addArrangedSubview:self.text];
-
-
+    if (num_param->get_base() == BASE_HEX) {
+      str_fmt = @"%X";
     } else {
-    // with Max Value
-    // <= 15 -> slider only
-    // > 15 -> slider + Edit Fields (num)
+      str_fmt = @"%d";
+    }
 
-
-    if (!noMaxVal) {
-      NSLog(@"Num MAX NOT -1 %x %d %x", num_param->get_max(), num_param->get_max(), -1);
-      // range - only use slider if < 15 ?
-      if ((num_param->get_max() - num_param->get_min()) <= 15) {
-        self.slider.minValue = (SInt64)num_param->get_min();
-        self.slider.maxValue = (SInt64)num_param->get_max();
+    if (noMaxVal || noMinVal) {
+      if (num_param->get_base() == BASE_HEX) {
+        [inner addArrangedSubview:[NSTextField labelWithString:@"0x"]];
+      }
+    }
+    str_val = [NSString stringWithFormat:str_fmt, num_param->get64()];
+    if (noMaxVal || noMinVal || !smallRange) {
+      self.text = [NSTextField textFieldWithString:str_val];
+    } else {
+      self.text = [NSTextField labelWithString:str_val];
+    }
+    if (num_param->get_base() == BASE_HEX) {
+      [self.text setFormatter:[[BXNSHexNumberFormatter alloc] init]];
+    } else {
+      [self.text setFormatter:[[BXNSNumberFormatter alloc] init]];
+    }
+    self.text.autoresizingMask = NSViewWidthSizable;
+    [self.text setTarget:self];
+    [self.text setAction:@selector(valueChanged:)];
+    if (noMaxVal || noMinVal) {
+      [inner addArrangedSubview:self.text];
+      self.slider = nil;
+    } else {
+      self.slider = [[NSSlider alloc] initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,50)];
+      self.slider.autoresizingMask = NSViewWidthSizable;
+      self.slider.minValue = (SInt64)num_param->get_min();
+      self.slider.maxValue = (SInt64)num_param->get_max();
+      if (smallRange) {
         self.slider.numberOfTickMarks = 1 + (num_param->get_max() - num_param->get_min());
         self.slider.allowsTickMarkValuesOnly = YES;
+        self.slider.intValue = num_param->get64();
       } else {
-        self.slider.minValue = (SInt64)num_param->get_min();
-        self.slider.maxValue = 0xefffffff;
+        self.slider.intValue = num_param->get64();
       }
-    }
-    self.slider.intValue = num_param->get64();
-    // self.slider.intValue = num_param->get();
-    // max -1 == no max
-    // NSLog(@"##>> min=%d max=%d max-min=%d val=%d base=%d opt=%x",
-    //   num_param->get_min(), num_param->get_max(), (num_param->get_max() - num_param->get_min()),
-    //   num_param->get64(), num_param->get_base(), num_param->get_options());
+      [self.slider setTarget:self];
+      [self.slider setAction:@selector(sliderChanged:)];
 
-    if (!noMaxVal) {
-      [self addArrangedSubview:[NSTextField labelWithString:[NSString stringWithFormat:@"%d", num_param->get_min()]]];
-    }
-    [self addArrangedSubview:self.slider];
-    if (!noMaxVal) {
-      [self addArrangedSubview:[NSTextField labelWithString:[NSString stringWithFormat:@"%d", num_param->get_max()]]];
-    }
-}
-    // self.minValue = num_param->get_min();
-    // self.maxValue = num_param->get_max();
-    // self.intValue = num_param->get();
-    //
-    // if (num_param->get_base() == BASE_HEX) {
-    //   NSLog(@"### I Am HEX");
-    // }
-    // NSLog(@"NUMBER OPT = %x [%x]", num_param->get_options(), num_param->USE_SPIN_CONTROL);
-    // if (num_param->get_options() & num_param->USE_SPIN_CONTROL) {
-    //   NSLog(@"### OK USE Spin Control");
-    //   self.sliderType = NSSliderTypeCircular;
-    // }
-    //
-    // if ((num_param->get_max() - num_param->get_min()) < 100) {
-    //   self.numberOfTickMarks = num_param->get_max() - num_param->get_min();
-    //   NSLog(@"### MARKS %d", (unsigned)self.numberOfTickMarks);
-    //   self.tickMarkPosition = NSTickMarkPositionAbove;
-    //   self.allowsTickMarkValuesOnly = YES;
-    // }
-    // [self addItemWithTitle:@"NO"];
-    // [self addItemWithTitle:@"YES"];
+      [inner addArrangedSubview:[NSTextField labelWithString:[NSString stringWithFormat:str_fmt, num_param->get_min()]]];
+      [inner addArrangedSubview:self.slider];
+      [inner addArrangedSubview:[NSTextField labelWithString:[NSString stringWithFormat:str_fmt, num_param->get_max()]]];
+      [self addArrangedSubview:self.text];
 
-    // if (((bx_param_bool_c *)self.param)->get() > 0) {
-    //   self.objectValue = [NSNumber numberWithInt:1];
-    // }
-    // [self setAction:@selector(valueChanged:)];
-    // [self setTarget:self];
+    }
 
   }
 
@@ -1058,8 +1155,46 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
 
 }
 
+/**
+ * sliderChanged
+ */
+- (void)sliderChanged:(id)sender {
+
+  bx_param_num_c * num_param;
+  NSString * str_fmt;
+  NSString * str_val;
+
+  num_param = (bx_param_num_c *)self.param;
+
+  if (num_param->get_base() == BASE_HEX) {
+    str_fmt = @"%X";
+  } else {
+    str_fmt = @"%d";
+  }
+
+  num_param->set(self.slider.intValue);
+  self.text.stringValue = [NSString stringWithFormat:str_fmt, self.slider.intValue];
+
+}
+
 - (void)valueChanged:(id)sender {
-// TODO : ... change it
+
+  NSInteger val;
+
+  val = [self.text.stringValue intValue];
+  if (self.slider != nil) {
+    self.slider.intValue = val;
+    [self.slider setNeedsDisplay:YES];
+  }
+
+  ((bx_param_num_c *)self.param)->set((UInt64)val);
+
+}
+
+- (void)dateChanged:(id)sender {
+
+  ((bx_param_num_c *)self.param)->set((UInt64)self.date.dateValue.timeIntervalSince1970);
+
 }
 
 @end
@@ -1145,12 +1280,6 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
 @end
 
 
-
-
-
-
-
-
 @implementation BXNSBrowser
 
 /**
@@ -1167,6 +1296,7 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
     self.pathSeparator = @".";
     self.allowsMultipleSelection = NO;
     self.maxVisibleColumns = 3;
+    self.takesTitleFromPreviousColumn = YES;
     [self setCellClass:[BXNSBrowserCell class]];
 
     self.delegate = self;
@@ -1265,10 +1395,13 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
         if (label == NULL) {
           label = num_param->get_description();
         }
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = NULL;
+        }
 
         numeric = [[BXNSNumberSelector alloc] initWithBrowser:browser Param:num_param];
 
-        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+        cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"-missing num label-":[NSString stringWithUTF8String:label]
           isLeaf:YES PredPath:[item path] SimParamName:num_param->get_name()
           Control:numeric
         ];
@@ -1284,6 +1417,10 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
         if (label == NULL) {
           label = bool_param->get_description();
         }
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = NULL;
+        }
+
         yesno = [[BXNSYesNoSelector alloc] initWithBrowser:browser Param:bool_param];
         cell = [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"-missing bool label-":[NSString stringWithUTF8String:label]
           isLeaf:YES PredPath:[item path] SimParamName:bool_param->get_name()
@@ -1301,6 +1438,9 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
         label = enum_param->get_label();
         if (label == NULL) {
           label = enum_param->get_description();
+        }
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = NULL;
         }
 
         choice = [[BXNSChoiceSelector alloc] initWithBrowser:browser Param:enum_param];
@@ -1321,6 +1461,9 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
         label = string_param->get_label();
         if (label == NULL) {
           label = string_param->get_description();
+        }
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = NULL;
         }
 
         string = [[BXNSStringSelector alloc] initWithBrowser:browser Param:string_param];
@@ -1367,8 +1510,13 @@ NSLog(@"noMaxVal=%d withEdit=%d", noMaxVal, withEdit);
         if (label == NULL) {
           label = list_param->get_name();
         }
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = NULL;
+        }
+
+
         cell = [[BXNSBrowserCell alloc]
-          initTextCell:label==NULL?@"":[NSString stringWithUTF8String:label]
+          initTextCell:label==NULL?@"-missing list label-":[NSString stringWithUTF8String:label]
           isLeaf:NO PredPath:[item path] SimParamName:list_param->get_name()
         ];
         break;
