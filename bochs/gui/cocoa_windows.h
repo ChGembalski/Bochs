@@ -211,7 +211,7 @@
 
   @end
 
-  @interface BXNSYesNoSelector : NSStackView//NSSwitch //NSPopUpButton
+  @interface BXNSYesNoSelector : NSStackView
 
     @property (nonatomic, readwrite) void * _Nonnull param;
     @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull yesno;
@@ -232,9 +232,11 @@
 
   @end
 
-  @interface BXNSNumberSelector : NSSlider
+  @interface BXNSNumberSelector : NSStackView//NSSlider
 
     @property (nonatomic, readwrite) void * _Nonnull param;
+    @property (nonatomic, readwrite, strong) NSSlider * _Nullable slider;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull text;
 
     - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
 
