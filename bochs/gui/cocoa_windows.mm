@@ -29,6 +29,7 @@
 #include "cocoa_menu.h"
 #include "config.h"
 #include "siminterface.h"
+#include "param_names.h"
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
 #include "bx_debug/debug.h"
@@ -38,10 +39,10 @@
 
 edit_opts_t root_options[] = {
   { @"General options",                     "general" },
-  { @"Optional plugin control",             "#" },
+  { @"Optional plugin control",             BXPN_PLUGIN_CTRL },
   { @"Logfile options",                     "log" },
-  { @"Log options for all devices",         "#" },
-  { @"Log options for individual devices",  "#" },
+  { @"Log options for all devices",         "general.logfn" },
+  { @"Log options for individual devices",  "general.logdevice" },
   { @"CPU options",                         "cpu" },
   { @"CPUID options",                       "cpuid" },
   { @"Memory options",                      "memory" },
@@ -50,7 +51,7 @@ edit_opts_t root_options[] = {
   { @"Bochs Display & Interface options",   "display" },
   { @"Keyboard & Mouse options",            "keyboard_mouse" },
   { @"Boot options",                        "boot_params" },
-  { @"Disk options",                        "#" },
+  { @"Disk options",                        BXPN_MENU_DISK },
   { @"Serial / Parallel / USB options",     "ports" },
   { @"Network card options",                "network" },
   { @"Sound card options",                  "sound" },
@@ -716,6 +717,7 @@ gui_window_t window_list[] = {
     self.isLeaf = YES;
     self.param_name = nil;
     self.path = @"";
+    self.dev_no = 0;
     self.sub_control = nil;
 
   }
@@ -739,6 +741,7 @@ gui_window_t window_list[] = {
     } else {
       self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
     }
+    self.dev_no = 0;
     self.sub_control = nil;
 
   }
@@ -747,6 +750,27 @@ gui_window_t window_list[] = {
 
 }
 
+
+- (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name DeviceNo:(unsigned) dev_no {
+
+  self = [super initTextCell:string];
+  if (self) {
+
+    self.isLeaf = leaf;
+    self.param_name = param_name;
+    if (path.length == 0) {
+      self.path = [[NSString alloc] initWithUTF8String:param_name];
+    } else {
+      self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
+    }
+    self.dev_no = dev_no;
+    self.sub_control = nil;
+
+  }
+
+  return self;
+
+}
 /**
  * initTextCell
  */
@@ -762,6 +786,7 @@ gui_window_t window_list[] = {
     } else {
       self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
     }
+    self.dev_no = 0;
     self.sub_control = ctrl;
 
   }
@@ -908,15 +933,7 @@ gui_window_t window_list[] = {
     enum_param = (bx_param_enum_c *)param;
     NSAssert(enum_param->get_type() == BXT_PARAM_ENUM, @"Invalid param type! expected : BXT_PARAM_ENUM");
 
-    NSLog(@"##ENUM##>> min=%d max=%d max-min=%d val64=%d val32=%d base=%d opt=%x",
-      enum_param->get_min(), enum_param->get_max(), (enum_param->get_max() - enum_param->get_min()),
-      enum_param->get64(), enum_param->get(), enum_param->get_base(), enum_param->get_options());
-
     self.autoresizingMask = NSViewWidthSizable;
-
-    /* temp bugfix : something overwrites the end value of bx_param_enum_c "start_mode" so we fix it here
-     * the NULL termination is missing
-     */
 
     i=0;
     while ((choice = enum_param->get_choice(i)) != NULL) {
@@ -950,6 +967,101 @@ gui_window_t window_list[] = {
   if (curSel + ((bx_param_enum_c *)self.param)->get_min() != ((bx_param_enum_c *)self.param)->get()) {
     ((bx_param_enum_c *)self.param)->set(curSel + ((bx_param_enum_c *)self.param)->get_min());
   }
+
+}
+
+@end
+
+
+@implementation BXNSGlobalLogSelector
+
+/**
+ * initWithBrowser
+ */
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(unsigned) param {
+
+  self = [super initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,50) pullsDown:NO];
+  if (self) {
+
+    unsigned i;
+    const char * choices[] = {"ignore", "report", "warn", "ask", "fatal", NULL};
+
+    self.autoresizingMask = NSViewWidthSizable;
+
+    i=0;
+    while (choices[i] != NULL) {
+      [self addItemWithTitle:[NSString stringWithUTF8String:choices[i]]];
+      i++;
+    }
+
+    self.param = param;
+    self.objectValue = [NSNumber numberWithInt:SIM->get_default_log_action(param)];
+    [self setAction:@selector(valueChanged:)];
+    [self setTarget:self];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * valueChanged
+ */
+- (void)valueChanged:(id)sender {
+
+  NSInteger curSel;
+
+  curSel = [sender indexOfSelectedItem];
+  SIM->set_default_log_action(self.param, curSel);
+
+}
+
+@end
+
+
+@implementation BXNSDeviceLogSelector
+
+/**
+ * initWithBrowser
+ */
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser DeviceNo:(unsigned) dev_no Param:(unsigned) param {
+
+  self = [super initWithFrame:NSMakeRect(0,0,[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width,50) pullsDown:NO];
+  if (self) {
+
+    unsigned i;
+    const char * choices[] = {"ignore", "report", "warn", "ask", "fatal", NULL};
+
+    self.autoresizingMask = NSViewWidthSizable;
+
+    i=0;
+    while (choices[i] != NULL) {
+      [self addItemWithTitle:[NSString stringWithUTF8String:choices[i]]];
+      i++;
+    }
+
+    self.dev_no = dev_no;
+    self.param = param;
+    self.objectValue = [NSNumber numberWithInt:SIM->get_log_action(dev_no, param)];
+    [self setAction:@selector(valueChanged:)];
+    [self setTarget:self];
+
+  }
+
+  return self;
+
+}
+
+/**
+ * valueChanged
+ */
+- (void)valueChanged:(id)sender {
+
+  NSInteger curSel;
+
+  curSel = [sender indexOfSelectedItem];
+  SIM->set_log_action(self.dev_no, self.param, curSel);
 
 }
 
@@ -1087,13 +1199,6 @@ gui_window_t window_list[] = {
     noMinVal = num_param->get_min() == 0xffffffff;
     withEdit = (!noMaxVal && ((num_param->get_max() - num_param->get_min()) > 15));
     smallRange = ((num_param->get_max() - num_param->get_min()) <= 15);
-
-    NSLog(@"##>> min=%d max=%d max-min=%d val64=%d val32=%d base=%d opt=%x",
-      num_param->get_min(), num_param->get_max(), (num_param->get_max() - num_param->get_min()),
-      num_param->get64(), num_param->get(), num_param->get_base(), num_param->get_options());
-
-    // no Max Value -> Edit Field (num) with < > ?
-    NSLog(@"noMinVal=%d noMaxVal=%d withEdit=%d", noMinVal, noMaxVal, withEdit);
 
     // create a horizontal stack
     inner = [[NSStackView alloc] initWithFrame:NSMakeRect(0,0,(unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 20,50)];
@@ -1321,34 +1426,28 @@ gui_window_t window_list[] = {
     while (root_options[count].param != NULL) {
       count++;
     }
-    NSLog(@"numberOfChildrenOfItem %d", count);
     return count;
   }
 
-  if ([item path].UTF8String[0] == '#') {
-    // TODO : special handling
-    NSLog(@"numberOfChildrenOfItem %@ %d", [item path], 0);
-    return 0;
+  // may be device log
+  if (strcmp([item path].UTF8String, "general.logdevice") == 0) {
+    return SIM->get_n_log_modules();
+  }
+  // may be device log device
+  if ([[item path] hasPrefix:@"general.logdevice."]) {
+    return 4;
   }
 
   param = SIM->get_param([item path].UTF8String, NULL);
+
   if (param == NULL) {
-    NSLog(@"numberOfChildrenOfItem param == NULL %@ %d %@", [item path], 0, [item sub_control] == nil?@"nil":[[item sub_control] class]);
     return 0;
   }
-  switch (param->get_type()) {
-    case BXT_LIST: {
-      int size;
-
-      size = ((bx_list_c *) param)->get_size();
-      NSLog(@"numberOfChildrenOfItem %@ %d", [item path], size);
-      return size;
-    }
-    default: {
-      NSLog(@"numberOfChildrenOfItem default %@ %d %@", [item path], 0, [item sub_control] == nil?@"nil":[[item sub_control] class]);
-      return 0;
-    }
+  if (param->get_type() == BXT_LIST) {
+    return ((bx_list_c *) param)->get_size();
   }
+
+  return 0;
 
 }
 
@@ -1362,25 +1461,76 @@ gui_window_t window_list[] = {
   BOOL leaf;
 
   if (item == nil) {
-    if (root_options[index].param[0] != '#') {
+    // may be device log
+    if (strcmp(root_options[index].param, "general.logdevice") == 0) {
+      leaf = NO;
+    } else {
       param = SIM->get_param(root_options[index].param, NULL);
       leaf =  param == NULL;
-    } else {
-      leaf = YES;
     }
     cell = [[BXNSBrowserCell alloc] initTextCell:root_options[index].title isLeaf:leaf PredPath:@"" SimParamName:root_options[index].param];
   } else {
     bx_param_c * child;
 
-    NSLog(@"[%d]>>>>>%@<<<<<%@>>>>>>>%@", index, [item path], [item class], [item sub_control] == nil?@"nil":[[item sub_control] class]);
-
-    // if ([item sub_control] != nil) {
-    //   NSLog(@"return a sub control [%@]", [[item sub_control] class]);
-    //   return [item sub_control];
-    // }
-
     param = SIM->get_param([item path].UTF8String, NULL);
+    if (param == NULL) {
+      // may be device log device
+      if ([[item path] hasPrefix:@"general.logdevice."]) {
+        const char * log_lvl[] = { "debug", "info", "error", "panic" };
+        BXNSDeviceLogSelector * choice;
+
+        choice = [[BXNSDeviceLogSelector alloc] initWithBrowser:browser DeviceNo:[item dev_no] Param:index];
+
+        return [[BXNSBrowserCell alloc] initTextCell:[NSString stringWithUTF8String:log_lvl[index]].uppercaseString
+          isLeaf:YES PredPath:[item path] SimParamName:log_lvl[index]
+          Control:choice
+        ];
+      }
+      // here we may have general.logdevice
+      NSString * dev_name;
+      NSString * acces_name;
+
+      // create a nice name
+      dev_name = [[[[NSString stringWithUTF8String:SIM->get_prefix(index)]
+      stringByReplacingOccurrencesOfString:@"[" withString:@" "]
+      stringByReplacingOccurrencesOfString:@"]" withString:@" "]
+      stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+      leaf = NO;
+      acces_name = dev_name;
+
+      if (dev_name.length == 0) {
+        dev_name = @"not available";
+        acces_name = [[NSString alloc] initWithFormat:@"not_available_%d", index];
+        leaf = YES;
+      }
+
+      return [[BXNSBrowserCell alloc] initTextCell:dev_name isLeaf:leaf PredPath:[item path] SimParamName:acces_name.UTF8String DeviceNo:index];
+    }
+
     child = ((bx_list_c *)param)->get((int)index);
+
+    if ([[item path] hasPrefix:@"general.logfn"]) {
+      // special case global logging
+      BXNSGlobalLogSelector * choice;
+      unsigned level;
+      NSString * s1;
+
+      s1 = [NSString stringWithUTF8String:child->get_name()];
+      for (level=0; level<SIM->get_max_log_level(); level++) {
+        NSString * s2;
+
+        s2 = [NSString stringWithUTF8String:SIM->get_log_level_name(level)];
+        if ([s1 caseInsensitiveCompare:s2] == NSOrderedSame) {
+          break;
+        }
+      }
+
+      choice = [[BXNSGlobalLogSelector alloc] initWithBrowser:browser Param:level];
+      return [[BXNSBrowserCell alloc] initTextCell:[NSString stringWithUTF8String:child->get_name()]
+        isLeaf:YES PredPath:[item path] SimParamName:child->get_name()
+        Control:choice
+      ];
+    }
 
     switch (child->get_type()) {
 
@@ -1390,7 +1540,6 @@ gui_window_t window_list[] = {
         BXNSNumberSelector * numeric;
 
         num_param = (bx_param_num_c *)child;
-        NSLog(@"process number");
         label = num_param->get_label();
         if (label == NULL) {
           label = num_param->get_description();
@@ -1414,6 +1563,10 @@ gui_window_t window_list[] = {
 
         bool_param = (bx_param_bool_c *)child;
         label = bool_param->get_label();
+        // special handling plugins (only name is set)
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = bool_param->get_name();
+        }
         if (label == NULL) {
           label = bool_param->get_description();
         }
@@ -1434,7 +1587,6 @@ gui_window_t window_list[] = {
         BXNSChoiceSelector * choice;
 
         enum_param = (bx_param_enum_c *)child;
-        NSLog(@"process enum");
         label = enum_param->get_label();
         if (label == NULL) {
           label = enum_param->get_description();
@@ -1457,7 +1609,6 @@ gui_window_t window_list[] = {
         BXNSStringSelector * string;
 
         string_param = (bx_param_string_c *)child;
-        NSLog(@"process string");
         label = string_param->get_label();
         if (label == NULL) {
           label = string_param->get_description();
@@ -1478,8 +1629,6 @@ gui_window_t window_list[] = {
         bx_param_bytestring_c * bytestring_param;
 
         bytestring_param = (bx_param_bytestring_c *)child;
-        NSLog(@"process bytestring");
-
 
         cell = [[BXNSBrowserCell alloc] initTextCell:@">>>BYTE STRING<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
         break;
@@ -1488,16 +1637,10 @@ gui_window_t window_list[] = {
         bx_param_filename_c * filename_param;
 
         filename_param = (bx_param_filename_c *)child;
-        NSLog(@"process filename");
 
         cell = [[BXNSBrowserCell alloc] initTextCell:@">>>FILENAME<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
         break;
       }
-
-
-
-
-
       case BXT_LIST: {
         bx_list_c * list_param;
         const char * label;
@@ -1507,13 +1650,16 @@ gui_window_t window_list[] = {
         if (label == NULL) {
           label = list_param->get_label();
         }
+        // special handling logfunctions (only name is set)
+        if ((label != NULL) && (strlen(label)==0)) {
+          label = list_param->get_name();
+        }
         if (label == NULL) {
           label = list_param->get_name();
         }
         if ((label != NULL) && (strlen(label)==0)) {
           label = NULL;
         }
-
 
         cell = [[BXNSBrowserCell alloc]
           initTextCell:label==NULL?@"-missing list label-":[NSString stringWithUTF8String:label]
@@ -1530,8 +1676,6 @@ gui_window_t window_list[] = {
 
   }
 
-  NSLog(@"child [%d] [%@] [%@] %@",
-  index, [cell path], [NSString stringWithUTF8String:[cell param_name]], [item class]);
   return cell;
 
 }
@@ -1542,11 +1686,9 @@ gui_window_t window_list[] = {
 - (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item {
 
   if (item != nil) {
-    NSLog(@"isLeafItem %@ %@ %@", [item class], [item path], [item isLeaf]?@"YES":@"NO");
     return [item isLeaf];
   }
 
-  NSLog(@"isLeafItem %@ %@", [item class], @"NO");
   return YES;
 
 }
@@ -1605,8 +1747,6 @@ gui_window_t window_list[] = {
 
     [self.contentView addSubview:self.config];
 
-
-
     [NSApp setDelegate:self];
     [NSApp setDelegate:[self contentView]];
 
@@ -1615,14 +1755,7 @@ gui_window_t window_list[] = {
   return self;
 }
 
-
-
-
 @end
-
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

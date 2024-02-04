@@ -186,10 +186,12 @@
     @property (nonatomic, readwrite) BOOL isLeaf;
     @property (nonatomic, readwrite) NSString * _Nonnull path;
     @property (nonatomic, readwrite) const char * _Nullable param_name;
+    @property (nonatomic, readwrite) unsigned dev_no;
     @property (nonatomic, readwrite, strong) id _Nullable sub_control;
 
     - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string;
     - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name;
+    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name DeviceNo:(unsigned) dev_no;
     - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name Control:(id _Nonnull) ctrl;
 
   @end
@@ -227,6 +229,27 @@
     @property (nonatomic, readwrite) void * _Nonnull param;
 
     - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
+
+    - (void)valueChanged:(id)sender;
+
+  @end
+
+  @interface BXNSGlobalLogSelector : NSPopUpButton
+
+    @property (nonatomic, readwrite) unsigned param;
+
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(unsigned) param;
+
+    - (void)valueChanged:(id)sender;
+
+  @end
+
+  @interface BXNSDeviceLogSelector : NSPopUpButton
+
+    @property (nonatomic, readwrite) unsigned dev_no;
+    @property (nonatomic, readwrite) unsigned param;
+
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser DeviceNo:(unsigned) dev_no Param:(unsigned) param;
 
     - (void)valueChanged:(id)sender;
 
