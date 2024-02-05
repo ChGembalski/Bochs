@@ -50,6 +50,7 @@
   + (void)showMenu:(NSString * _Nonnull) title doShow:(BOOL) show;
   + (NSString * _Nonnull)getMenuItemPath:(NSMenuItem * _Nonnull) menuitem;
   + (NSString * _Nullable)getMenuItemTypePath:(property_t) type;
+  + (property_t) getMenuItemProperty:(NSString * _Nonnull) path;
 
   @end
 
