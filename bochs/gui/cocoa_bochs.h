@@ -48,7 +48,10 @@
     BX_PROPERTY_STEP_SIM,
     BX_PROPERTY_STEP_N_SIM,
     BX_PROPERTY_BREAK_SIM,
-    BX_PROPERTY_EXIT_SIM,
+    BX_PROPERTY_QUIT_SIM,
+    BX_PROPERTY_CONFIG_LOAD,
+    BX_PROPERTY_CONFIG_SAVE,
+    BX_PROPERTY_CONFIG_RESET
   } property_t;
 
   typedef struct {
@@ -74,14 +77,14 @@
     BXGuiCocoaApplication();
     ~BXGuiCocoaApplication();
 
-    void resetConfigurationWindow();
+
     void onBochsThreadExit();
 
     void showWindow(gui_window_type_t window, bool bShow);
     void activateWindow(gui_window_type_t window);
     void activateMenu(property_t type, bool bActivate);
     int getProperty(property_t property, bool bWait);
-    bool getPropertySet(bool bWait, unsigned cnt, unsigned property, ...);
+    void waitPropertySet(unsigned cnt, unsigned property, ...);
 
     void setSimulationState(simulation_state_t new_state);
     void showModalInfo(unsigned char level, const char * prefix, const char * msg);

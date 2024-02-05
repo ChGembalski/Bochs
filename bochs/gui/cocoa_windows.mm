@@ -70,8 +70,6 @@ edit_opts_t root_options[] = {
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSPropertyCollection
 
-NSMutableDictionary<NSString *, NSNumber *> * map;
-
 /**
  * init
  */
@@ -79,8 +77,9 @@ NSMutableDictionary<NSString *, NSNumber *> * map;
 
   self = [super init];
   if (self) {
-    map = [[NSMutableDictionary alloc] init];
+    self.map = [[NSMutableDictionary alloc] init];
   }
+
   return self;
 
 }
@@ -90,7 +89,7 @@ NSMutableDictionary<NSString *, NSNumber *> * map;
  */
 - (void)setProperty:(NSString * _Nonnull) name value:(NSInteger) val {
 
-  [map setObject:[NSNumber numberWithInteger:val] forKey:name];
+  [self.map setObject:[NSNumber numberWithInteger:val] forKey:name];
 
 }
 
@@ -101,16 +100,31 @@ NSMutableDictionary<NSString *, NSNumber *> * map;
 
   NSNumber * value;
 
-  value = [map objectForKey:name];
+  value = [self.map objectForKey:name];
   if (value == nil) {
     return BX_PROPERTY_UNDEFINED;
   }
-  [map removeObjectForKey:name];
+  [self. map removeObjectForKey:name];
 
   return value.integerValue;
 
 }
 
+/**
+ * peekProperty
+ */
+- (NSInteger)peekProperty:(NSString * _Nonnull) name {
+
+  NSNumber * value;
+
+  value = [self.map objectForKey:name];
+  if (value == nil) {
+    return BX_PROPERTY_UNDEFINED;
+  }
+
+  return value.integerValue;
+
+}
 
 @end
 
@@ -334,8 +348,10 @@ gui_window_t window_list[] = {
     menubar = [[BXNSMenuBar alloc] init:self];
 
     self.bx_p_col = [[BXNSPropertyCollection alloc] init];
-
     self.bx_log_queue = [[BXNSLogQueue alloc] init];
+    self.event_condition = [[NSCondition alloc] init];
+    self.event_condition.name = @"event_condition";
+    self.event_lock = NO;
 
     // init all windows we use
     // each window_list.window [[? alloc] init];
@@ -462,6 +478,23 @@ gui_window_t window_list[] = {
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
     default : return BX_LOG_ASK_CHOICE_DIE;
   }
+
+}
+
+
++ (int)showModalParamRequestDialog:(void * _Nonnull) param {
+
+  BXNSParamRequestWindow * request;
+  NSModalResponse response;
+
+  request = [[BXNSParamRequestWindow alloc] init:param];
+
+  response = [NSApp runModalForWindow:request];
+  if (response == NSModalResponseOK) {
+    return 1;
+  }
+
+  return 0;
 
 }
 
@@ -609,6 +642,62 @@ gui_window_t window_list[] = {
 
 }
 
+/**
+ * waitPropertySet
+ */
+- (void)waitPropertySet:(NSMutableArray<NSNumber *> * _Nonnull) property_list {
+
+  NSMutableArray<NSString *> * property_names;
+
+  property_names = [[NSMutableArray alloc] init];
+
+  // convert to string
+  for (NSNumber * num_property in property_list) {
+    NSString * property;
+    property_t p;
+
+    p = (property_t) num_property.intValue;
+    NSLog(@"Presolve[%@]->%d", num_property, p);
+    property = [BXNSMenuBar getMenuItemTypePath:p];
+    if (property != nil) {
+      [property_names addObject:property];
+    }
+  }
+
+  // if empty resolve faild ... can't wait
+  if (property_names.count == 0) {
+    return;
+  }
+
+  // now check if one is set
+  for (NSString * property in property_names) {
+    if ([self.bx_p_col peekProperty:property] != BX_PROPERTY_UNDEFINED) {
+      return;
+    }
+  }
+
+NSLog(@"enter wait state ...");
+  // none is set wait ...
+  [self.event_condition lock];
+event_loop:
+  self.event_lock = YES;
+  while (self.event_lock) {
+    [self.event_condition wait];
+  }
+
+  NSLog(@" awake check properties ...");
+  // now check if one is set
+  for (NSString * property in property_names) {
+    NSLog(@"property=%@ value=%d", property, [self.bx_p_col peekProperty:property]);
+    if ([self.bx_p_col peekProperty:property] != BX_PROPERTY_UNDEFINED) {
+      NSLog(@"Condition true %@", property);
+      [self.event_condition unlock];
+      return;
+    }
+  }
+  goto event_loop;
+
+}
 
 /**
  * onMenuEvent
@@ -633,18 +722,25 @@ gui_window_t window_list[] = {
   }
 
   NSLog(@"Hit that menu %@", senderPath);
-  [self.bx_p_col setProperty:senderPath value:1];
+  // [self.bx_p_col setProperty:senderPath value:1];
 
-  // propagate to windows
+  // propagate to windows first
 
   i=0;
   while (window_list[i].name != BX_GUI_WINDOW_UNDEFINED) {
     if ([((BXNSGenericWindow *)window_list[i].window) onMenuEvent:senderPath]) {
-      break;
+      NSLog(@"event consumed by window %@", window_list[i].window);
+      return;
     }
     i++;
   }
-
+NSLog(@"add property to list");
+  // no window need this property so set and signal
+  [self.event_condition lock];
+  [self.bx_p_col setProperty:senderPath value:1];
+  self.event_lock = NO;
+  [self.event_condition signal];
+  [self.event_condition unlock];
 
 }
 
@@ -724,6 +820,33 @@ gui_window_t window_list[] = {
     [self setCellClass:[BXNSBrowserCell class]];
 
     self.delegate = self;
+    self.fix_root = nil;
+
+  }
+
+  return self;
+
+}
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect Root:(void * _Nonnull) fix_root {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.hasHorizontalScroller = YES;
+    self.columnResizingType = NSBrowserAutoColumnResizing;
+    self.pathSeparator = @".";
+    self.allowsMultipleSelection = NO;
+    self.maxVisibleColumns = 3;
+    self.takesTitleFromPreviousColumn = YES;
+    [self setCellClass:[BXNSBrowserCell class]];
+
+    self.delegate = self;
+    self.fix_root = fix_root;
 
   }
 
@@ -740,6 +863,10 @@ gui_window_t window_list[] = {
 
   if (item == nil) {
     NSInteger count;
+
+    if (self.fix_root != nil) {
+      return 1;
+    }
 
     count = 0;
     while (root_options[count].param != NULL) {
@@ -780,6 +907,19 @@ gui_window_t window_list[] = {
   BOOL leaf;
 
   if (item == nil) {
+    // may be internal item
+    if (self.fix_root != nil) {
+      const char * label;
+      char paramPath[512] = {0};
+
+      param = (bx_param_c *)self.fix_root;
+      param->get_param_path(paramPath, 512);
+      label = ((bx_list_c *)param)->get_title();
+
+      return [[BXNSBrowserCell alloc] initTextCell:label==NULL?@"-missing root label-":[NSString stringWithUTF8String:label]
+        isLeaf:NO PredPath:@"" SimParamName:paramPath
+      ];
+    }
     // may be device log
     if (strcmp(root_options[index].param, "general.logdevice") == 0) {
       leaf = NO;
@@ -819,7 +959,7 @@ gui_window_t window_list[] = {
 
       if (dev_name.length == 0) {
         dev_name = @"not available";
-        acces_name = [[NSString alloc] initWithFormat:@"not_available_%d", index];
+        acces_name = [[NSString alloc] initWithFormat:@"not_available_%d", (unsigned)index];
         leaf = YES;
       }
 
@@ -944,22 +1084,22 @@ gui_window_t window_list[] = {
         ];
         break;
       }
-      case BXT_PARAM_BYTESTRING: {
-        bx_param_bytestring_c * bytestring_param;
-
-        bytestring_param = (bx_param_bytestring_c *)child;
-
-        cell = [[BXNSBrowserCell alloc] initTextCell:@">>>BYTE STRING<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
-        break;
-      }
-      case BXT_PARAM_FILEDATA: {
-        bx_param_filename_c * filename_param;
-
-        filename_param = (bx_param_filename_c *)child;
-
-        cell = [[BXNSBrowserCell alloc] initTextCell:@">>>FILENAME<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
-        break;
-      }
+      // case BXT_PARAM_BYTESTRING: {
+      //   bx_param_bytestring_c * bytestring_param;
+      //
+      //   bytestring_param = (bx_param_bytestring_c *)child;
+      //
+      //   cell = [[BXNSBrowserCell alloc] initTextCell:@">>>BYTE STRING<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+      //   break;
+      // }
+      // case BXT_PARAM_FILEDATA: {
+      //   bx_param_filename_c * filename_param;
+      //
+      //   filename_param = (bx_param_filename_c *)child;
+      //
+      //   cell = [[BXNSBrowserCell alloc] initTextCell:@">>>FILENAME<<<" isLeaf:YES PredPath:[item path] SimParamName:param->get_name()];
+      //   break;
+      // }
       case BXT_LIST: {
         bx_list_c * list_param;
         const char * label;
@@ -1035,6 +1175,73 @@ gui_window_t window_list[] = {
 
   return [[BXNSPreviewController alloc] initWithView:[self frameOfInsideOfColumn:self.lastVisibleColumn] Control:[item sub_control]];
 
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSParamRequestWindow
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSParamRequestWindow
+
+- (instancetype _Nonnull)init:(void * _Nonnull) param {
+
+  self = [super initWithContentRect:NSMakeRect(0, 0, 640, 480)
+    styleMask: NSWindowStyleMaskTitled |
+               NSWindowStyleMaskClosable |
+               NSWindowStyleMaskMiniaturizable |
+               NSWindowStyleMaskResizable
+      backing: NSBackingStoreBuffered
+        defer: NO
+  ];
+  if (self) {
+
+    NSStackView * inner;
+    NSStackView * buttons;
+    NSButton * OK_BUTTON;
+    NSButton * CANCEL_BUTTON;
+    BXNSBrowser * browser;
+
+    [self setLevel:NSPopUpMenuWindowLevel];
+    [self setTitle:BOCHS_WINDOW_CONFIG_NAME];
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    inner = [[NSStackView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
+    inner.orientation = NSUserInterfaceLayoutOrientationVertical;
+    [self.contentView addSubview:inner];
+
+    // add control on top
+    browser = [[BXNSBrowser alloc] initWithFrame:NSMakeRect(0, 0, 640, 400) Root:param];
+    [inner addArrangedSubview:browser];
+
+    buttons = [[NSStackView alloc] initWithFrame:NSMakeRect(0, 0, 640, 50)];
+    [inner addArrangedSubview:buttons];
+
+    OK_BUTTON = [NSButton buttonWithTitle:@"OK" target:self action:@selector(onOKClick:)];
+    CANCEL_BUTTON = [NSButton buttonWithTitle:@"Cancel" target:self action:@selector(onCancelClick:)];
+
+    [buttons addArrangedSubview:OK_BUTTON];
+    [buttons addArrangedSubview:CANCEL_BUTTON];
+
+  }
+
+  return self;
+
+}
+
+- (void)onOKClick:(id _Nonnull)sender {
+  [self setIsVisible:NO];
+  [NSApp stopModalWithCode:NSModalResponseOK];
+}
+
+- (void)onCancelClick:(id _Nonnull)sender {
+  [self setIsVisible:NO];
+  [NSApp stopModalWithCode:NSModalResponseCancel];
+}
+
+- (BOOL) getWorksWhenModal {
+  return YES;
 }
 
 @end
@@ -1249,8 +1456,8 @@ BXNSEventQueue * BXEventQueue;
     mf << 32 |
     mx << 16 |
     my;
-  BXL_DEBUG(([NSString stringWithFormat:@"handleMouse x=%lld y=%lld btn=%llx flag=%llx evt=%llx abs=%s",
-    mx, my, mb, mf, evt, self.MouseCaptureAbsolute?"YES":"NO"]));
+  // BXL_DEBUG(([NSString stringWithFormat:@"handleMouse x=%lld y=%lld btn=%llx flag=%llx evt=%llx abs=%s",
+  //   mx, my, mb, mf, evt, self.MouseCaptureAbsolute?"YES":"NO"]));
   [BXEventQueue enqueue:evt];
 
 }
@@ -1455,9 +1662,10 @@ UInt8 loglevelMask;
     msg = [[NSAttributedString alloc] initWithString:fmsg attributes:attributesText];
 
     [[messagesText textStorage] appendAttributedString:msg];
-    [messagesText scrollRangeToVisible:NSMakeRange([[messagesText string] length], 0)];
 
   }
+
+  [messagesText scrollRangeToVisible:NSMakeRange([[messagesText string] length], 0)];
 
 }
 

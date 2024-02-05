@@ -66,10 +66,13 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSPropertyCollection : NSObject
 
+    @property (nonatomic, readwrite, strong) NSMutableDictionary<NSString *, NSNumber *> * _Nonnull map;
+
     - (instancetype _Nonnull)init;
 
     - (void)setProperty:(NSString * _Nonnull) name value:(NSInteger) val;
     - (NSInteger)getProperty:(NSString * _Nonnull) name;
+    - (NSInteger)peekProperty:(NSString * _Nonnull) name;
 
   @end
 
@@ -140,12 +143,15 @@
     @property (atomic, readwrite) simulation_state_t simulation_state;
     @property (nonatomic, readwrite, strong) BXNSPropertyCollection * _Nonnull bx_p_col;
     @property (nonatomic, readwrite, strong) BXNSLogQueue * _Nonnull bx_log_queue;
+    @property (nonatomic, readwrite, strong) NSCondition * _Nonnull event_condition;
+    @property (nonatomic, readwrite) BOOL event_lock;
 
     - (instancetype _Nonnull)init:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
     - (void)dealloc;
 
     + (void)showModalInfoDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg;
     + (int)showModalQuestionDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg;
+    + (int)showModalParamRequestDialog:(void * _Nonnull) param;
 
     - (void)onBochsThreadExit;
 
@@ -156,6 +162,7 @@
     - (gui_window_type_t)getWindowType:(NSString * _Nonnull) name;
     - (void)activateMenu:(property_t) type doActivate:(BOOL) activate;
     - (int)getProperty:(property_t) p;
+    - (void)waitPropertySet:(NSMutableArray<NSNumber *> * _Nonnull) property_list;
 
     - (void)onMenuEvent:(id _Nonnull) sender;
 
@@ -183,13 +190,30 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSBrowser : NSBrowser <NSBrowserDelegate>
 
+    @property (nonatomic, readwrite) void * _Nullable fix_root;
+
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect Root:(void * _Nonnull) fix_root;
 
     - (NSInteger)browser:(NSBrowser * _Nonnull)browser numberOfChildrenOfItem:(id _Nullable)item;
     - (id _Nonnull)browser:(NSBrowser * _Nonnull)browser child:(NSInteger)index ofItem:(id _Nullable)item;
     - (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item;
     - (id _Nonnull)browser:(NSBrowser * _Nonnull)browser objectValueForItem:(id _Nullable)item;
     - (NSViewController * _Nullable)browser:(NSBrowser * _Nonnull)browser previewViewControllerForLeafItem:(id _Nullable)item;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSParamRequestWindow
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSParamRequestWindow : NSWindow <NSApplicationDelegate>
+
+    - (instancetype _Nonnull)init:(void * _Nonnull) param;
+
+    - (void)onOKClick:(id _Nonnull)sender;
+    - (void)onCancelClick:(id _Nonnull)sender;
+    - (BOOL) getWorksWhenModal;
 
   @end
 

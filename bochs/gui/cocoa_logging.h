@@ -27,9 +27,21 @@
 
   #define BX_GUI_COCOA_LOGGING_H
 
+  #include "config.h"
+
   #if __cplusplus
     extern "C" {
   #endif
+
+#if BX_NO_LOGGING
+
+  #define BXL_INFO(x)
+  #define BXL_DEBUG(x)
+  #define BXL_ERROR(x)
+  #define BXL_PANIC(x)
+  #define BXL_FATAL(x)
+
+#else /* BX_NO_LOGGING */
 
   extern void bx_cocoa_gui_c_log_info(const char *data);
   extern void bx_cocoa_gui_c_log_debug(const char *data);
@@ -42,6 +54,8 @@
   #define BXL_ERROR(x) bx_cocoa_gui_c_log_error([x UTF8String])
   #define BXL_PANIC(x) bx_cocoa_gui_c_log_panic([x UTF8String])
   #define BXL_FATAL(x) bx_cocoa_gui_c_log_fatal([x UTF8String])
+
+#endif /* BX_NO_LOGGING */
 
   #if __cplusplus
     }   // Extern C

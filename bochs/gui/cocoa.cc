@@ -250,8 +250,8 @@ IMPLEMENT_GUI_PLUGIN_CODE(cocoa)
 // Look in 'x.cc', 'carbon.cc', and 'win32.cc' for specific
 // implementations of this interface.  -Kevin
 
-
 // Logging to console support
+#if !BX_NO_LOGGING
 
 extern "C" void bx_cocoa_gui_c_log_info(const char *data) {
   BX_INFO(("%s", data));
@@ -272,6 +272,8 @@ extern "C" void bx_cocoa_gui_c_log_panic(const char *data) {
 extern "C" void bx_cocoa_gui_c_log_fatal(const char *data) {
   BX_FATAL(("%s", data));
 }
+
+#endif /* !BX_NO_LOGGING */
 
 // flip bits
 
@@ -344,9 +346,9 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   SIM->set_notify_callback(cocoa_notify_callback, NULL);
 
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
-  cocoa_with_debug_gui = 0;//1;
+  cocoa_with_debug_gui = 1;
 #else
-  SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
+  // SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
 #endif
 
   // ??? Need this one here ?

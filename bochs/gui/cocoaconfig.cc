@@ -38,6 +38,8 @@
 
 #include "cocoa_bochs.h"
 
+#define CI_PATH_LENGTH 512
+
 static int cocoa_ci_callback(void *userdata, ci_command_t command);
 static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event);
 
@@ -50,6 +52,7 @@ PLUGIN_ENTRY_FOR_MODULE(cocoaconfig)
     SIM->set_log_viewer(true);
     // this callback is captured by cocoa.cc
     SIM->set_notify_callback(cocoa_notify_callback, NULL);
+    // SIM->register_runtime_config_handler()
   } else if (mode == PLUGIN_FINI) {
     delete bxcocoagui;
   } else if (mode == PLUGIN_PROBE) {
@@ -57,8 +60,6 @@ PLUGIN_ENTRY_FOR_MODULE(cocoaconfig)
   }
   return 0; // Success
 }
-
-
 
 
 
@@ -77,29 +78,70 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
   {
     case CI_START: {
       if (SIM->get_param_enum(BXPN_BOCHS_START)->get() == BX_QUICK_START) {
-        bxcocoagui->resetConfigurationWindow();
+
         bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, false);
         bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
-        bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
+        bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_LOAD, false);
+        bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_SAVE, false);
+        bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_RESET, false);
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
         bxcocoagui->setSimulationState(SIM_RUN);
         SIM->begin_simulation(main_argc, main_argv);
         // we don't expect it to return, but if it does, quit
         SIM->quit_sim(1);
       } else {
-        bxcocoagui->resetConfigurationWindow();
         bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, true);
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
-        if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, true) == 1) {
+ci_start_wait:
+        bxcocoagui->waitPropertySet(5,
+          BX_PROPERTY_START_SIM,
+          BX_PROPERTY_QUIT_SIM,
+          BX_PROPERTY_CONFIG_LOAD,
+          BX_PROPERTY_CONFIG_SAVE,
+          BX_PROPERTY_CONFIG_RESET
+        );
+
+        if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, false) == 1) {
           bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
-          bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, true);
-          // bxcocoagui->activateMenu(BX_PROPERTY_BREAK_SIM, true);
+          bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_LOAD, false);
+          bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_SAVE, false);
+          bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_RESET, false);
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
           bxcocoagui->setSimulationState(SIM_RUN);
           SIM->begin_simulation(main_argc, main_argv);
+          // we don't expect it to return, but if it does, quit
+          SIM->quit_sim(1);
         }
-        SIM->quit_sim(1);
+        if (bxcocoagui->getProperty(BX_PROPERTY_QUIT_SIM, false) == 1) {
+          SIM->quit_sim(1);
+        }
+        if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_LOAD, false) == 1) {
+//           char oldrc[CI_PATH_LENGTH];
+//           if (SIM->ask_filename(oldrc, CI_PATH_LENGTH, "config file", "", bx_param_bytestring_c::IS_FILENAME)) {
+//
+//           }
+//           // SIM->reset_all_param();
+// //           printf("done reset...");
+//           // char oldrc[CI_PATH_LENGTH];
+//           if (SIM->get_default_rc(oldrc, CI_PATH_LENGTH) < 0)
+//             strcpy(oldrc, "none");
+// // printf("RC:::%s", oldrc);
+//           if (SIM->read_rc("/Users/chgembalski/DEV/GitHub/Bochs/bochs/test.bochsrc") >= 0) {
+//             printf("done...");
+//             SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
+//           }
+        }
+        if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_SAVE, false) == 1) {
+          // SIM->reset_all_param();
+          // bx_write_rc(NULL);
+        }
+        if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_RESET, false) == 1) {
+          // SIM->reset_all_param();
+          // SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_EDIT_START);
+        }
+
+        goto ci_start_wait;
       }
       break;
     }
@@ -110,25 +152,25 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
       // hide the sim window -> bring up the config
       // set state to pause -> and then ? how to get it back running again?
       if (!bx_gui->has_gui_console()) {
-        // TODO : get Simulation State
-        bxcocoagui->setSimulationState(SIM_PAUSE);
-        bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
-        bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
-        // need to wait for one of BX_PROPERTY_START_SIM | BX_PROPERTY_EXIT_SIM | BX_PROPERTY_CONT_SIM
-loopOn:
-        bxcocoagui->getPropertySet(true, 3, BX_PROPERTY_START_SIM, BX_PROPERTY_EXIT_SIM, BX_PROPERTY_CONT_SIM);
-        // check the properties
-        if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, false) == 1) {
-          printf("BX_PROPERTY_START_SIM");
-        } else if (bxcocoagui->getProperty(BX_PROPERTY_CONT_SIM, false) == 1) {
-          printf("BX_PROPERTY_CONT_SIM");
-        } else if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
-          printf("BX_PROPERTY_EXIT_SIM");
-        } else {
-          printf("NON VALID");
-          sleep(1);
-          goto loopOn;
-        }
+//         // TODO : get Simulation State
+//         bxcocoagui->setSimulationState(SIM_PAUSE);
+//         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
+//         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
+//         // need to wait for one of BX_PROPERTY_START_SIM | BX_PROPERTY_EXIT_SIM | BX_PROPERTY_CONT_SIM
+// loopOn:
+//         bxcocoagui->getPropertySet(true, 3, BX_PROPERTY_START_SIM, BX_PROPERTY_EXIT_SIM, BX_PROPERTY_CONT_SIM);
+//         // check the properties
+//         if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, false) == 1) {
+//           printf("BX_PROPERTY_START_SIM");
+//         } else if (bxcocoagui->getProperty(BX_PROPERTY_CONT_SIM, false) == 1) {
+//           printf("BX_PROPERTY_CONT_SIM");
+//         } else if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
+//           printf("BX_PROPERTY_EXIT_SIM");
+//         } else {
+//           printf("NON VALID");
+//           sleep(1);
+//           goto loopOn;
+        // }
 
 
 
@@ -198,13 +240,22 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
     }
     case BX_SYNC_EVT_ASK_PARAM: {
       printf("BX_SYNC_EVT_ASK_PARAM\n");
-      bxcocoagui->showModalParamRequest(&event->u.param, &event->retcode);
+      if (event->u.param.param->get_type() == BXT_LIST) {
+        bx_list_c * list_param;
+
+        list_param = (bx_list_c *)event->u.param.param;
+        printf("##list [%p] [%s] [%s] [%s] [%s] [%0X] [%d]\n",
+        list_param,
+        list_param->get_name(), list_param->get_label(), list_param->get_description(), list_param->get_title(),
+        list_param->get_choice(), list_param->get_size());
+      }
+      bxcocoagui->showModalParamRequest(event->u.param.param, &event->retcode);
       return event;
     }
     case BX_SYNC_EVT_TICK: {
       // check if stop was set
       // if so return -1 to exit
-      if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
+      if (bxcocoagui->getProperty(BX_PROPERTY_QUIT_SIM, false) == 1) {
         event->retcode = -1;
       } else {
         // called periodically by siminterface.
