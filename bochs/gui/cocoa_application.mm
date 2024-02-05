@@ -32,6 +32,7 @@
 
 extern int bxmain(void);
 
+
 /////////////////////////////////
 // BXBochsThread
 /////////////////////////////////
@@ -63,7 +64,9 @@ extern int bxmain(void);
   bxmain();
   NSLog(@"bochs thread stopped");
   // force app terminate ? direct or bypass it delayed on the main thread?
-  [NSApp terminate:self];
+  dispatch_after(1 * NSEC_PER_SEC, dispatch_get_main_queue(), ^(void){
+    [NSApp terminate:self];
+  });
 
 }
 
@@ -197,14 +200,7 @@ BXGuiCocoaApplication::BXGuiCocoaApplication() : BXCocoaApplication(new BXNSAppl
 BXGuiCocoaApplication::~BXGuiCocoaApplication() {
 }
 
-/**
- * resetConfigurationWindow
- */
-void BXGuiCocoaApplication::resetConfigurationWindow() {
-  dispatch_sync(dispatch_get_main_queue(), ^(void){
-    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_CONFIGURATION] config] loadColumnZero];
-  });
-}
+
 
 
 /**
@@ -265,55 +261,38 @@ void BXGuiCocoaApplication::activateMenu(property_t type, bool bActivate) {
  */
 int BXGuiCocoaApplication::getProperty(property_t property, bool bWait) {
 
-  int result;
+  NSMutableArray<NSNumber *> * nsproperties;
 
   if (!bWait) {
     return [BXCocoaApplication->BXNSApp.bx_window_controller getProperty:property];
   }
 
-  while (bWait) {
-    result = [BXCocoaApplication->BXNSApp.bx_window_controller getProperty:property];
-    usleep(10000);
-    bWait = result == BX_PROPERTY_UNDEFINED ? true : false;
-  }
+  // wait part
+  nsproperties = [[NSMutableArray alloc] init];
+  [nsproperties addObject:[NSNumber numberWithInt:property]];
 
-  return result;
+  [BXCocoaApplication->BXNSApp.bx_window_controller waitPropertySet:nsproperties];
+  return [BXCocoaApplication->BXNSApp.bx_window_controller getProperty:property];
 
 }
 
 /**
- * getPropertySet
+ * waitPropertySet
  */
-bool BXGuiCocoaApplication::getPropertySet(bool bWait, unsigned cnt, unsigned property, ...) {
+void BXGuiCocoaApplication::waitPropertySet(unsigned cnt, unsigned property, ...) {
 
-  unsigned propNo;
+  NSMutableArray<NSNumber *> * nsproperties;
   va_list propList;
-  int result;
-  bool bWaitLoop;
 
-  bWaitLoop = true;
-  while (bWaitLoop) {
-    propNo = 0;
-    va_start(propList, property);
-    while (propNo < cnt) {
-      result = [BXCocoaApplication->BXNSApp.bx_window_controller getProperty:(property_t)property];
-      if (result != BX_PROPERTY_UNDEFINED) {
-        break;
-      }
-      usleep(10000);
-      propNo++;
-    }
-    va_end(propList);
-
-    if (!bWait) {
-      break;
-    }
-    // printf("in Loop %d", result);
-    usleep(10000);
-    bWaitLoop = result == BX_PROPERTY_UNDEFINED ? true : false;
+  nsproperties = [[NSMutableArray alloc] init];
+  va_start(propList, property);
+  [nsproperties addObject:[NSNumber numberWithInt:property]];
+  for (int no=1; no<cnt; no++) {
+    [nsproperties addObject:[NSNumber numberWithInt:(unsigned)va_arg(propList, unsigned)]];
   }
+  va_end(propList);
 
-  return (result != BX_PROPERTY_UNDEFINED);
+  [BXCocoaApplication->BXNSApp.bx_window_controller waitPropertySet:nsproperties];
 
 }
 
@@ -361,96 +340,112 @@ void BXGuiCocoaApplication::showModalQuestion(unsigned char level, const char * 
 
 }
 
+
 /**
  * showModalParamRequest
  */
 void BXGuiCocoaApplication::showModalParamRequest(void * vparam, int * result) {
 
-  BxParamEvent * param;
+  bx_param_c * param;
 
-  param = (BxParamEvent *)vparam;
+  param = (bx_param_c *)vparam;
+NSLog(@"showModalParamRequest %p", vparam);
+if(param == NULL) NSLog(@"no argument");
 
+NSLog(@"param type=%d",param->get_type());
   // get type of request
-  switch (param->param->get_type()) {
+  switch (param->get_type()) {
     case BXT_PARAM: {
-      printf("raw [%s] [%s] [%s]\n", param->param->get_name(), param->param->get_label(), param->param->get_description());
+      NSLog(@"raw [%s] [%s] [%s]\n", param->get_name(), param->get_label(), param->get_description());
       break;
     }
     case BXT_PARAM_NUM: {
       bx_param_num_c * num_param;
 
       num_param = (bx_param_num_c *)param;
-      printf("num [%s] [%s] [%s] [%d]\n", num_param->get_name(), num_param->get_label(), num_param->get_description(), num_param->get());
+      NSLog(@"num [%s] [%s] [%s] [%d]\n", num_param->get_name(), num_param->get_label(), num_param->get_description(), num_param->get());
       break;
     }
     case BXT_PARAM_BOOL: {
       bx_param_bool_c * bool_param;
 
       bool_param = (bx_param_bool_c *)param;
-      printf("bool [%s] [%s] [%s] [%d]\n", bool_param->get_name(), bool_param->get_label(), bool_param->get_description(), bool_param->get());
+      NSLog(@"bool [%s] [%s] [%s] [%d]\n", bool_param->get_name(), bool_param->get_label(), bool_param->get_description(), bool_param->get());
       break;
     }
     case BXT_PARAM_ENUM: {
       bx_param_enum_c * enum_param;
 
       enum_param = (bx_param_enum_c *)param;
-      printf("enum\n");
+      NSLog(@"enum\n");
       break;
     }
     case BXT_PARAM_STRING: {
       bx_param_string_c * string_param;
+printf("hit BXT_PARAM_STRING");
+      char ppa[512] = {0};
 
       string_param = (bx_param_string_c *)param;
-      printf("string [%s] [%s] [%s] [%0X] [%s]\n",
-      string_param->get_name(), string_param->get_label(), string_param->get_description(), string_param->get_options(), string_param->getptr());
+      string_param->get_param_path(ppa, 512);
+      printf("string [%s] [%s] [%s] [%0X] [%s] [%s]\n",
+      string_param->get_name(),
+      string_param->get_label(),
+      string_param->get_description(),
+      string_param->get_options(),
+      string_param->getptr(),
+      ppa);
       break;
     }
     case BXT_PARAM_BYTESTRING: {
       bx_param_bytestring_c * bytestring_param;
-
+NSLog(@"hit BXT_PARAM_BYTESTRING");
       bytestring_param = (bx_param_bytestring_c *)param;
-      printf("bytestring [%s] [%s] [%s] [%0X] [%s]\n",
+      NSLog(@"bytestring [%s] [%s] [%s] [%0X] [%s]\n",
       bytestring_param->get_name(), bytestring_param->get_label(), bytestring_param->get_description(), bytestring_param->get_options(), bytestring_param->getptr());
       break;
     }
     case BXT_PARAM_DATA: {
-      printf("unknown ... could not find this thing ...\n");
+      NSLog(@"unknown ... could not find this thing ...\n");
 
       break;
     }
     case BXT_PARAM_FILEDATA: {
       bx_param_filename_c * filename_param;
-
+NSLog(@"hit BXT_PARAM_FILEDATA");
       filename_param = (bx_param_filename_c *)param;
-      printf("filename [%s] [%s] [%s] [%s] [%0X] [%s]\n",
+      NSLog(@"filename [%s] [%s] [%s] [%s] [%0X] [%s]\n",
       filename_param->get_name(), filename_param->get_label(), filename_param->get_description(), filename_param->get_extension(),
       filename_param->get_options(), filename_param->getptr());
       break;
     }
     case BXT_LIST: {
       bx_list_c * list_param;
+      char ppa[512] = {0};
 
       list_param = (bx_list_c *)param;
-      printf("list [%s] [%s] [%s] [%s] [%0X] [%d]\n",
-      list_param->get_name(), list_param->get_label(), list_param->get_description(), list_param->get_title(),
-      list_param->get_choice(), list_param->get_size());
+      list_param->get_param_path(ppa, 512);
+      NSLog(@"list [%s] [%s] [%s] [%s] [%0X] [%d] [%s]\n",
+      (const char *)list_param->get_name(), (const char *)list_param->get_label(),
+      (const char *)list_param->get_description(), (const char *)list_param->get_title(),
+      (unsigned)list_param->get_choice(), (unsigned)list_param->get_size(),
+      ppa);
       break;
     }
     default: {
-      printf("[%s] [%s] [%s]\n",
-        param->param->get_name(), param->param->get_label(), param->param->get_description()
+      NSLog(@"[%s] [%s] [%s]\n",
+        param->get_name(), param->get_label(), param->get_description()
         //, param->param->inital_val, param->param->maxsize
       );
-      printf("Sorry not finished this one ...\n");
+      NSLog(@"Sorry not finished this one ...\n");
     }
   }
 
-
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    *result = [BXNSWindowController showModalParamRequestDialog:param];
+  });
 
 
 }
-
-
 
 
 /**
@@ -464,8 +459,9 @@ void BXGuiCocoaApplication::postLogMessage(unsigned char level, unsigned char mo
   if (BXCocoaApplication->BXNSApp.bx_window_controller.simulation_state == SIM_TERMINATE) {
     return;
   }
-  [BXCocoaApplication->BXNSApp.bx_window_controller.bx_log_queue enqueueSplit:[NSString stringWithUTF8String:msg] LogLevel:level LogMode:mode];
-
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller.bx_log_queue enqueueSplit:[NSString stringWithUTF8String:msg] LogLevel:level LogMode:mode];
+  });
   // NSLog(@"level=%d mode=%d prefix=%@ msg=%@",
   //   level, mode, prefix==NULL?@"null":[NSString stringWithUTF8String:prefix], msg==NULL?@"null":[NSString stringWithUTF8String:msg]);
 }
@@ -610,8 +606,10 @@ void BXGuiCocoaApplication::render(void) {
  * captureMouse
  */
 void BXGuiCocoaApplication::captureMouse(bool cap, unsigned x, unsigned y) {
-  [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] captureMouse:cap];
-  [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] captureMouseXY:NSMakePoint(x, y)];
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] captureMouse:cap];
+    [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] captureMouseXY:NSMakePoint(x, y)];
+  });
 }
 
 /**
