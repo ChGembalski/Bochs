@@ -58,7 +58,7 @@ GUI_OBJS_SDL2 = sdl2.o
 GUI_OBJS_WIN32 = win32.o
 GUI_OBJS_MACOS = macintosh.o
 GUI_OBJS_CARBON = carbon.o
-GUI_OBJS_COCOA = cocoa.o cocoa_application.o cocoa_menu.o cocoa_windows.o cocoa_display.o cocoa_headerbar.o
+GUI_OBJS_COCOA = cocoa.o cocoa_application.o cocoa_menu.o cocoa_windows.o cocoa_ctrl.o cocoa_display.o cocoa_headerbar.o
 GUI_OBJS_NOGUI = nogui.o
 GUI_OBJS_TERM  = term.o
 GUI_OBJS_RFB = rfb.o
@@ -243,11 +243,26 @@ carbon.o: carbon.@CPP_SUFFIX@ ../bochs.h ../config.h ../osdep.h ../gui/paramtree
  ../memory/memory-bochs.h ../gui/siminterface.h ../gui/gui.h
 cocoa.o: cocoa.@CPP_SUFFIX@ \
  ../gui/cocoa_application.h ../gui/cocoa_menu.h ../gui/cocoa_bochs.h \
- ../gui/cocoa_windows.h ../gui/cocoa_display.h ../gui/cocoa_headerbar.h ../gui/cocoa_logging.h \
+ ../gui/cocoa_windows.h ../gui/cocoa_ctrl.h ../gui/cocoa_display.h \
+ ../gui/cocoa_headerbar.h ../gui/cocoa_logging.h \
  ../bochs.h ../config.h ../osdep.h ../gui/paramtree.h ../logio.h \
  ../misc/bswap.h keymap.h ../iodev/iodev.h ../plugin.h ../extplugin.h \
  ../param_names.h ../pc_system.h ../bx_debug/debug.h ../memory/memory-bochs.h \
  ../gui/siminterface.h ../gui/gui.h
+cocoa_application.o: cocoa_application.mm \
+ ../gui/cocoa_bochs.h ../gui/cocoa_application.h ../gui/cocoa_windows.h \
+ ../bochs.h ../gui/siminterface.h
+cocoa_menu.o: cocoa_menu.mm \
+ ../gui/cocoa_menu.h ../gui/cocoa_bochs.h ../gui/cocoa_windows.h
+cocoa_windows.o: cocoa_windows.mm \
+ ../gui/cocoa_windows.h ../gui/cocoa_bochs.h ../gui/cocoa_headerbar.h \
+ ../gui/cocoa_menu.h ../gui/siminterface.h ../param_names.h
+cocoa_ctrl.o: cocoa_ctrl.mm \
+ ../gui/cocoa_ctrl.h
+cocoa_display.o: cocoa_display.mm \
+ ../gui/cocoa_display.h
+cocoa_headerbar.o: cocoa_headerbar.mm \
+ ../gui/cocoa_headerbar.h ../gui/cocoa_bochs.h ../gui/cocoa_display.h
 cocoaconfig.o: cocoaconfig.@CPP_SUFFIX@ \
  ../config.h ../bochs.h ../osdep.h ../gui/paramtree.h ../logio.h \
  ../misc/bswap.h ../bx_debug/debug.h ../param_names.h gui.h \

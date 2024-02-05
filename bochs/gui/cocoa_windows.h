@@ -179,125 +179,8 @@
 
 
   ////////////////////////////////////////////////////////////////////////////////
-  // BXNSConfigurationWindow
+  // BXNSBrowser
   ////////////////////////////////////////////////////////////////////////////////
-  @interface BXNSBrowserCell : NSBrowserCell
-
-    @property (nonatomic, readwrite) BOOL isLeaf;
-    @property (nonatomic, readwrite) NSString * _Nonnull path;
-    @property (nonatomic, readwrite) const char * _Nullable param_name;
-    @property (nonatomic, readwrite) unsigned dev_no;
-    @property (nonatomic, readwrite, strong) id _Nullable sub_control;
-
-    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string;
-    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name;
-    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name DeviceNo:(unsigned) dev_no;
-    - (instancetype _Nonnull)initTextCell:(NSString * _Nonnull)string isLeaf:(BOOL) leaf PredPath:(NSString * _Nonnull) path SimParamName:(const char * _Nonnull) param_name Control:(id _Nonnull) ctrl;
-
-  @end
-
-  @interface BXNSPreView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-    - (BOOL) isFlipped;
-
-  @end
-
-  @interface BXNSPreviewController : NSViewController
-
-    - (instancetype _Nonnull)initWithView:(NSRect) rect Control:(id _Nonnull) object;
-
-    - (void)loadView;
-    - (void)loadViewIfNeeded;
-
-  @end
-
-  @interface BXNSYesNoSelector : NSStackView
-
-    @property (nonatomic, readwrite) void * _Nonnull param;
-    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull yesno;
-
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
-
-    - (void)valueChanged:(id)sender;
-
-  @end
-
-  @interface BXNSChoiceSelector : NSPopUpButton
-
-    @property (nonatomic, readwrite) void * _Nonnull param;
-
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
-
-    - (void)valueChanged:(id)sender;
-
-  @end
-
-  @interface BXNSGlobalLogSelector : NSPopUpButton
-
-    @property (nonatomic, readwrite) unsigned param;
-
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(unsigned) param;
-
-    - (void)valueChanged:(id)sender;
-
-  @end
-
-  @interface BXNSDeviceLogSelector : NSPopUpButton
-
-    @property (nonatomic, readwrite) unsigned dev_no;
-    @property (nonatomic, readwrite) unsigned param;
-
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser DeviceNo:(unsigned) dev_no Param:(unsigned) param;
-
-    - (void)valueChanged:(id)sender;
-
-  @end
-
-  @interface BXNSNumberFormatter : NSNumberFormatter
-
-  - (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error;
-
-  @end
-
-  @interface BXNSHexNumberFormatter : NSNumberFormatter
-
-  - (instancetype _Nonnull)init;
-
-  - (BOOL)isPartialStringValid:(NSString*)partialString newEditingString:(NSString**)newString errorDescription:(NSString**)error;
-  - (BOOL)getObjectValue:(out id  _Nullable *)obj forString:(NSString *)string errorDescription:(out NSString * _Nullable *)error;
-
-  @end
-
-  @interface BXNSNumberSelector : NSStackView
-
-    @property (nonatomic, readwrite) void * _Nonnull param;
-    @property (nonatomic, readwrite, strong) NSSlider * _Nullable slider;
-    @property (nonatomic, readwrite, strong) NSTextField * _Nullable text;
-    @property (nonatomic, readwrite, strong) NSDatePicker * _Nullable date;
-
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
-
-    - (void)sliderChanged:(id)sender;
-    - (void)valueChanged:(id)sender;
-    - (void)dateChanged:(id)sender;
-
-  @end
-
-  @interface BXNSStringSelector : NSStackView
-
-    @property (nonatomic, readwrite) void * _Nonnull param;
-    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull text;
-    @property (nonatomic, readwrite, strong) NSButton * _Nullable button;
-
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(void * _Nonnull) param;
-
-    - (void)valueChanged:(id)sender;
-    - (void)buttonPressed:(id)sender;
-
-  @end
-
   @interface BXNSBrowser : NSBrowser <NSBrowserDelegate>
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
@@ -310,6 +193,10 @@
 
   @end
 
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSConfigurationWindow
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSConfigurationWindow : BXNSGenericWindow <NSApplicationDelegate>
 
     @property (nonatomic, readwrite, strong) BXNSBrowser * _Nonnull config;
