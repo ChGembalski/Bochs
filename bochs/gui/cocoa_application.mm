@@ -48,7 +48,7 @@ extern int bxmain(void);
 
     bx_startup_flags.argc = main_argc;
     bx_startup_flags.argv = main_argv;
-
+    self.name = @"bochs";
 
   }
   return self;
