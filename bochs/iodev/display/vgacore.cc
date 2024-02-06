@@ -64,7 +64,7 @@ bx_vgacore_c::bx_vgacore_c()
 {
   memset(&s, 0, sizeof(s));
   update_timer_id = BX_NULL_TIMER_HANDLE;
-  vsync_timer_id = BX_NULL_TIMER_HANDLE;
+  vga_vtimer_id = BX_NULL_TIMER_HANDLE;
 }
 
 bx_vgacore_c::~bx_vgacore_c()
@@ -142,7 +142,8 @@ void bx_vgacore_c::init_standard_vga(void)
   BX_VGA_THIS s.vclk[0] = 25175000;
   BX_VGA_THIS s.vclk[1] = 28322000;
   BX_VGA_THIS s.htotal_usec = 31;
-  BX_VGA_THIS s.vtotal_usec = 14285;
+  BX_VGA_THIS s.vtotal_usec = 14268;
+  BX_VGA_THIS s.vrend_usec = 13155;
 
   BX_VGA_THIS s.max_xres = 800;
   BX_VGA_THIS s.max_yres = 600;
@@ -237,12 +238,13 @@ void bx_vgacore_c::init_systemtimer(void)
       vga_update_freq->set_runtime_param(0);
     }
   }
-  if (BX_VGA_THIS vsync_timer_id == BX_NULL_TIMER_HANDLE) {
-    BX_VGA_THIS vsync_timer_id = bx_virt_timer.register_timer(this, vsync_timer_handler,
+  if (BX_VGA_THIS vga_vtimer_id == BX_NULL_TIMER_HANDLE) {
+    BX_VGA_THIS vga_vtimer_id = bx_virt_timer.register_timer(this, vertical_timer_handler,
        100000, 1, 1, BX_VGA_THIS vsync_realtime, "vga vsync");
   }
   BX_VGA_THIS set_update_timer(update_interval);
   BX_INFO(("VSYNC using %s mode", BX_VGA_THIS vsync_realtime ? "realtime":"standard"));
+  BX_VGA_THIS start_vertical_timer();
 }
 
 void bx_vgacore_c::vgacore_register_state(bx_list_c *parent)
@@ -424,9 +426,12 @@ void bx_vgacore_c::calculate_retrace_timing()
   BX_VGA_THIS s.vrend_usec = (Bit32u)(f_htotal_usec * vrend);
   BX_DEBUG(("hfreq = %.1f kHz / vfreq = %.1f Hz", (hfreq / 1000), vfreq));
   if (BX_VGA_THIS s.vtotal_usec < 8000) {
-    BX_VGA_THIS s.vtotal_usec = 50000;
+    BX_VGA_THIS s.vtotal_usec = 14268;
   }
-  bx_virt_timer.activate_timer(BX_VGA_THIS vsync_timer_id, BX_VGA_THIS s.vtotal_usec, 1);
+  if (BX_VGA_THIS s.vrend_usec < 7000) {
+    BX_VGA_THIS s.vrend_usec = BX_VGA_THIS s.vtotal_usec - 1113;
+  }
+  BX_VGA_THIS start_vertical_timer();
   if (BX_VGA_THIS update_mode_vsync) {
     BX_VGA_THIS set_update_timer(0);
   }
@@ -1202,18 +1207,19 @@ void bx_vgacore_c::set_override(bool enabled, void *dev)
     bx_gui->dimension_update(BX_VGA_THIS s.last_xres, BX_VGA_THIS s.last_yres,
                              BX_VGA_THIS s.last_fh, BX_VGA_THIS s.last_fw, BX_VGA_THIS s.last_bpp);
     BX_VGA_THIS vga_redraw_area(0, 0, BX_VGA_THIS s.last_xres, BX_VGA_THIS s.last_yres);
-    bx_virt_timer.activate_timer(BX_VGA_THIS vsync_timer_id, BX_VGA_THIS s.vtotal_usec, 1);
+    BX_VGA_THIS start_vertical_timer();
   } else {
-    bx_virt_timer.deactivate_timer(BX_VGA_THIS vsync_timer_id);
+    bx_virt_timer.deactivate_timer(BX_VGA_THIS vga_vtimer_id);
   }
   if (BX_VGA_THIS update_mode_vsync) {
     BX_VGA_THIS set_update_timer(0);
   }
 }
 
-Bit8u bx_vgacore_c::get_vga_pixel(Bit16u x, Bit16u y, Bit16u raddr, Bit16u lc, bool bs, Bit8u **plane)
+Bit8u bx_vgacore_c::get_vga_pixel(Bit16u x, Bit16u y, Bit32u raddr, Bit16u lc, bool bs, Bit8u **plane)
 {
   Bit8u attribute, bit_no, palette_reg_val, DAC_regno;
+  Bit32u plane_mask = ((Bit32u)1 << BX_VGA_THIS s.plane_shift) - 1;
   Bit32u byte_offset;
 
   if (BX_VGA_THIS s.x_dotclockdiv2) x >>= 1;
@@ -1221,7 +1227,7 @@ Bit8u bx_vgacore_c::get_vga_pixel(Bit16u x, Bit16u y, Bit16u raddr, Bit16u lc, b
     x += BX_VGA_THIS s.attribute_ctrl.horiz_pel_panning;
   }
   bit_no = 7 - (x % 8);
-  byte_offset = raddr + (x / 8);
+  byte_offset = (raddr + (x / 8)) & plane_mask;
   attribute =
     (((plane[0][byte_offset] >> bit_no) & 0x01) << 0) |
     (((plane[1][byte_offset] >> bit_no) & 0x01) << 1) |
@@ -1343,7 +1349,8 @@ void bx_vgacore_c::update(void)
     switch (BX_VGA_THIS s.graphics_ctrl.shift_reg) {
       case 0: // interleaved shift
         Bit8u attribute, palette_reg_val, DAC_regno;
-        Bit16u line_compare, row_addr;
+        Bit16u line_compare;
+        Bit32u row_addr;
         Bit8u *plane[4];
 
         plane[0] = &BX_VGA_THIS s.memory[0 << BX_VGA_THIS s.plane_shift];
@@ -2271,6 +2278,8 @@ void bx_vgacore_c::redraw_area(unsigned x0, unsigned y0, unsigned width, unsigne
     // graphics mode
     xmax = BX_VGA_THIS s.last_xres;
     ymax = BX_VGA_THIS s.last_yres;
+    if ((xmax == 0) || (ymax == 0))
+      return;
     xt0 = x0 / X_TILESIZE;
     yt0 = y0 / Y_TILESIZE;
     if (x0 < xmax) {
@@ -2326,16 +2335,21 @@ void bx_vgacore_c::vga_timer_handler(void *this_ptr)
   bx_gui->flush();
 }
 
-void bx_vgacore_c::vsync_timer_handler(void *this_ptr)
+void bx_vgacore_c::vertical_timer_handler(void *this_ptr)
 {
-  ((bx_vgacore_c *)this_ptr)->vsync_timer();
+  ((bx_vgacore_c *)this_ptr)->vertical_timer();
 }
 
-void bx_vgacore_c::vsync_timer(void)
+void bx_vgacore_c::vertical_timer(void)
 {
-  BX_VGA_THIS s.CRTC.start_addr = (BX_VGA_THIS s.CRTC.reg[0x0c] << 8) | BX_VGA_THIS s.CRTC.reg[0x0d];
-  BX_VGA_THIS s.display_start_usec =
-    bx_virt_timer.time_usec(BX_VGA_THIS vsync_realtime) - BX_VGA_THIS s.vrend_usec;
+  BX_VGA_THIS vtimer_toggle ^= 1;
+  bx_virt_timer.activate_timer(BX_VGA_THIS vga_vtimer_id,
+    BX_VGA_THIS vtimer_interval[BX_VGA_THIS vtimer_toggle], 0);
+  if (BX_VGA_THIS vtimer_toggle) {
+    BX_VGA_THIS s.CRTC.start_addr = (BX_VGA_THIS s.CRTC.reg[0x0c] << 8) | BX_VGA_THIS s.CRTC.reg[0x0d];
+  } else {
+    BX_VGA_THIS s.display_start_usec = bx_virt_timer.time_usec(BX_VGA_THIS vsync_realtime);
+  }
 }
 
 void bx_vgacore_c::set_update_timer(Bit32u usec)
@@ -2364,6 +2378,14 @@ void bx_vgacore_c::set_update_timer(Bit32u usec)
     }
     BX_VGA_THIS vga_update_interval = usec;
   }
+}
+
+void bx_vgacore_c::start_vertical_timer(void)
+{
+  BX_VGA_THIS vtimer_toggle = 0;
+  BX_VGA_THIS vtimer_interval[0] = BX_VGA_THIS s.vrend_usec;
+  BX_VGA_THIS vtimer_interval[1] = BX_VGA_THIS s.vtotal_usec - BX_VGA_THIS s.vrend_usec;
+  bx_virt_timer.activate_timer(BX_VGA_THIS vga_vtimer_id, vtimer_interval[0], 0);
 }
 
 #undef LOG_THIS

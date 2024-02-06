@@ -269,6 +269,7 @@ void bx_banshee_c::register_state(void)
   new bx_shadow_data_c(banshee, "crtc", (Bit8u*)v->banshee.crtc, 0x27, 1);
   new bx_shadow_num_c(banshee, "disp_bpp", &v->banshee.disp_bpp);
   BXRS_PARAM_BOOL(banshee, half_mode, v->banshee.half_mode);
+  BXRS_PARAM_BOOL(banshee, double_width, v->banshee.double_width);
   BXRS_PARAM_BOOL(banshee, dac_8bit, v->banshee.dac_8bit);
   BXRS_PARAM_BOOL(banshee, desktop_tiled, v->banshee.desktop_tiled);
   BXRS_PARAM_BOOL(banshee, overlay_tiled, v->banshee.overlay_tiled);
@@ -330,7 +331,6 @@ void bx_banshee_c::after_restore_state(void)
   bx_pci_device_c::after_restore_pci_state(mem_read_handler);
   if ((v->banshee.io[io_vidProcCfg] & 0x01) && (theVoodooVga != NULL)) {
     v->fbi.clut_dirty = 1;
-    update_timing();
     theVoodooVga->banshee_update_mode();
   }
   start_fifo_thread();
@@ -368,13 +368,17 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
   Bit8u ccode, pbits, pval0, pval1;
   Bit32u colour = 0, start;
   Bit16u index, pitch;
+  Bit16u hwcx = v->banshee.hwcursor.x;
+  Bit16u hwcy = v->banshee.hwcursor.y;
+  Bit8u hwcw = 63;
   int i;
 
-  if ((xc <= v->banshee.hwcursor.x) &&
-      ((int)(xc + X_TILESIZE) > (v->banshee.hwcursor.x - 63)) &&
-      (yc <= v->banshee.hwcursor.y) &&
-      ((int)(yc + Y_TILESIZE) > (v->banshee.hwcursor.y - 63))) {
-
+  if (v->banshee.double_width) {
+    hwcx <<= 1;
+    hwcw <<= 1;
+  }
+  if ((xc <= hwcx) && ((int)(xc + X_TILESIZE) > (hwcx - hwcw)) &&
+      (yc <= hwcy) && ((int)(yc + Y_TILESIZE) > (hwcy - 63))) {
     if ((v->banshee.io[io_vidProcCfg] & 0x181) == 0x81) {
       start = v->banshee.io[io_vidDesktopStartAddr];
       pitch = v->banshee.io[io_vidDesktopOverlayStride] & 0x7fff;
@@ -388,38 +392,43 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
     }
     tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
 
-    if ((v->banshee.hwcursor.x - 63) < (int)xc) {
+    if ((hwcx - hwcw) < (int)xc) {
       cx = xc;
-      if ((v->banshee.hwcursor.x - xc + 1) > w) {
+      if ((hwcx - xc + 1) > w) {
         cw = w;
       } else {
-        cw = v->banshee.hwcursor.x - xc + 1;
+        cw = hwcx - xc + 1;
       }
-      px = 63 - (v->banshee.hwcursor.x - xc);
+      px = hwcw - (hwcx - xc);
     } else {
-      cx = v->banshee.hwcursor.x - 63;
-      cw = w - (v->banshee.hwcursor.x - 63 - xc);
+      cx = hwcx - hwcw;
+      cw = w - (hwcx - hwcw - xc);
       px = 0;
     }
-    if ((v->banshee.hwcursor.y - 63) < (int)yc) {
+    if ((hwcy - 63) < (int)yc) {
       cy = yc;
-      if ((v->banshee.hwcursor.y - yc + 1) > h) {
+      if ((hwcy - yc + 1) > h) {
         ch = h;
       } else {
-        ch = v->banshee.hwcursor.y - yc + 1;
+        ch = hwcy - yc + 1;
       }
-      py = 63 - (v->banshee.hwcursor.y - yc);
+      py = 63 - (hwcy - yc);
     } else {
-      cy = v->banshee.hwcursor.y - 63;
-      ch = h - (v->banshee.hwcursor.y - 63 - yc);
+      cy = hwcy - 63;
+      ch = h - (hwcy - 63 - yc);
       py = 0;
     }
     tile_ptr += ((cy - yc) * info->pitch);
     tile_ptr += ((cx - xc) * (info->bpp >> 3));
     cpat0 = &v->fbi.ram[v->banshee.hwcursor.addr] + (py * 16);
     for (y = cy; y < (cy + ch); y++) {
-      cpat1 = cpat0 + (px >> 3);
-      pbits = 8 - (px & 7);
+      if (v->banshee.double_width) {
+        cpat1 = cpat0 + (px >> 4);
+        pbits = 8 - ((px >> 1) & 7);
+      } else {
+        cpat1 = cpat0 + (px >> 3);
+        pbits = 8 - (px & 7);
+      }
       tile_ptr2 = tile_ptr;
       for (x = cx; x < (cx + cw); x++) {
         pval0 = (*cpat1 >> (pbits - 1)) & 1;
@@ -431,7 +440,11 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
           colour = v->banshee.hwcursor.color[1];
         } else {
           if (v->banshee.half_mode) {
-            vid_ptr = disp_ptr + (y >> 1) * pitch + x * (v->banshee.disp_bpp >> 3);
+            if (v->banshee.double_width) {
+              vid_ptr = disp_ptr + (y >> 1) * pitch + (x >> 1) * (v->banshee.disp_bpp >> 3);
+            } else {
+              vid_ptr = disp_ptr + (y >> 1) * pitch + x * (v->banshee.disp_bpp >> 3);
+            }
           } else {
             vid_ptr = disp_ptr + y * pitch + x * (v->banshee.disp_bpp >> 3);
           }
@@ -474,9 +487,11 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
         } else {
           *(tile_ptr2++) = (Bit8u)colour;
         }
-        if (--pbits == 0) {
-          cpat1++;
-          pbits = 8;
+        if (!v->banshee.double_width || (x & 1)) {
+          if (--pbits == 0) {
+            cpat1++;
+            pbits = 8;
+          }
         }
       }
       cpat0 += 16;
@@ -616,7 +631,7 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
   Bit16u prev_hwcx = v->banshee.hwcursor.x;
   Bit16u prev_hwcy = v->banshee.hwcursor.y;
   Bit16u x0, y0;
-  bool mode_change = 0;
+  bool mode_change = false;
 
   BX_DEBUG(("banshee write to offset 0x%02x: value = 0x%08x len=%d (%s)", offset, value,
             io_len, banshee_io_reg_name[reg]));
@@ -696,25 +711,24 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
 
     case io_vidProcCfg:
       v->banshee.io[reg] = value;
-      if ((v->banshee.io[reg] ^ old) & 0x3c00)
+      if ((v->banshee.io[reg] ^ old) & 0x3d80)
         v->fbi.clut_dirty = 1;
       if ((v->banshee.io[reg] & 0x01) && ((old & 0x01) == 0x00)) {
-        update_timing();
         if (theVoodooVga != NULL) {
           theVoodooVga->banshee_update_mode();
         }
-        mode_change = 1;
+        mode_change = true;
       } else if (!(v->banshee.io[reg] & 0x01) && ((old & 0x01) == 0x01)) {
         bx_virt_timer.deactivate_timer(s.vertical_timer_id);
         v->vtimer_running = 0;
       }
       if ((v->banshee.io[reg] & 0x01) && ((v->banshee.io[reg] & 0x180) != (old & 0x180))) {
-        mode_change = 1;
+        mode_change = true;
       }
       if (mode_change) {
         if ((v->banshee.io[reg] & 0x180) == 0x080) {
           BX_INFO(("2D desktop mode enabled"));
-        } else if ((old & 0x100) == 0) {
+        } else if ((v->banshee.io[reg] & 0x180) == 0x100) {
           BX_INFO(("3D overlay mode enabled"));
           v->vtimer_running = 1;
         }
@@ -724,7 +738,11 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
       if (v->banshee.hwcursor.enabled != prev_hwce) {
         x0 = (v->banshee.hwcursor.x < 63) ? 0 : (v->banshee.hwcursor.x - 63);
         y0 = (v->banshee.hwcursor.y < 63) ? 0 : (v->banshee.hwcursor.y - 63);
-        theVoodooVga->redraw_area(x0, y0, 64, 64);
+        if (v->banshee.double_width) {
+          theVoodooVga->redraw_area(x0 << 1, y0, 64, 64);
+        } else {
+          theVoodooVga->redraw_area(x0, y0, 64, 64);
+        }
       }
       if ((v->banshee.io[reg] >> 2) & 1) {
         BX_ERROR(("vidProcCfg: overlay stereo mode not supported yet"));
@@ -733,7 +751,7 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
         BX_ERROR(("vidProcCfg: chromaKey mode not supported yet"));
       }
       if ((v->banshee.io[reg] >> 16) & 3) {
-        BX_ERROR(("vidProcCfg: overlay filter mode not supported yet"));
+        BX_ERROR(("vidProcCfg: overlay filter mode %d not supported yet", (v->banshee.io[reg] >> 16) & 3));
       }
       v->banshee.desktop_tiled = ((v->banshee.io[reg] >> 24) & 1);
       v->banshee.overlay_tiled = ((v->banshee.io[reg] >> 25) & 1);
@@ -745,7 +763,11 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
       if (v->banshee.hwcursor.enabled && (value != old)) {
         x0 = (v->banshee.hwcursor.x < 63) ? 0 : (v->banshee.hwcursor.x - 63);
         y0 = (v->banshee.hwcursor.y < 63) ? 0 : (v->banshee.hwcursor.y - 63);
-        theVoodooVga->redraw_area(x0, y0, 64, 64);
+        if (v->banshee.double_width) {
+          theVoodooVga->redraw_area(x0 << 1, y0, 64, 64);
+        } else {
+          theVoodooVga->redraw_area(x0, y0, 64, 64);
+        }
       }
       break;
 
@@ -756,10 +778,18 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
       if (v->banshee.hwcursor.enabled && (value != old)) {
         x0 = (prev_hwcx < 63) ? 0 : (prev_hwcx - 63);
         y0 = (prev_hwcy < 63) ? 0 : (prev_hwcy - 63);
-        theVoodooVga->redraw_area(prev_hwcx - 63, prev_hwcy - 63, 64, 64);
+        if (v->banshee.double_width) {
+          theVoodooVga->redraw_area(x0 << 1, y0, 64, 64);
+        } else {
+          theVoodooVga->redraw_area(x0, y0, 64, 64);
+        }
         x0 = (v->banshee.hwcursor.x < 63) ? 0 : (v->banshee.hwcursor.x - 63);
         y0 = (v->banshee.hwcursor.y < 63) ? 0 : (v->banshee.hwcursor.y - 63);
-        theVoodooVga->redraw_area(x0, y0, 64, 64);
+        if (v->banshee.double_width) {
+          theVoodooVga->redraw_area(x0 << 1, y0, 64, 64);
+        } else {
+          theVoodooVga->redraw_area(x0, y0, 64, 64);
+        }
       }
       break;
 
@@ -1003,7 +1033,7 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
 void bx_banshee_c::mem_write_linear(Bit32u offset, Bit64u value, unsigned len)
 {
   Bit8u value8;
-  Bit32u start = v->banshee.io[io_vidDesktopStartAddr];
+  Bit32u start = v->banshee.io[io_vidDesktopStartAddr] & v->fbi.mask;
   Bit32u pitch = v->banshee.io[io_vidDesktopOverlayStride] & 0x7fff;
   unsigned i, w, x, y;
 
@@ -1021,11 +1051,18 @@ void bx_banshee_c::mem_write_linear(Bit32u offset, Bit64u value, unsigned len)
     value8 = (value >> (i * 8)) & 0xff;
     v->fbi.ram[offset + i] = value8;
   }
-  if (offset >= start) {
+  if ((offset >= start) && (pitch > 0)) {
     offset -= start;
     x = (offset % pitch) / (v->banshee.disp_bpp >> 3);
     y = offset / pitch;
     w = len / (v->banshee.disp_bpp >> 3);
+    if (v->banshee.half_mode) {
+      y <<= 1;
+    }
+    if (v->banshee.double_width) {
+      x <<= 1;
+      w <<= 1;
+    }
     if (w == 0) w = 1;
     theVoodooVga->redraw_area(x, y, w, 1);
   }
@@ -1644,6 +1681,10 @@ void bx_banshee_c::blt_complete()
     if (v->banshee.half_mode) {
       y <<= 1;
       h <<= 1;
+    }
+    if (v->banshee.double_width) {
+      x <<= 1;
+      w <<= 1;
     }
     if ((v->banshee.io[io_vidProcCfg] & 0x101) == 0x101) {
       v->fbi.video_changed = 1;
@@ -2860,10 +2901,17 @@ void bx_voodoo_vga_c::banshee_update_mode(void)
     return;
   }
   v->banshee.half_mode = (v->banshee.io[io_vidProcCfg] >> 4) & 1;
+  if (v->banshee.half_mode && (v->fbi.height > v->fbi.width)) {
+    v->fbi.width <<= 1;
+    v->banshee.double_width = true;
+  } else {
+    v->banshee.double_width = false;
+  }
+  theVoodooDevice->update_timing();
   BX_INFO(("switched to %d x %d x %d @ %d Hz", v->fbi.width, v->fbi.height,
            v->banshee.disp_bpp, (unsigned)v->vertfreq));
   bx_gui->dimension_update(v->fbi.width, v->fbi.height, 0, 0, v->banshee.disp_bpp);
-  bx_virt_timer.deactivate_timer(vsync_timer_id);
+  bx_virt_timer.deactivate_timer(vga_vtimer_id);
   // compatibilty settings for VGA core
   BX_VVGA_THIS s.last_xres = v->fbi.width;
   BX_VVGA_THIS s.last_yres = v->fbi.height;

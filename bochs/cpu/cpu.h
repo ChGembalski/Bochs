@@ -280,11 +280,20 @@ enum AccessReason {
   BX_PDPTR1_ACCESS,
   BX_PDPTR2_ACCESS,
   BX_PDPTR3_ACCESS,
+  BX_NESTED_PDPTR0_ACCESS,
+  BX_NESTED_PDPTR1_ACCESS,
+  BX_NESTED_PDPTR2_ACCESS,
+  BX_NESTED_PDPTR3_ACCESS,
   BX_PTE_ACCESS,
   BX_PDE_ACCESS,
   BX_PDTE_ACCESS,
   BX_PML4E_ACCESS,
   BX_PML5E_ACCESS,
+  BX_NESTED_PTE_ACCESS,
+  BX_NESTED_PDE_ACCESS,
+  BX_NESTED_PDTE_ACCESS,
+  BX_NESTED_PML4E_ACCESS,
+  BX_NESTED_PML5E_ACCESS,
   BX_EPT_PTE_ACCESS,
   BX_EPT_PDE_ACCESS,
   BX_EPT_PDTE_ACCESS,
@@ -4405,7 +4414,7 @@ public: // for now...
 #if BX_CPU_LEVEL >= 6
   BX_SMF bx_phy_address translate_linear_load_PDPTR(bx_address laddr, unsigned user, unsigned rw);
   BX_SMF bx_phy_address translate_linear_PAE(bx_address laddr, Bit32u &lpf_mask, unsigned user, unsigned rw);
-  BX_SMF int check_entry_PAE(const char *s, Bit64u entry, Bit64u reserved, unsigned rw, bool *nx_page);
+  BX_SMF int check_entry_PAE(const char *s, int leaf, Bit64u entry, Bit64u reserved, unsigned rw, bool *nx_page);
   BX_SMF void update_access_dirty_PAE(bx_phy_address *entry_addr, Bit64u *entry, BxMemtype *entry_memtype, unsigned max_level, unsigned leaf, unsigned write);
 #endif
 #if BX_SUPPORT_X86_64
@@ -4944,6 +4953,7 @@ public: // for now...
   BX_SMF void init_secondary_proc_based_vmexec_ctrls(void);
   BX_SMF void init_tertiary_proc_based_vmexec_ctrls(void);
   BX_SMF void init_vmexit_ctrls(void);
+  BX_SMF void init_secondary_vmexit_ctrls(void);
   BX_SMF void init_vmentry_ctrls(void);
   BX_SMF void init_VMCS(void);
   BX_SMF bool vmcs_field_supported(Bit32u encoding);
@@ -4974,7 +4984,7 @@ public: // for now...
   BX_SMF void VMX_Self_IPI_Virtualization(Bit8u vector);
   BX_SMF void VMX_Evaluate_Pending_Virtual_Interrupts(void);
   BX_SMF void VMX_Deliver_Virtual_Interrupt(void);
-  BX_SMF void vmx_page_modification_logging(Bit64u guest_addr, unsigned dirty_update);
+  BX_SMF void vmx_page_modification_logging(Bit64u guest_laddr, Bit64u guest_paddr, unsigned dirty_update);
 #endif
 #if BX_SUPPORT_VMX >= 2
   BX_SMF Bit16u VMread16_Shadow(unsigned encoding) BX_CPP_AttrRegparmN(1);

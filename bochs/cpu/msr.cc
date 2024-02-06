@@ -46,10 +46,11 @@ bool BX_CPP_AttrRegparmN(2) BX_CPU_C::rdmsr(Bit32u index, Bit64u *msr)
   Bit64u val64 = 0;
 
 #if BX_SUPPORT_VMX >= 2
+  VMCS_CACHE *vm = &BX_CPU_THIS_PTR vmcs;
   if (BX_CPU_THIS_PTR in_vmx_guest) {
-    if (SECONDARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL2_VIRTUALIZE_X2APIC_MODE)) {
+    if (vm->vmexec_ctrls2.VIRTUALIZE_X2APIC_MODE()) {
       if (index >= 0x800 && index <= 0x8FF) {
-        if (index == 0x808 || SECONDARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL2_VIRTUALIZE_APIC_REGISTERS)) {
+        if (index == 0x808 || vm->vmexec_ctrls2.VIRTUALIZE_APIC_REGISTERS()) {
           unsigned vapic_offset = (index & 0xff) << 4;
           Bit32u msr_lo = VMX_Read_Virtual_APIC(vapic_offset);
           Bit32u msr_hi = VMX_Read_Virtual_APIC(vapic_offset + 4);
@@ -342,9 +343,9 @@ bool BX_CPP_AttrRegparmN(2) BX_CPU_C::rdmsr(Bit32u index, Bit64u *msr)
       //    [1] - Enable STIBP: Single Thread Indirect Branch Predictors
       //    [2] - Enable SSCB: Speculative Store Bypass Disable
       // [63:3] - reserved
-#if BX_SUPPORT_VMX
-      if (BX_CPU_THIS_PTR in_vmx_guest && TERTIARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL3_VIRTUALIZE_IA32_SPEC_CTRL))
-        val64 = BX_CPU_THIS_PTR vmcs.ia32_spec_ctrl_shadow;
+#if BX_SUPPORT_VMX >= 2
+      if (BX_CPU_THIS_PTR in_vmx_guest && vm->vmexec_ctrls3.VIRTUALIZE_IA32_SPEC_CTRL())
+        val64 = vm->ia32_spec_ctrl_shadow;
       else
 #endif
         val64 = BX_CPU_THIS_PTR msr.ia32_spec_ctrl;
@@ -387,6 +388,12 @@ bool BX_CPP_AttrRegparmN(2) BX_CPU_C::rdmsr(Bit32u index, Bit64u *msr)
     case BX_MSR_VMX_VMEXIT_CTRLS:
       val64 = VMX_MSR_VMX_VMEXIT_CTRLS;
       break;
+    case BX_MSR_VMX_VMEXIT_CTRLS2:
+      if (BX_CPU_THIS_PTR vmx_cap.vmx_vmexit_ctrl2_supported_bits) {
+        val64 = VMX_MSR_VMX_VMEXIT_CTRLS2;
+        break;
+      }
+      return false;
     case BX_MSR_VMX_VMENTRY_CTRLS:
       val64 = VMX_MSR_VMX_VMENTRY_CTRLS;
       break;
@@ -667,8 +674,9 @@ bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
   BX_DEBUG(("WRMSR: write %08x:%08x to MSR %x", val32_hi, val32_lo, index));
 
 #if BX_SUPPORT_VMX >= 2
+  VMCS_CACHE *vm = &BX_CPU_THIS_PTR vmcs;
   if (BX_CPU_THIS_PTR in_vmx_guest) {
-    if (SECONDARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL2_VIRTUALIZE_X2APIC_MODE)) {
+    if (vm->vmexec_ctrls2.VIRTUALIZE_X2APIC_MODE()) {
       if (Virtualize_X2APIC_Write(index, val_64))
         return true;
     }
@@ -1079,9 +1087,9 @@ bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
         BX_ERROR(("WRMSR IA32_SPEC_CTRL: not enabled in the cpu model"));
         return handle_unknown_wrmsr(index, val_64);
       }
-#if BX_SUPPORT_VMX
-      if (BX_CPU_THIS_PTR in_vmx_guest && TERTIARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL3_VIRTUALIZE_IA32_SPEC_CTRL))
-        val_64 = (BX_CPU_THIS_PTR msr.ia32_spec_ctrl & BX_CPU_THIS_PTR vmcs.ia32_spec_ctrl_mask) | (val_64 & ~BX_CPU_THIS_PTR vmcs.ia32_spec_ctrl_mask);
+#if BX_SUPPORT_VMX >= 2
+      if (BX_CPU_THIS_PTR in_vmx_guest && vm->vmexec_ctrls3.VIRTUALIZE_IA32_SPEC_CTRL())
+        val_64 = (BX_CPU_THIS_PTR msr.ia32_spec_ctrl & vm->ia32_spec_ctrl_mask) | (val_64 & ~vm->ia32_spec_ctrl_mask);
 #endif
       //    [0] - Enable IBRS: Indirect Branch Restricted Speculation
       //    [1] - Enable STIBP: Single Thread Indirect Branch Predictors
@@ -1144,6 +1152,7 @@ bool BX_CPP_AttrRegparmN(2) BX_CPU_C::wrmsr(Bit32u index, Bit64u val_64)
     case BX_MSR_VMX_PROCBASED_CTRLS2:
     case BX_MSR_VMX_PROCBASED_CTRLS3:
     case BX_MSR_VMX_VMEXIT_CTRLS:
+    case BX_MSR_VMX_VMEXIT_CTRLS2:
     case BX_MSR_VMX_VMENTRY_CTRLS:
     case BX_MSR_VMX_MISC:
     case BX_MSR_VMX_CR0_FIXED0:
@@ -1416,7 +1425,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::RDMSRLIST(bxInstruction_c *i)
 {
 #if BX_SUPPORT_VMX
   if (BX_CPU_THIS_PTR in_vmx_guest) {
-    if (! TERTIARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL3_ENABLE_MSRLIST))
+    if (! BX_CPU_THIS_PTR vmcs.vmexec_ctrls3.ENABLE_MSRLIST())
       exception(BX_UD_EXCEPTION, 0);
   }
 #endif
@@ -1467,8 +1476,9 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::RDMSRLIST(bxInstruction_c *i)
 void BX_CPP_AttrRegparmN(1) BX_CPU_C::WRMSRLIST(bxInstruction_c *i)
 {
 #if BX_SUPPORT_VMX
+  VMCS_CACHE *vm = &BX_CPU_THIS_PTR vmcs;
   if (BX_CPU_THIS_PTR in_vmx_guest) {
-    if (! TERTIARY_VMEXEC_CONTROL(VMX_VM_EXEC_CTRL3_ENABLE_MSRLIST))
+    if (! vm->vmexec_ctrls3.ENABLE_MSRLIST())
       exception(BX_UD_EXCEPTION, 0);
   }
 #endif
@@ -1498,7 +1508,6 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::WRMSRLIST(bxInstruction_c *i)
 
 #if BX_SUPPORT_VMX >= 2
     if (BX_CPU_THIS_PTR in_vmx_guest) {
-      VMCS_CACHE *vm = &BX_CPU_THIS_PTR vmcs;
       vm->msr_data = MSR_data;
       VMexit_MSR(VMX_VMEXIT_WRMSRLIST, (Bit32u) MSR_address);
     }

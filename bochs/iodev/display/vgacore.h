@@ -107,9 +107,10 @@ public:
 
   virtual bool   get_update_mode(void) {return update_mode_vsync;}
   virtual void   set_update_timer(Bit32u usec);
+  virtual void   start_vertical_timer(void);
   static void    vga_timer_handler(void *);
-  static void    vsync_timer_handler(void *);
-  virtual void   vsync_timer(void);
+  static void    vertical_timer_handler(void *);
+  virtual void   vertical_timer(void);
   static Bit64s  vga_param_handler(bx_param_c *param, bool set, Bit64s val);
 
 protected:
@@ -124,7 +125,7 @@ protected:
   Bit32u read(Bit32u address, unsigned io_len);
   void   write(Bit32u address, Bit32u value, unsigned io_len, bool no_log);
 
-  Bit8u get_vga_pixel(Bit16u x, Bit16u y, Bit16u raddr, Bit16u lc, bool bs, Bit8u **plane);
+  Bit8u get_vga_pixel(Bit16u x, Bit16u y, Bit32u raddr, Bit16u lc, bool bs, Bit8u **plane);
   virtual void update(void);
   void determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth);
   void calculate_retrace_timing(void);
@@ -273,12 +274,17 @@ protected:
 #endif
   } s;  // state information
 
+  // vga update timer stuff
   int update_timer_id;
-  int vsync_timer_id;
   Bit32u vga_update_interval;
-  bool update_mode_vsync;
   bool update_realtime;
+  bool update_mode_vsync;
+  // vertical timer stuff
+  int vga_vtimer_id;
   bool vsync_realtime;
+  Bit8u vtimer_toggle;
+  Bit32u vtimer_interval[2];
+  // vga config
   bx_param_enum_c *vga_ext;
   bool pci_enabled;
 };
