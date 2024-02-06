@@ -46,22 +46,29 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event);
 PLUGIN_ENTRY_FOR_MODULE(cocoaconfig)
 {
   if (mode == PLUGIN_INIT) {
-    // create BXGuiCocoaApplication ref
-    bxcocoagui = new BXGuiCocoaApplication();
     SIM->register_configuration_interface("cocoaconfig", cocoa_ci_callback, NULL);
     SIM->set_log_viewer(true);
-    // this callback is captured by cocoa.cc
-    SIM->set_notify_callback(cocoa_notify_callback, NULL);
+    
     // SIM->register_runtime_config_handler()
   } else if (mode == PLUGIN_FINI) {
-    delete bxcocoagui;
+    // not safe to delete here
+//    delete bxcocoagui;
   } else if (mode == PLUGIN_PROBE) {
     return (int)PLUGTYPE_CI;
   }
   return 0; // Success
 }
 
-
+/**
+ * need to init gui support on startup
+ * called in bx main to supply gui feedback features
+ */
+void preinit_cocoa_notify_callback(void) {
+    // create BXGuiCocoaApplication ref
+    bxcocoagui = new BXGuiCocoaApplication();
+    // this callback is captured by cocoa.cc
+    SIM->set_notify_callback(cocoa_notify_callback, NULL);
+}
 
 
 
@@ -78,7 +85,7 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
   {
     case CI_START: {
       if (SIM->get_param_enum(BXPN_BOCHS_START)->get() == BX_QUICK_START) {
-
+        bxcocoagui->setSimulationState(SIM_STOP);
         bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, false);
         bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
         bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_LOAD, false);
@@ -90,6 +97,7 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
         // we don't expect it to return, but if it does, quit
         SIM->quit_sim(1);
       } else {
+        bxcocoagui->setSimulationState(SIM_STOP);
         bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, true);
         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);

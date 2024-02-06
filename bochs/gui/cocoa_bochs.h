@@ -61,6 +61,7 @@
   } vga_settings_t;
 
   typedef enum {
+    SIM_INIT,
     SIM_STOP,
     SIM_PAUSE,
     SIM_RUN,

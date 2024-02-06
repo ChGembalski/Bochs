@@ -190,6 +190,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSBrowser : NSBrowser <NSBrowserDelegate>
 
+    @property (nonatomic, readwrite) BOOL SIMavailable;
     @property (nonatomic, readwrite) void * _Nullable fix_root;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;

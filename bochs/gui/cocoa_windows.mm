@@ -342,7 +342,7 @@ gui_window_t window_list[] = {
   self = [super init];
   if(self) {
 
-    self.simulation_state = SIM_STOP;
+    self.simulation_state = SIM_INIT;
 
     // Menue Bar
     menubar = [[BXNSMenuBar alloc] init:self];
@@ -821,6 +821,7 @@ NSLog(@"add property to list");
 
     self.delegate = self;
     self.fix_root = nil;
+    self.SIMavailable = NO;
 
   }
 
@@ -847,6 +848,7 @@ NSLog(@"add property to list");
 
     self.delegate = self;
     self.fix_root = fix_root;
+    self.SIMavailable = YES;
 
   }
 
@@ -864,6 +866,10 @@ NSLog(@"add property to list");
   if (item == nil) {
     NSInteger count;
 
+    if (!self.SIMavailable) {
+      return 0;
+    }
+      
     if (self.fix_root != nil) {
       return 1;
     }

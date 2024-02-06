@@ -311,6 +311,10 @@ int bxmain(void)
   setlocale (LC_ALL, "");
 #endif
   bx_init_siminterface();   // create the SIM object
+#if BX_WITH_COCOA
+  extern void preinit_cocoa_notify_callback(void);
+  preinit_cocoa_notify_callback();
+#endif
   static jmp_buf context;
   if (setjmp (context) == 0) {
     SIM->set_quit_context (&context);

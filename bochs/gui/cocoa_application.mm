@@ -303,7 +303,18 @@ void BXGuiCocoaApplication::waitPropertySet(unsigned cnt, unsigned property, ...
  * setSimulationState
  */
 void BXGuiCocoaApplication::setSimulationState(simulation_state_t new_state) {
+  
+  simulation_state_t old_state;
+  
+  old_state = BXCocoaApplication->BXNSApp.bx_window_controller.simulation_state;
   BXCocoaApplication->BXNSApp.bx_window_controller.simulation_state = new_state;
+  // special case prior state was SIM_INIT
+  if (old_state == SIM_INIT) {
+    dispatch_sync(dispatch_get_main_queue(), ^(void){
+      [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_CONFIGURATION] config].SIMavailable = YES;
+      [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_CONFIGURATION] config] loadColumnZero];
+    });
+  }
 }
 
 /**
