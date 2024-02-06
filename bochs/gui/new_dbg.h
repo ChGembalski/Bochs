@@ -199,8 +199,11 @@ typedef enum {
 } dbg_cpu_reg_t;
 
 typedef struct {
-  Bit64u            reg_value[CPU_REG_END];
-  Bit64u            reg_backup[CPU_REG_END];
+  unsigned          cpu_mode;
+  bool              cpu_mode32;
+  bool              cpu_paging;
+  Bit64u            reg_value[CPU_REG_END];//?
+  Bit64u            reg_backup[CPU_REG_END];//?
   bx_param_num_c *  regs[CPU_REG_END];
 } bx_cpu_info_t;
 
@@ -236,6 +239,7 @@ private:
   char * strip_whitespace(char * s);
 
   void init_register_refs(void);
+  void update_register(unsigned cpuNo);
 
   bx_smp_info_t smp_info;
 

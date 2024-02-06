@@ -32,25 +32,33 @@
 class bx_cocoa_dbg_gui_c : public bx_dbg_gui_c {
 
 public:
-  bx_cocoa_dbg_gui_c(void);
-  ~bx_cocoa_dbg_gui_c(void);
+  // bx_cocoa_dbg_gui_c(void);
+  // ~bx_cocoa_dbg_gui_c(void);
+protected:
+
+
+DECLARE_GUI_DEBUGGER_VIRTUAL_METHODS();
 
 };
 
 // Create the new Gui Debugger class
 IMPLEMENT_GUI_DEBUGGER(bx_cocoa_dbg_gui_c);
 
-/**
- * CTor
- */
-bx_cocoa_dbg_gui_c::bx_cocoa_dbg_gui_c(void):bx_dbg_gui_c() {
+// /**
+//  * CTor maybe not needed
+//  */
+// bx_cocoa_dbg_gui_c::bx_cocoa_dbg_gui_c(void):bx_dbg_gui_c() {
+//
+// }
+//
+// /**
+//  * DTor maybe not needed
+//  */
+// bx_cocoa_dbg_gui_c::~bx_cocoa_dbg_gui_c(void) {
+//
+// }
 
-}
-
-/**
- * DTor
- */
-bx_cocoa_dbg_gui_c::~bx_cocoa_dbg_gui_c(void) {
+void bx_cocoa_dbg_gui_c::init_os_depended(void) {
 
 }
 

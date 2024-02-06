@@ -40,7 +40,7 @@
 
 
 
-  const char * dbg_regnames[] = {
+  const char * dbg_param_names[] = {
 #if BX_SUPPORT_X86_64 == 0
     "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "ESP", "EIP",
 #else
@@ -102,13 +102,125 @@
 
   };
 
+  const char * dbg_reg_names_16[] = {
+    "AX", "BX", "CX", "DX", "SI", "DI", "BP", "SP", "IP",
+  };
 
+  const char * dbg_reg_names_32[] = {
+    "EAX", "EBX", "ECX", "EDX", "ESI", "EDI", "EBP", "ESP", "EIP",
+  };
 
+  const char * dbg_reg_names[] = {
+    "RAX", "RBX", "RCX", "RDX", "RSI", "RDI", "RBP", "RSP", "RIP",
+    "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15",
 
+    "EFLAGS",
+    "CS", "DS", "ES", "FS", "GS",
 
+    "GDTR", "", "IDTR", "",
+    "LDTR", "TR",
 
+    "CR0", "CR2", "CR3",
+#if BX_CPU_LEVEL >= 5
+    "CR4",
+#endif /* BX_CPU_LEVEL >= 5 */
 
+#if BX_CPU_LEVEL >= 6
+    "EFER",
+#endif /* BX_CPU_LEVEL >= 6 */
 
+#if BX_SUPPORT_FPU
+    "ST0", "ST0", "ST1", "ST1",
+    "ST2", "ST2", "ST3", "ST3",
+    "ST4", "ST4", "ST5", "ST5",
+    "ST6", "ST6", "ST7", "ST7",
+#endif /* BX_SUPPORT_FPU */
+
+#if BX_CPU_TEST_REGISTER
+#if BX_CPU_LEVEL >= 3 && BX_CPU_LEVEL <= 6
+    "TR3", "TR4", "TR5",
+#if BX_CPU_LEVEL >= 4
+    "TR6", "TR7",
+#endif /* BX_CPU_LEVEL >= 4 */
+#endif /* BX_CPU_LEVEL >= 3 && BX_CPU_LEVEL <= 6 */
+#endif /* BX_CPU_TEST_REGISTER */
+
+#if BX_CPU_LEVEL >= 6
+
+    "XMM0", "XMM1", "XMM2", "XMM3", "XMM4",
+    "XMM5", "XMM6", "XMM7",
+#if BX_SUPPORT_X86_64
+    "XMM8", "XMM9", "XMM10", "XMM11", "XMM12",
+    "XMM13", "XMM14", "XMM15",
+#endif /* BX_SUPPORT_X86_64 */
+
+    "XMM0", "XMM1", "XMM2", "XMM3", "XMM4",
+    "XMM5", "XMM6", "XMM7",
+#if BX_SUPPORT_X86_64
+    "XMM8", "XMM9", "XMM10", "XMM11", "XMM12",
+    "XMM13", "XMM14", "XMM15",
+#endif /* BX_SUPPORT_X86_64 */
+
+#endif /* BX_CPU_LEVEL >= 6 */
+
+    "DR0", "DR1", "DR2", "DR3", "DR6", "DR7",
+
+    NULL
+
+  };
+
+  const char * dbg_gdt_type_names[] = {
+    "",
+    "Available 16bit TSS",
+    "LDT",
+    "Busy 16bit TSS",
+    "16bit Call Gate",
+    "Task Gate",
+    "16bit Interrupt Gate",
+    "16bit Trap Gate",
+    "Reserved",
+    "Available 32bit TSS",
+    "Reserved",
+    "Busy 32bit TSS",
+    "32bit Call Gate",
+    "Reserved",
+    "32bit Interrupt Gate",
+    "32bit Trap Gate"
+  };
+
+  const char * dbg_gdt_data_type_names[] = {
+    "16-bit code",
+    "64-bit code",
+    "32-bit code",
+    "16-bit data",
+    "64-bit data",
+    "32-bit data",
+    "Illegal",
+    "Unused"
+ };
+
+ const char * dbg_idt_type_names[] = {
+   "",
+   "Task Gate",
+   "Interrupt Gate",
+   "Trap Gate"
+ };
+
+ const char * dbg_eflags_names[] = {
+   "cf", "", "pf", "", "af", "", "zf", "tf",
+   "if", "df", "of", "iopl", "iopl", "nt", "", "rf",
+   "vm", "ac", "vif", "vip", "id", "", "", "",
+   "", "", "", "", "", "", "", ""
+ };
+
+ // depends on BxCpuMode
+ const char * dbg_cpu_mode_names[] = {
+   "Real Mode",
+   "V8086 Mode",
+   "Protected Mode",
+   "Compatibility Mode",
+   "Long Mode"
+ };
 
 
   // internal callback handler
@@ -124,6 +236,7 @@
 
   // internal setup
   void InitDebugDialog() {
+    printf("-->InitDebugDialog\n");
     new_dbg_handler_custom(true);
 
     // setup new callback
@@ -305,24 +418,41 @@ void bx_dbg_gui_c::init_register_refs(void) {
   this->smp_info.cpu_info = (bx_cpu_info_t *)malloc( BX_SMP_PROCESSORS * sizeof(bx_cpu_info_t));
   memset(this->smp_info.cpu_info, 0, BX_SMP_PROCESSORS * sizeof(bx_cpu_info_t));
   // now fill the bx_cpu_info_t struct each cpu
-  for (int cpuNo = 0; cpuNo<BX_SMP_PROCESSORS; cpuNo++) {
+  for (unsigned cpuNo = 0; cpuNo<BX_SMP_PROCESSORS; cpuNo++) {
 
     char cpuname[16];
-    int cpuregno;
+    unsigned cpuregno;
 
     snprintf(cpuname, 16, "bochs.cpu%d", cpuNo);
     cpu_list = (bx_list_c *) SIM->get_param(cpuname, root_param);
 
     // now fill the regs ...
     cpuregno = 0;
-    while (dbg_regnames[cpuregno] != NULL) {
-      this->smp_info.cpu_info[cpuNo].regs[cpuregno] = SIM->get_param_num(dbg_regnames[cpuregno], cpu_list);
+    while (dbg_param_names[cpuregno] != NULL) {
+      this->smp_info.cpu_info[cpuNo].regs[cpuregno] = SIM->get_param_num(dbg_param_names[cpuregno], cpu_list);
+      // tests
+      printf("[%s][%016X]\n",
+        this->smp_info.cpu_info[cpuNo].regs[cpuregno]->get_name(),
+        this->smp_info.cpu_info[cpuNo].regs[cpuregno]->get64()
+      );
       cpuregno++;
     }
+
+    this->update_register(cpuNo);
 
   }
 }
 
+/**
+ * update_register
+ */
+void bx_dbg_gui_c::update_register(unsigned cpuNo) {
+
+  this->smp_info.cpu_info[cpuNo].cpu_mode = BX_CPU(cpuNo)->get_cpu_mode();
+  this->smp_info.cpu_info[cpuNo].cpu_mode32 = BX_CPU(cpuNo)->sregs[BX_SEG_REG_CS].cache.u.segment.d_b;
+  this->smp_info.cpu_info[cpuNo].cpu_paging = this->smp_info.cpu_info[cpuNo].regs[CR0]->get64() & 0x80000000;
+
+}
 
 
 
