@@ -351,38 +351,40 @@
  * init
  */
 - (instancetype _Nonnull)init {
-
+  
   self = [super init];
   if (self) {
-
+    
     self.numberStyle = NSNumberFormatterNoStyle;
     self.generatesDecimalNumbers = NO;
-    self.format = @"%X";
+    self.format = @"";
   }
-
+  
   return self;
-
+  
 }
 
 /**
  * isPartialStringValid
  */
 - (BOOL)isPartialStringValid:(NSString * _Nonnull)partialString newEditingString:(NSString * _Nullable * _Nullable)newString errorDescription:(NSString * _Nullable * _Nullable)error {
-
+  
   NSScanner * scanner;
-
+  unsigned value;
+  
   if([partialString length] == 0) {
     return YES;
   }
-
+  NSLog(@"partial=[%@]", partialString);
   scanner = [NSScanner scannerWithString:partialString];
-  if(!([scanner scanHexInt:nil] && [scanner isAtEnd])) {
+  if(!([scanner scanHexInt:&value] && [scanner isAtEnd])) {
     NSBeep();
     return NO;
   }
-
+  *newString = partialString;
+  
   return YES;
-
+  
 }
 
 /**
@@ -390,7 +392,81 @@
  */
 - (BOOL)getObjectValue:(id _Nullable * _Nullable)obj forString:(NSString * _Nonnull)string errorDescription:(NSString * _Nullable * _Nullable)error {
 
+  unsigned value;
+  NSScanner * scanner;
+  
+  value = 0;
+  scanner = [NSScanner scannerWithString:string];
+  [scanner scanHexInt:&value];
+  *obj = [NSNumber numberWithInt:value];
+  
   return YES;
+
+}
+
+/**
+ * stringForObjectValue
+ */
+- (NSString * _Nullable)stringForObjectValue:(id _Nullable) obj {
+  
+  NSString * result;
+  
+  if (![obj isKindOfClass:[NSNumber class]]) {
+    return nil;
+  }
+  
+  result = [NSString stringWithFormat:@"%lX", [obj longValue]];
+  
+  return result;
+  
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSTextField
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSTextField
+
+/**
+ * textFieldWithString
+ */
++ (instancetype _Nonnull)textFieldWithString:(NSString * _Nonnull)stringValue TypeNotif:(BOOL) tnotif {
+  
+  BXNSTextField * result;
+  
+  result = [super textFieldWithString:stringValue];
+  result.type_notification = tnotif;
+  
+  return result;
+  
+}
+
+/**
+ * textDidChange
+ */
+- (void)textDidChange:(NSNotification * _Nonnull)notification {
+
+  if ((self.action != nil) && (self.target != nil) && self.type_notification) {
+    [self sendAction:self.action to:self.target];
+  }
+  
+}
+
+/**
+ * hexnumberValue
+ */
+- (unsigned)hexnumberValue {
+
+  unsigned value;
+  NSScanner * scanner;
+
+  value = 0;
+  scanner = [NSScanner scannerWithString:self.stringValue];
+  [scanner scanHexInt:&value];
+
+  return value;
 
 }
 
@@ -471,9 +547,9 @@
     }
     str_val = [NSString stringWithFormat:str_fmt, param->get64()];
     if (noMaxVal || noMinVal || withEdit) { //!smallRange) {
-      self.text = [NSTextField textFieldWithString:str_val];
+      self.text = [BXNSTextField textFieldWithString:str_val TypeNotif:!(noMaxVal || noMinVal)];
     } else {
-      self.text = [NSTextField labelWithString:str_val];
+      self.text = [BXNSTextField labelWithString:str_val];
     }
     if (param->get_base() == BASE_HEX) {
       [self.text setFormatter:[[BXNSHexNumberFormatter alloc] init]];
@@ -520,11 +596,26 @@
 - (void)sliderChanged:(id _Nonnull)sender {
 
   NSString * str_fmt;
+  BOOL noMinVal;
+  BOOL noMaxVal;
 
   if (self.param->get_base() == BASE_HEX) {
     str_fmt = @"%X";
   } else {
     str_fmt = @"%d";
+  }
+  noMaxVal = self.param->get_max() == 0xffffffff;
+  noMinVal = self.param->get_min() == 0xffffffff;
+  
+  if (!noMinVal) {
+    if (self.slider.intValue < self.param->get_min()) {
+      self.slider.intValue = self.param->get_min();
+    }
+  }
+  if (!noMaxVal) {
+    if (self.slider.intValue > self.param->get_max()) {
+      self.slider.intValue = self.param->get_max();
+    }
   }
 
   self.param->set(self.slider.intValue);
@@ -538,14 +629,41 @@
 - (void)valueChanged:(id _Nonnull)sender {
 
   NSInteger val;
+  BOOL noMinVal;
+  BOOL noMaxVal;
+  NSString * str_fmt;
+    
+  if (self.param->get_base() == BASE_HEX) {
+    str_fmt = @"%X";
+    val = [self.text hexnumberValue];
+  } else {
+    str_fmt = @"%d";
+    val = [self.text.stringValue intValue];
+  }
+    if (val == self.param->get64()) {
+      return;
+    }
 
-  val = [self.text.stringValue intValue];
+  noMaxVal = self.param->get_max() == 0xffffffff;
+  noMinVal = self.param->get_min() == 0xffffffff;
+  
+  if (!noMinVal) {
+    if (val < self.param->get_min()) {
+      val = self.param->get_min();
+    }
+  }
+  if (!noMaxVal) {
+    if (val > self.param->get_max()) {
+      val = self.param->get_max();
+    }
+  }
+  self.text.stringValue = [NSString stringWithFormat:str_fmt, val];
+  self.param->set((UInt64)val);
+  
   if (self.slider != nil) {
     self.slider.intValue = val;
     [self.slider setNeedsDisplay:YES];
   }
-
-  self.param->set((UInt64)val);
 
 }
 
@@ -567,16 +685,56 @@
 @implementation BXNSStringSelector
 
 /**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect Param:(bx_param_string_c * _Nonnull) param {
+  
+  NSAssert(param->get_type() == BXT_PARAM_STRING, @"Invalid param type! expected : BXT_PARAM_STRING");
+  
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    
+    self.text = [BXNSTextField textFieldWithString:[NSString stringWithUTF8String:param->getptr()] TypeNotif:YES];
+    self.text.autoresizingMask = NSViewWidthSizable;
+
+    [self addArrangedSubview:self.text];
+
+    self.button = nil;
+    if (param->get_options() == param->IS_FILENAME) {
+      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonOPressed:)];
+      [self addArrangedSubview:self.button];
+    } else if (param->get_options() == param->SAVE_FILE_DIALOG) {
+      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonSPressed:)];
+      [self addArrangedSubview:self.button];
+    } else if (param->get_options() == param->SELECT_FOLDER_DLG) {
+      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonDPressed:)];
+      [self addArrangedSubview:self.button];
+    }
+
+    self.autoresizingMask = NSViewWidthSizable;
+    self.param = param;
+
+    [self.text setAction:@selector(valueChanged:)];
+    [self.text setTarget:self];
+    
+  }
+  
+  return self;
+  
+}
+
+/**
  * initWithBrowser
  */
-- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(bx_param_string_c * _Nonnull) param {
+- (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nullable) browser Param:(bx_param_string_c * _Nonnull) param {
 
   NSAssert(param->get_type() == BXT_PARAM_STRING, @"Invalid param type! expected : BXT_PARAM_STRING");
 
   self = [super initWithFrame:NSMakeRect(10,10,(unsigned)[browser frameOfInsideOfColumn:browser.lastVisibleColumn].size.width - 20,50)];
   if (self) {
 
-    self.text = [NSTextField textFieldWithString:[NSString stringWithUTF8String:param->getptr()]];
+    self.text = [BXNSTextField textFieldWithString:[NSString stringWithUTF8String:param->getptr()]];
     self.text.autoresizingMask = NSViewWidthSizable;
 
     [self addArrangedSubview:self.text];

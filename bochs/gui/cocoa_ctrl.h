@@ -135,6 +135,22 @@
 
   - (BOOL)isPartialStringValid:(NSString * _Nonnull)partialString newEditingString:(NSString * _Nullable * _Nullable)newString errorDescription:(NSString * _Nullable * _Nullable)error;
   - (BOOL)getObjectValue:(id _Nullable * _Nullable)obj forString:(NSString * _Nonnull)string errorDescription:(NSString * _Nullable * _Nullable)error;
+  - (NSString * _Nullable)stringForObjectValue:(id _Nullable) obj;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSTextField
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSTextField : NSTextField
+
+    @property (nonatomic, readwrite) BOOL type_notification;
+
+    + (instancetype _Nonnull)textFieldWithString:(NSString * _Nonnull)stringValue TypeNotif:(BOOL) tnotif;
+
+    - (void)textDidChange:(NSNotification * _Nonnull)notification;
+    - (unsigned)hexnumberValue;
 
   @end
 
@@ -146,7 +162,7 @@
 
     @property (nonatomic, readwrite) bx_param_num_c * _Nonnull param;
     @property (nonatomic, readwrite, strong) NSSlider * _Nullable slider;
-    @property (nonatomic, readwrite, strong) NSTextField * _Nullable text;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nullable text;
     @property (nonatomic, readwrite, strong) NSDatePicker * _Nullable date;
 
     - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(bx_param_num_c * _Nonnull) param;
@@ -164,10 +180,11 @@
   @interface BXNSStringSelector : NSStackView
 
     @property (nonatomic, readwrite) bx_param_string_c * _Nonnull param;
-    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull text;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull text;
     @property (nonatomic, readwrite, strong) NSButton * _Nullable button;
 
-    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(bx_param_string_c * _Nonnull) param;
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect Param:(bx_param_string_c * _Nonnull) param;
+    - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nullable) browser Param:(bx_param_string_c * _Nonnull) param;
 
     - (void)valueChanged:(id _Nonnull)sender;
     - (void)buttonOPressed:(id _Nonnull)sender;
