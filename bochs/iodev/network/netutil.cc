@@ -1136,7 +1136,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
         if (fs->cmdcode == FTPCMD_USER) {
           fs->anonymous = !strcmp(arg, "anonymous");
           if (!strcmp(arg, "bochs") || fs->anonymous) {
-            sprintf(reply, "331 Password required for %s.", arg);
+            snprintf(reply, 256, "331 Password required for %s.", arg);
             ftp_send_reply(tcpc_cmd, reply);
             fs->state = FTP_STATE_ASKPASS;
           } else {
@@ -1204,7 +1204,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             }
             break;
           case FTPCMD_FEAT:
-            sprintf(reply, "211- Extension supported:%c%c SIZE%c%c211 end",
+            snprintf(reply, 256, "211- Extension supported:%c%c SIZE%c%c211 end",
                     13, 10, 13, 10);
             ftp_send_reply(tcpc_cmd, reply);
             break;
@@ -1244,7 +1244,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             ftp_send_reply(tcpc_cmd, "200 Command OK.");
             break;
           case FTPCMD_OPTS:
-            sprintf(reply, "501 Feature '%s' not supported.", arg);
+            snprintf(reply, 256, "501 Feature '%s' not supported.", arg);
             ftp_send_reply(tcpc_cmd, reply);
             break;
           case FTPCMD_EPSV:
@@ -1255,19 +1255,19 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             } while (!pasv_port_ok);
             if (fs->cmdcode == FTPCMD_EPSV) {
               BX_DEBUG(("Extended passive FTP mode using port %d", fs->pasv_port));
-              sprintf(reply, "229 Entering extended passive mode (|||%d|).",
+              snprintf(reply, 256, "229 Entering extended passive mode (|||%d|).",
                       fs->pasv_port);
             } else {
               BX_DEBUG(("Passive FTP mode using port %d", fs->pasv_port));
               hostip = dhcp->srv_ipv4addr[VNET_MISC];
-              sprintf(reply, "227 Entering passive mode (%d, %d, %d, %d, %d, %d).",
+              snprintf(reply, 256, "227 Entering passive mode (%d, %d, %d, %d, %d, %d).",
                       hostip[0], hostip[1], hostip[2], hostip[3], (fs->pasv_port >> 8),
                       (fs->pasv_port & 0xff));
             }
             ftp_send_reply(tcpc_cmd, reply);
             break;
           case FTPCMD_PWD:
-            sprintf(reply, "257 \"%s\" is current directory.", fs->rel_path);
+            snprintf(reply, 256, "257 \"%s\" is current directory.", fs->rel_path);
             ftp_send_reply(tcpc_cmd, reply);
             break;
           case FTPCMD_QUIT:
@@ -1333,24 +1333,24 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             break;
           case FTPCMD_TYPE:
             if (!stricmp(arg, "A") || !stricmp(arg, "I")) {
-              sprintf(reply, "200 Type set to %s.", arg);
+              snprintf(reply, 256, "200 Type set to %s.", arg);
               fs->ascii_mode = !stricmp(arg, "A");
             } else {
-              sprintf(reply, "501 Type %s not supported.", arg);
+              snprintf(reply, 256, "501 Type %s not supported.", arg);
             }
             ftp_send_reply(tcpc_cmd, reply);
             break;
           case FTPCMD_EPRT:
           case FTPCMD_PORT:
-            sprintf(reply, "502 %s command not supported by server", cmdstr);
+            snprintf(reply, 256, "502 %s command not supported by server", cmdstr);
             ftp_send_reply(tcpc_cmd, reply);
             break;
           case FTPCMD_NOPERM:
-            sprintf(reply, "550 %s operation not permitted.", cmdstr);
+            snprintf(reply, 256, "550 %s operation not permitted.", cmdstr);
             ftp_send_reply(tcpc_cmd, reply);
             break;
           default:
-            sprintf(reply, "502 Command '%s' not implemented.", cmdstr);
+            snprintf(reply, 256, "502 Command '%s' not implemented.", cmdstr);
             ftp_send_reply(tcpc_cmd, reply);
         }
       }
@@ -1374,7 +1374,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
         close(fs->data_xfer_fd);
         fs->data_xfer_fd = -1;
         if (fs->last_fname != NULL) {
-          sprintf(reply, "226 Transfer complete (unique file name %s).",
+          snprintf(reply, 256, "226 Transfer complete (unique file name %s).",
                   fs->last_fname);
           ftp_send_reply(tcpc_cmd, reply);
           delete [] fs->last_fname;
@@ -1483,9 +1483,9 @@ bool vnet_server_c::ftp_subdir_exists(tcp_conn_t *tcpc_cmd, const char *arg,
 
   if (arg[0] != '/') {
     if (!strcmp(fs->rel_path, "/")) {
-      sprintf(relpath, "/%s", arg);
+      snprintf(relpath, BX_PATHNAME_LEN, "/%s", arg);
     } else {
-      sprintf(relpath, "%s/%s", fs->rel_path, arg);
+      snprintf(relpath, BX_PATHNAME_LEN, "%s/%s", fs->rel_path, arg);
     }
   } else {
     strcpy(relpath, arg);
@@ -1493,7 +1493,7 @@ bool vnet_server_c::ftp_subdir_exists(tcp_conn_t *tcpc_cmd, const char *arg,
   if (!strcmp(relpath, "/")) {
     strcpy(abspath, tftp_root);
   } else {
-    sprintf(abspath, "%s%s", tftp_root, relpath);
+    snprintf(abspath, BX_PATHNAME_LEN, "%s%s", tftp_root, relpath);
   }
 #ifndef WIN32
   dir = opendir(abspath);
@@ -1534,7 +1534,7 @@ void vnet_server_c::ftp_send_reply(tcp_conn_t *tcp_conn, const char *msg)
 {
   if (strlen(msg) > 0) {
     char *reply = new char[strlen(msg) + 3];
-    sprintf(reply, "%s%c%c", msg, 13, 10);
+    snprintf(reply, (strlen(msg) + 3), "%s%c%c", msg, 13, 10);
     tcpipv4_send_data(tcp_conn, (Bit8u*)reply, strlen(reply), 1);
     delete [] reply;
   }
@@ -1546,21 +1546,21 @@ void vnet_server_c::ftp_send_status(tcp_conn_t *tcp_conn)
   char reply[256], linebuf[80];
   Bit8u *ipv4addr = client[tcp_conn->clientid].ipv4addr;
 
-  sprintf(reply, "211- Bochs FTP server status:%c%c", 13, 10);
-  sprintf(linebuf, "     Connected to %u.%u.%u.%u%c%c", ipv4addr[0], ipv4addr[1],
+  snprintf(reply, 256, "211- Bochs FTP server status:%c%c", 13, 10);
+  snprintf(linebuf, 80, "     Connected to %u.%u.%u.%u%c%c", ipv4addr[0], ipv4addr[1],
           ipv4addr[2], ipv4addr[3], 13, 10);
   strcat(reply, linebuf);
   if (fs->anonymous) {
-    sprintf(linebuf, "     Logged in anonymously%c%c", 13, 10);
+    snprintf(linebuf, 80, "     Logged in anonymously%c%c", 13, 10);
   } else {
-    sprintf(linebuf, "     Logged in as ftpuser%c%c", 13, 10);
+    snprintf(linebuf, 80, "     Logged in as ftpuser%c%c", 13, 10);
   }
   strcat(reply, linebuf);
-  sprintf(linebuf, "     Type: ASCII, Form: Nonprint; STRUcture: File; Transfer MODE: Stream%c%c", 13, 10);
+  snprintf(linebuf, 80, "     Type: ASCII, Form: Nonprint; STRUcture: File; Transfer MODE: Stream%c%c", 13, 10);
   strcat(reply, linebuf);
-  sprintf(linebuf, "     No data connection%c%c", 13, 10);
+  snprintf(linebuf, 80, "     No data connection%c%c", 13, 10);
   strcat(reply, linebuf);
-  sprintf(linebuf, "211 End of status%c%c", 13, 10);
+  snprintf(linebuf, 80, "211 End of status%c%c", 13, 10);
   strcat(reply, linebuf);
   tcpipv4_send_data(tcp_conn, (Bit8u*)reply, strlen(reply), 1);
 }
@@ -1634,13 +1634,13 @@ void vnet_server_c::ftp_list_directory(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_da
   } else {
     hidden = (strchr(options, 'a') != NULL);
   }
-  sprintf(reply, "150 Opening %s mode connection for file list.",
+  snprintf(reply, 80, "150 Opening %s mode connection for file list.",
           fs->ascii_mode ? "ASCII":"BINARY");
   ftp_send_reply(tcpc_cmd, reply);
   if (!strcmp(subdir, "/")) {
     strcpy(abspath, tftp_root);
   } else {
-    sprintf(abspath, "%s%s", tftp_root, subdir);
+    snprintf(abspath, BX_PATHNAME_LEN, "%s%s", tftp_root, subdir);
   }
   strcpy(fs->dirlist_tmp, "dirlist.XXXXXX");
 #if BX_HAVE_MKSTEMP
@@ -1662,7 +1662,7 @@ void vnet_server_c::ftp_list_directory(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_da
         linebuf[0] = 0;
         if (strcmp(dent->d_name, ".") && strcmp(dent->d_name, "..") &&
             (hidden || (dent->d_name[0] != '.'))) {
-          sprintf(path, "%s/%s", abspath, dent->d_name);
+          snprintf(path, 768, "%s/%s", abspath, dent->d_name);
           if (!nlst) {
             if (stat(path, &st) >= 0) {
               if (st.st_mtime < (now - 31536000)) {
@@ -1671,15 +1671,15 @@ void vnet_server_c::ftp_list_directory(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_da
                 strftime(tmptime, 20, "%b %d %H:%M", localtime(&st.st_mtime));
               }
               if (S_ISDIR(st.st_mode)) {
-                sprintf(linebuf, "drwxrwxr-x 1 ftp ftp %ld %s %s%c%c", st.st_size,
+                snprintf(linebuf, BX_PATHNAME_LEN, "drwxrwxr-x 1 ftp ftp %ld %s %s%c%c", st.st_size,
                         tmptime, dent->d_name, 13, 10);
               } else {
-                sprintf(linebuf, "-rw-rw-r-- 1 ftp ftp %ld %s %s%c%c", st.st_size,
+                snprintf(linebuf, BX_PATHNAME_LEN, "-rw-rw-r-- 1 ftp ftp %ld %s %s%c%c", st.st_size,
                         tmptime, dent->d_name, 13, 10);
               }
             }
           } else {
-            sprintf(linebuf, "%s%c%c", dent->d_name, 13, 10);
+            snprintf(linebuf, BX_PATHNAME_LEN, "%s%c%c", dent->d_name, 13, 10);
           }
           if (strlen(linebuf) > 0) {
             write(fd, linebuf, strlen(linebuf));
@@ -1698,7 +1698,7 @@ void vnet_server_c::ftp_list_directory(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_da
                             "Aug", "Sep", "Oct", "Nov", "Dec"};
     char filter[MAX_PATH];
 
-    sprintf(filter, "%s\\*.*", abspath);
+    snprintf(filter, MAX_PATH, "%s\\*.*", abspath);
     hFind = FindFirstFile(filter, &finddata);
     if (hFind != INVALID_HANDLE_VALUE) {
       do {
@@ -1712,21 +1712,21 @@ void vnet_server_c::ftp_list_directory(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_da
             GetLocalTime(&now);
             if ((systime.wYear == now.wYear) ||
                 ((systime.wYear == (now.wYear - 1)) && (systime.wMonth > now.wMonth))) {
-              sprintf(tmptime, "%s %d %02d:%02d", month[systime.wMonth-1], systime.wDay,
+              snprintf(tmptime, 20, "%s %d %02d:%02d", month[systime.wMonth-1], systime.wDay,
                       systime.wHour, systime.wMinute);
             } else {
-              sprintf(tmptime, "%s %d %d", month[systime.wMonth-1], systime.wDay,
+              snprintf(tmptime, 20, "%s %d %d", month[systime.wMonth-1], systime.wDay,
                       systime.wYear);
             }
             if (finddata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-              sprintf(linebuf, "drwxrwxr-x 1 ftp ftp %ld %s %s%c%c", 0, tmptime,
+              snprintf(linebuf, BX_PATHNAME_LEN, "drwxrwxr-x 1 ftp ftp %ld %s %s%c%c", 0, tmptime,
                       finddata.cFileName, 13, 10);
             } else {
-              sprintf(linebuf, "-rw-rw-r-- 1 ftp ftp %ld %s %s%c%c", finddata.nFileSizeLow,
+              snprintf(linebuf, BX_PATHNAME_LEN, "-rw-rw-r-- 1 ftp ftp %ld %s %s%c%c", finddata.nFileSizeLow,
                       tmptime, finddata.cFileName, 13, 10);
             }
           } else {
-            sprintf(linebuf, "%s%c%c", finddata.cFileName, 13, 10);
+            snprintf(linebuf, BX_PATHNAME_LEN, "%s%c%c", finddata.cFileName, 13, 10);
           }
           if (strlen(linebuf) > 0) {
             write(fd, linebuf, strlen(linebuf));
@@ -1754,7 +1754,7 @@ void vnet_server_c::ftp_recv_file(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_data,
   exists = ftp_file_exists(tcpc_cmd, fname, path, NULL);
   if (exists && (fs->cmdcode == FTPCMD_STOU)) {
     do {
-      sprintf(tmp_path, "%s.%d", path, n++);
+      snprintf(tmp_path, (BX_PATHNAME_LEN+4), "%s.%d", path, n++);
     } while (ftp_file_exists(tcpc_cmd, NULL, tmp_path, NULL));
     strcpy(path, tmp_path);
     cptr = strrchr(path, '/');
@@ -1768,7 +1768,7 @@ void vnet_server_c::ftp_recv_file(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_data,
 #endif
             , 0644);
   if (fd >= 0) {
-    sprintf(reply, "150 Opening %s mode connection to receive file.",
+    snprintf(reply, 80, "150 Opening %s mode connection to receive file.",
             fs->ascii_mode ? "ASCII":"BINARY");
     ftp_send_reply(tcpc_cmd, reply);
     fs->data_xfer_fd = fd;
@@ -1785,7 +1785,7 @@ void vnet_server_c::ftp_send_file(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_data,
   unsigned size = 0;
 
   if (ftp_file_exists(tcpc_cmd, arg, path, &size)) {
-    sprintf(reply, "150 Opening %s mode connection to send file.",
+    snprintf(reply, 80, "150 Opening %s mode connection to send file.",
             fs->ascii_mode ? "ASCII":"BINARY");
     ftp_send_reply(tcpc_cmd, reply);
     ftp_send_data_prep(tcpc_cmd, tcpc_data, path, size);
@@ -1799,7 +1799,7 @@ void vnet_server_c::ftp_get_filesize(tcp_conn_t *tcp_conn, const char *arg)
   unsigned size = 0;
 
   if (ftp_file_exists(tcp_conn, arg, path, &size)) {
-    sprintf(reply, "213 %d", size);
+    snprintf(reply, 20, "213 %d", size);
     ftp_send_reply(tcp_conn, reply);
   } else {
     ftp_send_reply(tcp_conn, "550 File not found.");
@@ -2329,7 +2329,7 @@ int tftp_send_data(Bit8u *buffer, unsigned block_nr, tftp_session_t *s)
 
   FILE *fp = fopen(s->filename, "rb");
   if (!fp) {
-    sprintf(msg, "File not found: %s", s->filename);
+    snprintf(msg, (BX_PATHNAME_LEN + 16), "File not found: %s", s->filename);
     return tftp_send_error(buffer, 1, msg, s);
   }
 
@@ -2463,7 +2463,7 @@ int vnet_server_c::udpipv4_tftp_handler_ns(const Bit8u *ipheader,
         }
         fp = fopen(s->filename, "rb");
         if (!fp) {
-          sprintf(msg, "File not found: %s", s->filename);
+          snprintf(msg, (BX_PATHNAME_LEN + 16), "File not found: %s", s->filename);
           return tftp_send_error(reply, 1, msg, s);
         } else {
           fclose(fp);
