@@ -688,7 +688,7 @@ event_loop:
   NSLog(@" awake check properties ...");
   // now check if one is set
   for (NSString * property in property_names) {
-    NSLog(@"property=%@ value=%d", property, [self.bx_p_col peekProperty:property]);
+    NSLog(@"property=%@ value=%d", property, (int)[self.bx_p_col peekProperty:property]);
     if ([self.bx_p_col peekProperty:property] != BX_PROPERTY_UNDEFINED) {
       NSLog(@"Condition true %@", property);
       [self.event_condition unlock];
@@ -1208,6 +1208,7 @@ NSLog(@"add property to list");
     NSButton * OK_BUTTON;
     NSButton * CANCEL_BUTTON;
     BXNSBrowser * browser;
+    bx_param_string_c * string_param;
 
     [self setLevel:NSPopUpMenuWindowLevel];
     [self setTitle:BOCHS_WINDOW_CONFIG_NAME];
@@ -1218,8 +1219,13 @@ NSLog(@"add property to list");
     [self.contentView addSubview:inner];
 
     // add control on top
-    browser = [[BXNSBrowser alloc] initWithFrame:NSMakeRect(0, 0, 640, 400) Root:param];
-    [inner addArrangedSubview:browser];
+    string_param = (bx_param_string_c *)param;
+    if (strcmp(string_param->get_label(), "#config#file#") == 0) {
+      [inner addArrangedSubview:[[BXNSStringSelector alloc] initWithFrame:NSMakeRect(0, 0, 640, 400) Param:string_param]];
+    } else {
+      browser = [[BXNSBrowser alloc] initWithFrame:NSMakeRect(0, 0, 640, 400) Root:param];
+      [inner addArrangedSubview:browser];
+    }
 
     buttons = [[NSStackView alloc] initWithFrame:NSMakeRect(0, 0, 640, 50)];
     [inner addArrangedSubview:buttons];
@@ -1547,19 +1553,7 @@ BXNSEventQueue * BXEventQueue;
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSLoggingWindow
 
-NSView * optionsView;
-NSBox * optionsBox;
-NSButton * panicOption;
-NSButton * errorOption;
-NSButton * infoOption;
-NSButton * debugOption;
-NSButton * refreshButton;
-NSBox * messagesBox;
-NSScrollView * messagesScrollView;
-NSTextView * messagesText;
-NSDictionary * attributesText;
-NSTimer * refreshTimer;
-UInt8 loglevelMask;
+
 
 /**
  * init
@@ -1567,7 +1561,7 @@ UInt8 loglevelMask;
 - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller LogQueue:(BXNSLogQueue * _Nonnull) queue {
 
   self = [super initWithBXController:controller
-       contentRect: NSMakeRect(0, 0, 400, 400)
+       contentRect: NSMakeRect(0, 0, 440, 400)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
                     NSWindowStyleMaskMiniaturizable |
@@ -1578,67 +1572,83 @@ UInt8 loglevelMask;
 
   if (self) {
 
+    NSBox * optionsBox;
+    NSButton * panicOption;
+    NSButton * errorOption;
+    NSButton * infoOption;
+    NSButton * debugOption;
+    NSButton * scrollOption;
+    NSBox * messagesBox;
+    NSScrollView * messagesScrollView;
+    
     self.queue = queue;
 
     [self setTitle:BOCHS_WINDOW_LOGGER_NAME];
 
-    loglevelMask = 0x00;
+    self.loglevelMask = 0b10001111;
 
     self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
     optionsBox = [[NSBox alloc] init];
-    [optionsBox setFrameFromContentFrame:NSMakeRect(20,350,360,20)];
+    [optionsBox setFrameFromContentFrame:NSMakeRect(20,350,400,20)];
     optionsBox.title = @"Logging Level";
     optionsBox.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
 
-    panicOption = [NSButton checkboxWithTitle:@"Panic" target:self action:nil];
+    panicOption = [NSButton checkboxWithTitle:@"Panic" target:self action:@selector(onCheckboxClick:)];
     panicOption.frame = NSMakeRect(0, 0, 80, 20);
+    panicOption.state = NSControlStateValueOn;
     [optionsBox addSubview:panicOption];
-    errorOption = [NSButton checkboxWithTitle:@"Error" target:self action:nil];
+    errorOption = [NSButton checkboxWithTitle:@"Error" target:self action:@selector(onCheckboxClick:)];
     errorOption.frame = NSMakeRect(80, 0, 80, 20);
+    errorOption.state = NSControlStateValueOn;
     [optionsBox addSubview:errorOption];
-    infoOption = [NSButton checkboxWithTitle:@"Info" target:self action:nil];
+    infoOption = [NSButton checkboxWithTitle:@"Info" target:self action:@selector(onCheckboxClick:)];
     infoOption.frame = NSMakeRect(160, 0, 80, 20);
+    infoOption.state = NSControlStateValueOn;
     [optionsBox addSubview:infoOption];
-    debugOption = [NSButton checkboxWithTitle:@"Debug" target:self action:nil];
+    debugOption = [NSButton checkboxWithTitle:@"Debug" target:self action:@selector(onCheckboxClick:)];
     debugOption.frame = NSMakeRect(240, 0, 80, 20);
+    debugOption.state = NSControlStateValueOn;
     [optionsBox addSubview:debugOption];
-
-    refreshButton = [NSButton buttonWithTitle:@"Refresh" target:self action:@selector(refreshFromQueue)];
-    refreshButton.frame = NSMakeRect(320, 0, 80, 20);
-    [optionsBox addSubview:refreshButton];
+    scrollOption = [NSButton checkboxWithTitle:@"Scroll" target:self action:@selector(onCheckboxClick:)];
+    scrollOption.frame = NSMakeRect(320, 0, 80, 20);
+    scrollOption.state = NSControlStateValueOn;
+    [optionsBox addSubview:scrollOption];
 
     messagesBox = [[NSBox alloc] init];
-    [messagesBox setFrameFromContentFrame:NSMakeRect(20,20,360,290)];
+    [messagesBox setFrameFromContentFrame:NSMakeRect(20,20,400,290)];
     messagesBox.title = @"Logging Messages";
     messagesBox.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin | NSViewHeightSizable;
 
-    messagesScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(10, 10, 340, 270)];
+    messagesScrollView = [[NSScrollView alloc] initWithFrame:NSMakeRect(10, 10, 380, 270)];
     messagesScrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [messagesScrollView setBorderType:NSNoBorder];
     [messagesScrollView setHasVerticalScroller:YES];
 
-    messagesText = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, 340, 270)];
-    messagesText.autoresizingMask = NSViewWidthSizable;
-    [messagesText setMinSize:NSMakeSize(0, 270)];
-    [messagesText setMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
-    [messagesText setVerticallyResizable:YES];
-    [messagesText setHorizontallyResizable:NO];
-    [messagesText setTextColor:NSColor.textColor];
-    [[messagesText textContainer] setContainerSize:NSMakeSize(340, FLT_MAX)];
-    [[messagesText textContainer] setWidthTracksTextView:YES];
-    [[messagesText textContainer] setHeightTracksTextView:NO];
+    self.messagesText = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, 380, 270)];
+    self.messagesText.autoresizingMask = NSViewWidthSizable;
+    [self.messagesText setMinSize:NSMakeSize(0, 270)];
+    [self.messagesText setMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
+    [self.messagesText setVerticallyResizable:YES];
+    [self.messagesText setHorizontallyResizable:NO];
+    [self.messagesText setTextColor:NSColor.textColor];
+    [[self.messagesText textContainer] setContainerSize:NSMakeSize(380, FLT_MAX)];
+    [[self.messagesText textContainer] setWidthTracksTextView:YES];
+    [[self.messagesText textContainer] setHeightTracksTextView:NO];
+    [self.messagesText setEditable:NO];
 
-    attributesText = @{NSForegroundColorAttributeName:NSColor.textColor,
-    NSFontAttributeName:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular]};
+    self.attributesText = @{
+      NSForegroundColorAttributeName:NSColor.textColor,
+      NSFontAttributeName:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular]
+    };
 
-    [messagesScrollView setDocumentView:messagesText];
+    [messagesScrollView setDocumentView:self.messagesText];
     [messagesBox addSubview:messagesScrollView];
 
     [self.contentView addSubview:optionsBox];
     [self.contentView addSubview:messagesBox];
 
-    refreshTimer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(refreshFromQueue) userInfo:nil repeats:YES];
+    self.refreshTimer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(refreshFromQueue) userInfo:nil repeats:YES];
 
   }
 
@@ -1660,21 +1670,62 @@ UInt8 loglevelMask;
     BXNSLogEntry * entry;
     NSAttributedString * msg;
     NSString * fmsg;
+    UInt8 mask;
 
     entry = [self.queue dequeue];
 
-    // TODO : check flags
-    fmsg = [[NSString alloc] initWithFormat:@"%@ (%d)[%@] %@", entry.timecode, entry.level, entry.module, entry.msg];
-    msg = [[NSAttributedString alloc] initWithString:fmsg attributes:attributesText];
-
-    [[messagesText textStorage] appendAttributedString:msg];
-
+    mask = 1 << entry.level;
+    
+    if ((self.loglevelMask & mask) != 0) {
+      fmsg = [[NSString alloc] initWithFormat:@"%@ (%d)[%@] %@", entry.timecode, entry.level, entry.module, entry.msg];
+      msg = [[NSAttributedString alloc] initWithString:fmsg attributes:self.attributesText];
+      [[self.messagesText textStorage] appendAttributedString:msg];
+    }
+    
   }
 
-  [messagesText scrollRangeToVisible:NSMakeRange([[messagesText string] length], 0)];
-
+  if ((self.loglevelMask & 0b10000000) != 0) {
+    [self.messagesText scrollRangeToVisible:NSMakeRange([[self.messagesText string] length], 0)];
+  }
+  
 }
 
+- (void)onCheckboxClick:(id _Nonnull) sender {
+  
+  UInt8 mask;
+  UInt8 value;
+  
+  value = 0;
+  mask = 0;
+  if ([[sender title] compare:@"Panic"] == NSOrderedSame) {
+    mask = 0b00001000;
+    if ([sender state] == NSControlStateValueOn) {
+      value = 0b00001000;
+    }
+  } else if ([[sender title] compare:@"Error"] == NSOrderedSame) {
+    mask = 0b00000100;
+    if ([sender state] == NSControlStateValueOn) {
+      value = 0b00000100;
+    }
+  } else if ([[sender title] compare:@"Info"] == NSOrderedSame) {
+    mask = 0b00000010;
+    if ([sender state] == NSControlStateValueOn) {
+      value = 0b00000010;
+    }
+  } else if ([[sender title] compare:@"Debug"] == NSOrderedSame) {
+    mask = 0b00000001;
+    if ([sender state] == NSControlStateValueOn) {
+      value = 0b00000001;
+    }
+  } else if ([[sender title] compare:@"Scroll"] == NSOrderedSame) {
+    mask = 0b10000000;
+    if ([sender state] == NSControlStateValueOn) {
+      value = 0b10000000;
+    }
+  }
+  self.loglevelMask = (self.loglevelMask & ~mask) | value;
+  
+}
 
 @end
 
@@ -1682,6 +1733,8 @@ UInt8 loglevelMask;
 ////////////////////////////////////////////////////////////////////////////////
 // BXNSDebuggerWindow
 ////////////////////////////////////////////////////////////////////////////////
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+
 @implementation BXNSVerticalSplitView
 
 /**
@@ -1992,7 +2045,7 @@ NSDictionary * outputAttributesText;
   amsg = [[NSAttributedString alloc] initWithString:msg attributes:outputAttributesText];
 
   [[outputText textStorage] appendAttributedString:amsg];
-  [outputText scrollRangeToVisible:NSMakeRange([[messagesText string] length], 0)];
+  [outputText scrollRangeToVisible:NSMakeRange([[outputText string] length], 0)];
 
 }
 
@@ -2127,7 +2180,7 @@ NSLog(@"onMenuEvent path=%@ property=%d", path, p);
 
 @end
 
-
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
 
 

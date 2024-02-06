@@ -271,10 +271,15 @@
   @interface BXNSLoggingWindow : BXNSGenericWindow <NSApplicationDelegate>
 
     @property (nonatomic, readwrite) BXNSLogQueue * _Nonnull queue;
+    @property (nonatomic, readwrite, strong) NSTextView * _Nonnull messagesText;
+    @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributesText;
+    @property (nonatomic, readwrite, strong) NSTimer * _Nonnull refreshTimer;
+    @property (nonatomic, readwrite) UInt8 loglevelMask;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller LogQueue:(BXNSLogQueue * _Nonnull) queue;
 
     - (void)refreshFromQueue;
+    - (void)onCheckboxClick:(id _Nonnull) sender;
 
   @end
 
@@ -282,6 +287,8 @@
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSDebuggerWindow
   ////////////////////////////////////////////////////////////////////////////////
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+
   @interface BXNSVerticalSplitView : NSSplitView
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
@@ -373,7 +380,7 @@
 
   @end
 
-
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
 
 

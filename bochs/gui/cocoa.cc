@@ -709,11 +709,10 @@ BX_INFO(("bx_cocoa_gui_c::exit"));
 //     close_debug_dialog();
 //   }
 // #endif
-//
-//   if (device != NULL) {
-//     device->run_terminate();
-//     delete device;
-//   }
+
+  // restore notify callback
+  SIM->set_notify_callback(old_callback, old_callback_arg);
+  
   bxcocoagui->onBochsThreadExit();
 
 }

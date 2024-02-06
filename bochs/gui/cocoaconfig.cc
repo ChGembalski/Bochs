@@ -125,28 +125,25 @@ ci_start_wait:
           SIM->quit_sim(1);
         }
         if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_LOAD, false) == 1) {
-//           char oldrc[CI_PATH_LENGTH];
-//           if (SIM->ask_filename(oldrc, CI_PATH_LENGTH, "config file", "", bx_param_bytestring_c::IS_FILENAME)) {
-//
-//           }
-//           // SIM->reset_all_param();
-// //           printf("done reset...");
-//           // char oldrc[CI_PATH_LENGTH];
-//           if (SIM->get_default_rc(oldrc, CI_PATH_LENGTH) < 0)
-//             strcpy(oldrc, "none");
-// // printf("RC:::%s", oldrc);
-//           if (SIM->read_rc("/Users/chgembalski/DEV/GitHub/Bochs/bochs/test.bochsrc") >= 0) {
-//             printf("done...");
-//             SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
-//           }
+          char cfg_fname[CI_PATH_LENGTH] = {0};
+          if (SIM->ask_filename(cfg_fname, CI_PATH_LENGTH, "#config#file#", "", bx_param_bytestring_c::IS_FILENAME)) {
+            SIM->reset_all_param();
+            if (SIM->read_rc(cfg_fname) >= 0) {
+              SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
+            }
+          }
         }
         if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_SAVE, false) == 1) {
-          // SIM->reset_all_param();
-          // bx_write_rc(NULL);
+          char cfg_fname[CI_PATH_LENGTH] = {0};
+          if (SIM->ask_filename(cfg_fname, CI_PATH_LENGTH, "#config#file#", "", bx_param_bytestring_c::SAVE_FILE_DIALOG)) {
+            if (SIM->write_rc(cfg_fname, 1) >= 0) {
+              SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
+            }
+          }
         }
         if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_RESET, false) == 1) {
-          // SIM->reset_all_param();
-          // SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_EDIT_START);
+           SIM->reset_all_param();
+           SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_EDIT_START);
         }
 
         goto ci_start_wait;
