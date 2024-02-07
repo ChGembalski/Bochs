@@ -64,8 +64,8 @@ extern int bxmain(void);
   bxmain();
   NSLog(@"bochs thread stopped");
   // force app terminate ? direct or bypass it delayed on the main thread?
-  dispatch_after(1 * NSEC_PER_SEC, dispatch_get_main_queue(), ^(void){
-    [NSApp terminate:self];
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [NSApp terminate:nil];
   });
 
 }
@@ -296,6 +296,12 @@ void BXGuiCocoaApplication::waitPropertySet(unsigned cnt, unsigned property, ...
 
 }
 
+/**
+ * setProperty
+ */
+void BXGuiCocoaApplication::setProperty(property_t property, int value) {
+  [BXCocoaApplication->BXNSApp.bx_window_controller setProperty:property Value:value];
+}
 
 
 
@@ -464,14 +470,17 @@ NSLog(@"hit BXT_PARAM_FILEDATA");
  */
 void BXGuiCocoaApplication::postLogMessage(unsigned char level, unsigned char mode, const char * prefix, const char * msg) {
 
+  NSString * msg_str;
+  
   if (msg == NULL) {
     return;
   }
   if (BXCocoaApplication->BXNSApp.bx_window_controller.simulation_state == SIM_TERMINATE) {
     return;
   }
+  msg_str = [NSString stringWithUTF8String:msg];
   dispatch_async(dispatch_get_main_queue(), ^(void){
-    [BXCocoaApplication->BXNSApp.bx_window_controller.bx_log_queue enqueueSplit:[NSString stringWithUTF8String:msg] LogLevel:level LogMode:mode];
+    [BXCocoaApplication->BXNSApp.bx_window_controller.bx_log_queue enqueueSplit:msg_str LogLevel:level LogMode:mode];
   });
   // NSLog(@"level=%d mode=%d prefix=%@ msg=%@",
   //   level, mode, prefix==NULL?@"null":[NSString stringWithUTF8String:prefix], msg==NULL?@"null":[NSString stringWithUTF8String:msg]);

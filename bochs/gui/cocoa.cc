@@ -202,6 +202,8 @@ private:
   bool cocoa_mouse_mode_absxy;
   bxevent_handler old_callback;
   void *old_callback_arg;
+protected:
+  static void power_handler(void);
 public:
   bx_cocoa_gui_c (void) {}
   DECLARE_GUI_VIRTUAL_METHODS()
@@ -622,6 +624,10 @@ unsigned bx_cocoa_gui_c::create_bitmap(const unsigned char *bmap, unsigned xdim,
 
 unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void))
 {
+  // replace the power handler ! org handler not usable here
+  if (f == bx_gui_c::power_handler) {
+    return(bxcocoagui->headerbar_bitmap(bmap_id, alignment, power_handler));
+  }
   return(bxcocoagui->headerbar_bitmap(bmap_id, alignment, f));
 }
 
@@ -711,10 +717,18 @@ BX_INFO(("bx_cocoa_gui_c::exit"));
 // #endif
 
   // restore notify callback
-  SIM->set_notify_callback(old_callback, old_callback_arg);
+//  SIM->set_notify_callback(old_callback, old_callback_arg);
   
   bxcocoagui->onBochsThreadExit();
+  
+  
+}
 
+// ::POWER_HANDLER
+//
+// Called from headerbar button
+void bx_cocoa_gui_c::power_handler(void) {
+  bxcocoagui->setProperty(BX_PROPERTY_QUIT_SIM, 1);
 }
 
 // Cocoa implementation of new graphics API methods (compatibility mode in gui.cc)

@@ -700,6 +700,22 @@ event_loop:
 }
 
 /**
+ * setProperty
+ */
+- (void)setProperty:(property_t) p Value:(int) val {
+  
+  NSString * property;
+
+  property = [BXNSMenuBar getMenuItemTypePath:p];
+  if (property == nil) {
+    return;
+  }
+
+  return [self.bx_p_col setProperty:property value:val];
+  
+}
+
+/**
  * onMenuEvent
  */
 - (void)onMenuEvent:(id _Nonnull) sender {

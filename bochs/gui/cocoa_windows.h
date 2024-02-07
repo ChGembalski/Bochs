@@ -163,6 +163,7 @@
     - (void)activateMenu:(property_t) type doActivate:(BOOL) activate;
     - (int)getProperty:(property_t) p;
     - (void)waitPropertySet:(NSMutableArray<NSNumber *> * _Nonnull) property_list;
+    - (void)setProperty:(property_t) p Value:(int) val;
 
     - (void)onMenuEvent:(id _Nonnull) sender;
 

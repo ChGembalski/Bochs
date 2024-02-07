@@ -86,6 +86,7 @@
     void activateMenu(property_t type, bool bActivate);
     int getProperty(property_t property, bool bWait);
     void waitPropertySet(unsigned cnt, unsigned property, ...);
+    void setProperty(property_t property, int value);
 
     void setSimulationState(simulation_state_t new_state);
     void showModalInfo(unsigned char level, const char * prefix, const char * msg);
