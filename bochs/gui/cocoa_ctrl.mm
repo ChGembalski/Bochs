@@ -701,14 +701,14 @@
     [self addArrangedSubview:self.text];
 
     self.button = nil;
-    if (param->get_options() == param->IS_FILENAME) {
-      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonOPressed:)];
-      [self addArrangedSubview:self.button];
-    } else if (param->get_options() == param->SAVE_FILE_DIALOG) {
-      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonSPressed:)];
-      [self addArrangedSubview:self.button];
-    } else if (param->get_options() == param->SELECT_FOLDER_DLG) {
-      self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonDPressed:)];
+    if ((param->get_options() & bx_param_string_c::IS_FILENAME) == bx_param_string_c::IS_FILENAME) {
+      if ((param->get_options() & bx_param_string_c::SAVE_FILE_DIALOG) == bx_param_string_c::SAVE_FILE_DIALOG) {
+        self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonSPressed:)];
+      } else if ((param->get_options() & bx_param_string_c::SELECT_FOLDER_DLG) == bx_param_string_c::SELECT_FOLDER_DLG) {
+        self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonDPressed:)];
+      } else {
+        self.button = [NSButton buttonWithTitle:@"..." target:self action:@selector(buttonOPressed:)];
+      }
       [self addArrangedSubview:self.button];
     }
 

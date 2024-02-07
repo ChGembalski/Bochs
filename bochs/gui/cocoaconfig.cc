@@ -126,17 +126,31 @@ ci_start_wait:
         }
         if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_LOAD, false) == 1) {
           char cfg_fname[CI_PATH_LENGTH] = {0};
-          if (SIM->ask_filename(cfg_fname, CI_PATH_LENGTH, "#config#file#", "", bx_param_bytestring_c::IS_FILENAME)) {
-            SIM->reset_all_param();
-            if (SIM->read_rc(cfg_fname) >= 0) {
-              SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
+          SIM->get_default_rc(cfg_fname, CI_PATH_LENGTH);
+          if (SIM->ask_filename(cfg_fname, CI_PATH_LENGTH, "Bochs configuration file", cfg_fname, bx_param_bytestring_c::IS_FILENAME)) {
+            // check if file exist
+            if (access(cfg_fname, F_OK) == 0) {
+              SIM->reset_all_param();
+              if (SIM->read_rc(cfg_fname) >= 0) {
+                SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
+              }
+            } else {
+              char msg[4096];
+              strcpy(msg, "[");
+              strcat(msg, cfg_fname);
+              strcat(msg, "] not found.");
+              SIM->message_box("Bochs configuration file", msg);
             }
           }
         }
         if (bxcocoagui->getProperty(BX_PROPERTY_CONFIG_SAVE, false) == 1) {
           char cfg_fname[CI_PATH_LENGTH] = {0};
-          if (SIM->ask_filename(cfg_fname, CI_PATH_LENGTH, "#config#file#", "", bx_param_bytestring_c::SAVE_FILE_DIALOG)) {
-            if (SIM->write_rc(cfg_fname, 1) >= 0) {
+          SIM->get_default_rc(cfg_fname, CI_PATH_LENGTH);
+          if (SIM->ask_filename(cfg_fname, CI_PATH_LENGTH, "Bochs configuration file", cfg_fname, bx_param_bytestring_c::SAVE_FILE_DIALOG)) {
+            bool ow_flag;
+            
+            ow_flag = (access(cfg_fname, F_OK) == 0);
+            if (SIM->write_rc(cfg_fname, ow_flag) >= 0) {
               SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_RUN_START);
             }
           }
@@ -157,7 +171,7 @@ ci_start_wait:
       // hide the sim window -> bring up the config
       // set state to pause -> and then ? how to get it back running again?
       if (!bx_gui->has_gui_console()) {
-//         // TODO : get Simulation State
+//         // TODO : get Simulation State - start this window in modal?
 //         bxcocoagui->setSimulationState(SIM_PAUSE);
 //         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
 //         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
@@ -232,7 +246,8 @@ static BxEvent* cocoa_notify_callback(void *unused, BxEvent *event) {
       return event;
     }
     case BX_SYNC_EVT_MSG_BOX: {
-      printf("BX_SYNC_EVT_MSG_BOX\n");
+      // simulator -> CI, wait for response.
+      bxcocoagui->showModalInfo(event->u.logmsg.mode, event->u.logmsg.prefix, event->u.logmsg.msg);
       return event;
     }
     case BX_SYNC_EVT_ML_MSG_BOX: {

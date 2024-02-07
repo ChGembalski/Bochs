@@ -1224,7 +1224,8 @@ NSLog(@"add property to list");
     NSButton * OK_BUTTON;
     NSButton * CANCEL_BUTTON;
     BXNSBrowser * browser;
-    bx_param_string_c * string_param;
+    bx_param_c * cparam;
+    
 
     [self setLevel:NSPopUpMenuWindowLevel];
     [self setTitle:BOCHS_WINDOW_CONFIG_NAME];
@@ -1235,8 +1236,12 @@ NSLog(@"add property to list");
     [self.contentView addSubview:inner];
 
     // add control on top
-    string_param = (bx_param_string_c *)param;
-    if (strcmp(string_param->get_label(), "#config#file#") == 0) {
+    cparam = (bx_param_c *)param;
+    if (cparam->get_type() == BXT_PARAM_STRING) {
+      bx_param_string_c * string_param;
+      
+      string_param = (bx_param_string_c *)cparam;
+      [inner addArrangedSubview:[NSTextField labelWithString:[NSString stringWithUTF8String:string_param->get_label()]]];
       [inner addArrangedSubview:[[BXNSStringSelector alloc] initWithFrame:NSMakeRect(0, 0, 640, 400) Param:string_param]];
     } else {
       browser = [[BXNSBrowser alloc] initWithFrame:NSMakeRect(0, 0, 640, 400) Root:param];
