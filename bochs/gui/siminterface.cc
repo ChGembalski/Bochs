@@ -612,6 +612,8 @@ void bx_real_sim_c::log_msg(const char *prefix, int level, const char *msg)
     event->u.logmsg.level = level;
     event->u.logmsg.msg = logmsg;
     sim_to_ci_event(event);
+    delete [] logmsg;
+    delete event;
   }
 }
 
@@ -793,6 +795,7 @@ void bx_real_sim_c::refresh_ci()
     BxEvent *event = new BxEvent();
     event->type = BX_ASYNC_EVT_REFRESH;
     sim_to_ci_event(event);
+    delete event;
   }
 }
 
@@ -889,6 +892,7 @@ void bx_real_sim_c::debug_puts(const char *text)
     event->type = BX_ASYNC_EVT_DBG_MSG;
     event->u.logmsg.msg = text;
     sim_to_ci_event(event);
+    delete event;
   } else {
     // text mode debugger: just write to console
     fputs(text, stdout);

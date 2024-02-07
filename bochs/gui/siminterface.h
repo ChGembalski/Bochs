@@ -171,6 +171,10 @@ enum {
 // can continue.  It's like a function with a return value; you can't
 // continue until you get the return value back.
 //
+// async event:
+// Do not rely on pointer existance after returning the call
+// If you need the data create a copy, use it, clean it ...
+//
 // Examples:
 //
 // async event: In the wxWidgets implementation, both the CI and the

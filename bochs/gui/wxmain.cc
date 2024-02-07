@@ -1101,7 +1101,6 @@ void MyFrame::OnSim2CIEvent(wxCommandEvent& event)
     break;
   case BX_ASYNC_EVT_LOG_MSG:
     showLogView->AppendText(be->u.logmsg.level, wxString(be->u.logmsg.msg, wxConvUTF8));
-    delete [] be->u.logmsg.msg;
     break;
   case BX_SYNC_EVT_LOG_DLG:
     OnLogDlg(be);

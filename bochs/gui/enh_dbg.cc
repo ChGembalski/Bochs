@@ -3433,7 +3433,6 @@ BxEvent *enh_dbg_notify_callback(void *unused, BxEvent *event)
     case BX_ASYNC_EVT_LOG_MSG:
       if (LogView) {
         ParseIDText(event->u.logmsg.msg);
-        delete [] event->u.logmsg.msg;
         return event;
       }
     default:
