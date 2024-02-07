@@ -1195,7 +1195,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             }
             break;
           case FTPCMD_DELE:
-            if (ftp_file_exists(tcpc_cmd, arg, tmp_path, NULL)) {
+            if (ftp_file_exists(tcpc_cmd, arg, tmp_path, BX_PATHNAME_LEN, NULL)) {
               if (unlink(tmp_path) >= 0) {
                 ftp_send_reply(tcpc_cmd, "250 File deletion successful.");
               } else {
@@ -1295,7 +1295,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             }
             break;
           case FTPCMD_RNFR:
-            if (ftp_file_exists(tcpc_cmd, arg, tmp_path, NULL)) {
+            if (ftp_file_exists(tcpc_cmd, arg, tmp_path, BX_PATHNAME_LEN, NULL)) {
               fs->last_fname = new char[strlen(tmp_path)+1];
               strcpy(fs->last_fname, tmp_path);
               ftp_send_reply(tcpc_cmd, "350 File exists. Ready for new name.");
@@ -1303,7 +1303,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
             break;
           case FTPCMD_RNTO:
             if (fs->last_fname != NULL) {
-              if (!ftp_file_exists(tcpc_cmd, arg, tmp_path, NULL)) {
+              if (!ftp_file_exists(tcpc_cmd, arg, tmp_path, BX_PATHNAME_LEN, NULL)) {
                 if (rename(fs->last_fname, tmp_path) == 0) {
                   ftp_send_reply(tcpc_cmd, "250 File renamed successfully.");
                 } else {
@@ -1404,7 +1404,7 @@ void vnet_server_c::tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *da
 }
 
 bool vnet_server_c::ftp_file_exists(tcp_conn_t *tcpc_cmd, const char *arg,
-                                       char *path, unsigned *size)
+                                       char *path, unsigned path_size, unsigned *size)
 {
   ftp_session_t *fs = (ftp_session_t*)tcpc_cmd->data;
   bool exists = 0, notfile = 1;
@@ -1417,9 +1417,9 @@ bool vnet_server_c::ftp_file_exists(tcp_conn_t *tcpc_cmd, const char *arg,
   }
   if (arg != NULL) {
     if (arg[0] != '/') {
-      sprintf(path, "%s%s/%s", tftp_root, fs->rel_path, arg);
+      snprintf(path, path_size, "%s%s/%s", tftp_root, fs->rel_path, arg);
     } else {
-      sprintf(path, "%s%s", tftp_root, arg);
+      snprintf(path, path_size, "%s%s", tftp_root, arg);
     }
   }
 #ifdef WIN32
@@ -1751,11 +1751,11 @@ void vnet_server_c::ftp_recv_file(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_data,
   bool exists;
   Bit8u n = 1;
 
-  exists = ftp_file_exists(tcpc_cmd, fname, path, NULL);
+  exists = ftp_file_exists(tcpc_cmd, fname, path, BX_PATHNAME_LEN, NULL);
   if (exists && (fs->cmdcode == FTPCMD_STOU)) {
     do {
       snprintf(tmp_path, (BX_PATHNAME_LEN+4), "%s.%d", path, n++);
-    } while (ftp_file_exists(tcpc_cmd, NULL, tmp_path, NULL));
+    } while (ftp_file_exists(tcpc_cmd, NULL, tmp_path, BX_PATHNAME_LEN+4, NULL));
     strcpy(path, tmp_path);
     cptr = strrchr(path, '/');
     cptr++;
@@ -1784,7 +1784,7 @@ void vnet_server_c::ftp_send_file(tcp_conn_t *tcpc_cmd, tcp_conn_t *tcpc_data,
   char path[BX_PATHNAME_LEN], reply[80];
   unsigned size = 0;
 
-  if (ftp_file_exists(tcpc_cmd, arg, path, &size)) {
+  if (ftp_file_exists(tcpc_cmd, arg, path, BX_PATHNAME_LEN, &size)) {
     snprintf(reply, 80, "150 Opening %s mode connection to send file.",
             fs->ascii_mode ? "ASCII":"BINARY");
     ftp_send_reply(tcpc_cmd, reply);
@@ -1798,7 +1798,7 @@ void vnet_server_c::ftp_get_filesize(tcp_conn_t *tcp_conn, const char *arg)
   char reply[20];
   unsigned size = 0;
 
-  if (ftp_file_exists(tcp_conn, arg, path, &size)) {
+  if (ftp_file_exists(tcp_conn, arg, path, BX_PATHNAME_LEN, &size)) {
     snprintf(reply, 20, "213 %d", size);
     ftp_send_reply(tcp_conn, reply);
   } else {
@@ -2242,7 +2242,7 @@ tftp_session_t *tftp_new_session(Bit16u req_tid, bool mode, const char *tpath, c
   s->next = tftp_sessions;
   tftp_sessions = s;
   if ((strlen(tname) > 0) && ((strlen(tpath) + strlen(tname)) < BX_PATHNAME_LEN)) {
-    sprintf(s->filename, "%s/%s", tpath, tname);
+    snprintf(s->filename, BX_PATHNAME_LEN, "%s/%s", tpath, tname);
   } else {
     s->filename[0] = 0;
   }

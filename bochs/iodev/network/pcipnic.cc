@@ -227,7 +227,7 @@ void bx_pcipnic_c::register_state(void)
   new bx_shadow_num_c(list, "recvQueueLength", &BX_PNIC_THIS s.recvQueueLength);
   bx_list_c *recvRL = new bx_list_c(list, "recvRingLength");
   for (unsigned i=0; i<PNIC_RECV_RINGS; i++) {
-    sprintf(name, "%d", i);
+    snprintf(name, 6, "%d", i);
     new bx_shadow_num_c(recvRL, name, &BX_PNIC_THIS s.recvRingLength[i]);
   }
   new bx_shadow_data_c(list, "rData", BX_PNIC_THIS s.rData, PNIC_DATA_SIZE);

@@ -289,7 +289,7 @@ private:
   void tcpipv4_ftp_handler_ns(tcp_conn_t *tcp_conn, const Bit8u *data,
                               unsigned data_len);
   bool ftp_file_exists(tcp_conn_t *tcpc_cmd, const char *arg, char *path,
-                       unsigned *size);
+                       unsigned path_size, unsigned *size);
   bool ftp_subdir_exists(tcp_conn_t *tcpc_cmd, const char *arg, char *path);
   void ftp_send_reply(tcp_conn_t *tcp_conn, const char *msg);
   void ftp_send_status(tcp_conn_t *tcp_conn);
