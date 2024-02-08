@@ -337,6 +337,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   // device->setEventMouseABS(cocoa_mouse_mode_absxy);
 
   // init startup - use current guest settings
+  host_bpp = 32;
   bxcocoagui->dimension_update(guest_xres, guest_yres, 16, 8, guest_bpp);
   bxcocoagui->showWindow(BX_GUI_WINDOW_VGA_DISPLAY, true);
   bxcocoagui->activateWindow(BX_GUI_WINDOW_VGA_DISPLAY);
@@ -349,8 +350,6 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
   cocoa_with_debug_gui = 1;
-#else
-  // SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
 #endif
 
   // ??? Need this one here ?
@@ -581,13 +580,12 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
   guest_xres = x;
   guest_yres = y;
 
-  BX_INFO(("bx_cocoa_gui_c::dimension_update x=%d y=%d fheight=%d fwidth=%d bpp=%d", x, y, fheight, fwidth, bpp));
   bxcocoagui->dimension_update(x, y, fwidth, fheight, bpp);
 
   host_xres = x;
   host_yres = y;
-  host_bpp = bpp;
-
+  host_bpp = 32; //bpp;
+ 
 }
 
 
@@ -709,18 +707,14 @@ void bx_cocoa_gui_c::mouse_enabled_changed_specific(bool val)
 
 void bx_cocoa_gui_c::exit(void)
 {
-BX_INFO(("bx_cocoa_gui_c::exit"));
-// #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
-//   if (SIM->has_debug_gui()) {
-//     close_debug_dialog();
-//   }
-// #endif
 
-  // restore notify callback
-//  SIM->set_notify_callback(old_callback, old_callback_arg);
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+  if (SIM->has_debug_gui()) {
+    //TODO : close_debug_dialog();
+  }
+#endif
   
   bxcocoagui->onBochsThreadExit();
-  
   
 }
 
@@ -731,7 +725,9 @@ void bx_cocoa_gui_c::power_handler(void) {
   bxcocoagui->setProperty(BX_PROPERTY_QUIT_SIM, 1);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 // Cocoa implementation of new graphics API methods (compatibility mode in gui.cc)
+////////////////////////////////////////////////////////////////////////////////
 
 bx_svga_tileinfo_t * bx_cocoa_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info) {
 
@@ -806,7 +802,7 @@ void bx_cocoa_gui_c::graphics_tile_update_in_place(unsigned x, unsigned y, unsig
 
 // Cocoa implementation of new text update API
 void bx_cocoa_gui_c::set_font(bool lg) {
-BX_INFO(("bx_cocoa_gui_c::set_font"));
+
   for (unsigned m = 0; m < 2; m++) {
     for (unsigned c = 0; c < 256; c++) {
       if (char_changed[m][c]) {
@@ -907,15 +903,8 @@ BxEvent * bx_cocoa_gui_c::notify_callback(void *unused, BxEvent *event) {
     }
     case BX_SYNC_EVT_MSG_BOX: {
       // simulator -> CI, wait for response.
-      // mode not used
       bxcocoagui->showModalInfo(event->u.logmsg.mode, event->u.logmsg.prefix, event->u.logmsg.msg);
-      // printf("notify_callback BX_SYNC_EVT_MSG_BOX level=%d mode=%d prefix=%s msg=%s\n",
-      // event->u.logmsg.level,
-      // event->u.logmsg.mode,
-      // event->u.logmsg.prefix,
-      // event->u.logmsg.msg
-      // );
-      break;
+      return event;
     }
     case BX_SYNC_EVT_ML_MSG_BOX: {
       // simulator -> CI, do not wait for response.

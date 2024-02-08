@@ -241,6 +241,7 @@
     @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
     @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
     @property (nonatomic, readwrite) BOOL MouseCaptureActive;
+    @property (nonatomic, readwrite, strong) BXNSEventQueue * _Nonnull BXEventQueue;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller HeaderBarHeight:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
 

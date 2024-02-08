@@ -38,39 +38,36 @@
 extern unsigned char flip_byte(unsigned char b);
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXVGAImageView
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXVGAImageView
-
-NSImage * VGAdisplayBuffer;
-BOOL VGAdisplayBufferChanged;
-NSRect VGAdirty;
-
 
 /**
  * initWithFrame
  */
-- (instancetype _Nonnull)initWithFrame:(NSRect) frameRect bits:(unsigned) bpp {
+- (instancetype _Nonnull)initWithFrame:(NSRect) frameRect {
 
   self = [super initWithFrame:frameRect];
   if(self) {
 
-    self.bpp = bpp;
-    self.stride = frameRect.size.width * bpp / 8;
-    self.bitsPerComponent = bpp < 16 ? bpp : 8;
-    VGAdirty = frameRect;
+    // create screen context
+    self.VGAcolorspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGBLinear);
+    self.VGAcontext = CGBitmapContextCreate(NULL, (unsigned)frameRect.size.width, (unsigned)frameRect.size.height, 8, 4*(unsigned)frameRect.size.width, self.VGAcolorspace, kCGImageAlphaNoneSkipLast | kCGImageByteOrder32Big);
+    NSAssert(self.VGAcontext != NULL, @"VGAcontext allocate failed.");
+    
+    self.bpp = CGBitmapContextGetBitsPerPixel(self.VGAcontext);
+    self.stride = CGBitmapContextGetBytesPerRow(self.VGAcontext);
+    self.bitsPerComponent = CGBitmapContextGetBitsPerComponent(self.VGAcontext);
+    
+    self.VGAdisplay = (unsigned char *)CGBitmapContextGetData(self.VGAcontext);
 
-    // NSLog(([NSString stringWithFormat:@"initWithFrame bpp=%d bpc=%d stride=%d w=%d h=%d",
-    //   self.bpp, self.bitsPerComponent, self.stride, (unsigned)frameRect.size.width, (unsigned)frameRect.size.height]));
-
-    // allocate screen buffer
-    self.VGAdisplay = (unsigned char *)realloc(NULL, (self.stride * (unsigned)frameRect.size.height) * sizeof(unsigned char));
-    NSAssert(self.VGAdisplay != NULL, @"VGAdisplay [%p]: allocate memory failed.", self.VGAdisplay);
-
-    // create buffer
-    VGAdisplayBuffer = [[NSImage alloc] initWithSize:frameRect.size];
-    VGAdisplayBufferChanged = NO;
-
-    [self setWantsLayer:YES];
-    [self.layer setBackgroundColor:[[NSColor blackColor] CGColor]];
+    self.VGAimage = CGBitmapContextCreateImage(self.VGAcontext);
+    self.layer.contents = (id)self.VGAimage;
+    
+    // create dirty list
+    self.dirtyRegions = [[NSMutableArray alloc] init];
+    [self updateVGA:frameRect];
 
   }
 
@@ -83,171 +80,95 @@ NSRect VGAdirty;
  */
 - (void)dealloc {
 
-  free(self.VGAdisplay);
-
+  CGImageRelease(self.VGAimage);
+  CFRelease(self.VGAcontext);
+  CGColorSpaceRelease(self.VGAcolorspace);
+  
 }
 
 /**
  * disable the mouse events on this view
  * now window has control over the events
  */
-- (NSView *)hitTest:(NSPoint)point {
+- (NSView * _Nullable)hitTest:(NSPoint)point {
+  
   return nil;
+  
 }
+
+/**
+ * wantsUpdateLayer
+ */
+ - (BOOL)wantsUpdateLayer {
+   
+   return YES;
+   
+ }
 
 /**
  * updateWithFrame
  */
-- (void)updateWithFrame:(NSSize) frameSize bits:(unsigned) bpp {
+- (void)updateWithFrame:(NSSize) frameSize {
 
+  CGImageRef oldref;
+  
   [self setFrameSize:frameSize];
-  self.bpp = bpp;
-  self.stride = frameSize.width * bpp / 8;
-  self.bitsPerComponent = bpp < 16 ? bpp : 8;
-  VGAdirty = NSMakeRect(0, 0, frameSize.width, frameSize.height);
 
-  BXL_INFO(([NSString stringWithFormat:@"updateWithFrame bpp=%d bpc=%d stride=%d w=%d h=%d",
-    self.bpp, self.bitsPerComponent, self.stride, (unsigned)frameSize.width, (unsigned)frameSize.height]));
-
-  // allocate screen buffer
-  self.VGAdisplay = (unsigned char *)realloc(self.VGAdisplay, (self.stride * (unsigned)frameSize.height) * sizeof(unsigned char));
-  NSAssert(self.VGAdisplay != NULL, @"VGAdisplay [%p]: allocate memory failed.", self.VGAdisplay);
-
-  // // recreate buffer
-  VGAdisplayBuffer = [[NSImage alloc] initWithSize:frameSize];
-  VGAdisplayBufferChanged = NO;
-
-}
-
-/**
- * render the byte array to NSImage
- * avoid massive updates due performance
- */
-- (void)renderVGAdisplay:(unsigned char *) palette size:(unsigned) palette_size {
-
-  CGColorSpaceRef colorspace;
-  CFDataRef data;
-  CGDataProviderRef provider;
-  CGImageRef rgbImageRef;
-
-  if (NSIsEmptyRect(VGAdirty)) {
-    return;
+  if (self.VGAcontext != NULL) {
+    CFRelease(self.VGAcontext);
   }
+  self.VGAcontext = CGBitmapContextCreate(NULL, (unsigned)frameSize.width, (unsigned)frameSize.height, 8, 4*(unsigned)frameSize.width, self.VGAcolorspace, kCGImageAlphaNoneSkipLast | kCGImageByteOrder32Big);
+  NSAssert(self.VGAcontext != NULL, @"VGAcontext allocate failed.");
+  
+  self.bpp = CGBitmapContextGetBitsPerPixel(self.VGAcontext);
+  self.stride = CGBitmapContextGetBytesPerRow(self.VGAcontext);
+  self.bitsPerComponent = CGBitmapContextGetBitsPerComponent(self.VGAcontext);
+  
+  self.VGAdisplay = (unsigned char *)CGBitmapContextGetData(self.VGAcontext);
 
-  colorspace = CGColorSpaceCreateIndexed(CGColorSpaceCreateDeviceRGB(), palette_size-1, palette);
-  NSAssert(colorspace != NULL, @"create colorspace failed.");
-  data = CFDataCreate(NULL, self.VGAdisplay, (self.stride * self.frame.size.height));
-  provider = CGDataProviderCreateWithCFData(data);
-  rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
-  VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
-  CGImageRelease(rgbImageRef);
-  CGDataProviderRelease(provider);
-  CFRelease(data);
-  CGColorSpaceRelease(colorspace);
-
-  VGAdisplayBufferChanged = YES;
-
-}
-
-/**
- * render the VGAdisplay to NSImage
- */
-- (void)renderVGAdisplayRGB {
-
-  CGColorSpaceRef colorspace;
-  CFDataRef data;
-  CGDataProviderRef provider;
-  CGImageRef rgbImageRef;
-
-  if (NSIsEmptyRect(VGAdirty)) {
-    return;
+  oldref = self.VGAimage;
+  self.VGAimage = CGBitmapContextCreateImage(self.VGAcontext);
+  self.layer.contents = (id)self.VGAimage;
+  if (oldref != NULL) {
+    CGImageRelease(oldref);
   }
-
-  colorspace = CGColorSpaceCreateDeviceRGB();
-  NSAssert(colorspace != NULL, @"create colorspace failed.");
-  data = CFDataCreate(NULL, self.VGAdisplay, (self.stride * self.frame.size.height));
-  provider = CGDataProviderCreateWithCFData(data);
-  rgbImageRef = CGImageCreate(self.frame.size.width, self.frame.size.height, self.bitsPerComponent, self.bpp, self.stride, colorspace, kCGBitmapByteOrderDefault, provider, NULL, false, kCGRenderingIntentDefault);
-  VGAdisplayBuffer = [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
-  CGImageRelease(rgbImageRef);
-  CGDataProviderRelease(provider);
-  CFRelease(data);
-  CGColorSpaceRelease(colorspace);
-
-  VGAdisplayBufferChanged = YES;
-
+  
+  [self.dirtyRegions removeAllObjects];
+  [self updateVGA:NSMakeRect(0, 0, frameSize.width, frameSize.height)];
+  
 }
 
 /**
  * renderVGAdisplayContent
  */
-// - (void)renderVGAdisplayContent {
-//
-//   CGFloat windowScaleFactor;
-//
-//   windowScaleFactor = self.window.backingScaleFactor;
-//
-//   VGAdisplayContentScale = [VGAdisplayBuffer recommendedLayerContentsScale:windowScaleFactor];
-//   NSLog(@"renderVGAdisplayContent");
-//   // [self setNeedsDisplay:YES];
-//   VGAdisplayContent = [VGAdisplayBuffer layerContentsForContentsScale:VGAdisplayContentScale];
-//   // BXL_INFO((@"renderVGAdisplayContent done"));
-// }
-
-// - (BOOL)isOpaque {
-//     return YES;
-// }
-
-// - (BOOL)wantsLayer {
-//   return YES;
-// }
-// - (BOOL)wantsUpdateLayer {
-//   return YES;
-// }
-
-// - (void)updateLayer {
-// [super updateLayer];
-// //   CGFloat windowScaleFactor;
-// //   CGFloat imageScaleFactor;
-// //
-// //   if (VGAdisplayBufferChanged) {
-// //
-// //     windowScaleFactor = self.window.backingScaleFactor;
-// //     imageScaleFactor = [VGAdisplayBuffer recommendedLayerContentsScale:windowScaleFactor];
-// //
-// //     self.layer.contents = [VGAdisplayBuffer layerContentsForContentsScale:imageScaleFactor];
-// //     self.layer.contentsScale = imageScaleFactor;
-// //
-// //     VGAdisplayBufferChanged = NO;
-// //
-// //   }
-//
-//   // if (VGAdisplayContent == nil) return;
-//
-//   // if (self.layer.contents != VGAdisplayContent) {
-//   NSLog(([NSString stringWithFormat:@"updateLayer %@", VGAdisplayBufferChanged?@"YES":@"NO"]));
-//   if (VGAdisplayBufferChanged) {
-//     NSLog((@"updateLayer"));
-//     self.layer.contents = VGAdisplayContent; //VGAdisplayBuffer;//
-//     self.layer.contentsScale = VGAdisplayContentScale;
-//     // VGAdisplayContent = nil;
-//     // VGAdirty = NSZeroRect;
-//     VGAdisplayBufferChanged = NO;
-//     // BXL_INFO((@"updateLayer done"));
-//   }
-//
-// }
-
-
-- (void)drawRect:(NSRect)dirtyRect {
-
-  if (!NSIsEmptyRect(VGAdirty)) {
-
-    [VGAdisplayBuffer drawInRect:dirtyRect fromRect:dirtyRect operation:NSCompositingOperationCopy fraction:1];
-    VGAdirty = NSZeroRect;
-
+- (void)renderVGAdisplayContent {
+  
+  CGImageRef oldref;
+  
+  oldref = self.VGAimage;
+  self.VGAimage = CGBitmapContextCreateImage(self.VGAcontext);
+  self.layer.contents = (id)self.VGAimage;
+  
+  if (oldref != NULL) {
+    CGImageRelease(oldref);
   }
 
+  // now update the rects
+  
+  for (NSValue * vrect in self.dirtyRegions) {
+    
+    NSRect region;
+    
+    region = vrect.rectValue;
+    [self setNeedsDisplayInRect:region];
+    // if full redraw we are done
+    if (CGRectEqualToRect(region, self.frame)) {
+      break;
+    }
+    
+  }
+  [self.dirtyRegions removeAllObjects];
+  
 }
 
 /**
@@ -255,22 +176,21 @@ NSRect VGAdirty;
  */
 - (void)updateVGA:(NSRect) dirty {
 
-  if (NSIsEmptyRect(VGAdirty)) {
-    VGAdirty = dirty;
-  } else {
-    VGAdirty = NSUnionRect(VGAdirty, dirty);
-  }
+  NSValue * vrect;
+  
+  vrect = [NSValue value:&dirty withObjCType:@encode(NSRect)];
 
+  [self.dirtyRegions addObject:vrect];
+  
 }
-
 
 @end
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXVGAdisplay
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXVGAdisplay
-
-BXVGAImageView * imgview;
-
 
 /**
  * init
@@ -288,12 +208,12 @@ BXVGAImageView * imgview;
     // calculate the number of bytes of memory for each horizontal row of the bitmap
     self.stride = w * bpp / 8;
     // calculate the number of bits for each component in a source pixel
-    self.bitsPerComponent = bpp < 16 ? bpp : 8;
+    self.bitsPerComponent = bpp % 8 == 0 ? 8 : bpp;
 
     // allocate palette buffer
     self.palette_size = pow(2, bpp);
     NSAssert(self.palette_size != 0, @"palette_size [%d]: invalid palette size.", self.palette_size);
-    self.palette = (unsigned char *)malloc((self.palette_size * 3) * sizeof(unsigned char));
+    self.palette = (UInt32 *)malloc((self.palette_size) * sizeof(UInt32));
     NSAssert(self.palette != NULL, @"palette [%p]: allocate memory failed.", self.palette);
 
     // allocate font memory
@@ -304,13 +224,10 @@ BXVGAImageView * imgview;
     NSAssert(self.FontB != NULL, @"FontB [%p]: allocate memory failed.", self.FontB);
     memset((void *)self.FontB, 0, FONT_DATA_SIZE * sizeof(unsigned short int));
 
-    imgview = [[BXVGAImageView alloc] initWithFrame:NSMakeRect(0, 0, self.width, self.height) bits:bpp];
-    // imgview.layerContentsRedrawPolicy = NSViewLayerContentsRedrawOnSetNeedsDisplay;
-    [v addSubview:imgview];
+    self.imgview = [[BXVGAImageView alloc] initWithFrame:NSMakeRect(0, 0, self.width, self.height)];
+    self.imgview.layerContentsRedrawPolicy = NSViewLayerContentsRedrawOnSetNeedsDisplay;
+    [v addSubview:self.imgview];
     v.needsDisplay = YES;
-
-    // BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",
-    // self.bpp, self.palette_size, self.width, self.height, self.font_width, self.font_height, self.stride, self.bitsPerComponent, self.dirty?"YES":"NO"]));
 
     self.dirty = YES;
 
@@ -340,11 +257,11 @@ BXVGAImageView * imgview;
   if (self.bpp != bpp) {
     self.bpp = bpp;
     // calculate the number of bits for each component in a source pixel
-    self.bitsPerComponent = bpp < 16 ? bpp : 8;
+    self.bitsPerComponent = bpp % 8 == 0 ? 8 : bpp;
     self.palette_size = pow(2, bpp);
     NSAssert(self.palette_size != 0, @"palette_size [%d]: invalid palette size.", self.palette_size);
     // recreate palette buffer
-    self.palette = (unsigned char *)realloc(self.palette, (self.palette_size * 3) * sizeof(unsigned char));
+    self.palette = (UInt32 *)realloc(self.palette, self.palette_size * sizeof(UInt32));
     NSAssert(self.palette != NULL, @"palette [%p]: allocate memory failed.", self.palette);
   }
   // calculate the number of bytes of memory for each horizontal row of the bitmap
@@ -353,7 +270,7 @@ BXVGAImageView * imgview;
     self.width = w;
     self.height = h;
     // reconstruct view
-    [imgview updateWithFrame:NSMakeSize(self.width, self.height) bits:bpp];
+    [self.imgview updateWithFrame:NSMakeSize(self.width, self.height)];
   }
 
   if ((self.font_width != fw) || (self.font_height != fh)) {
@@ -364,9 +281,6 @@ BXVGAImageView * imgview;
   }
 
   self.dirty = YES;
-
-  BXL_INFO(([NSString stringWithFormat:@"display bpp=%d colors=%d width=%d height=%d font width=%d height=%d stride=%d bitsPerComponent=%d dirty=%s",
-  self.bpp, self.palette_size, self.width, self.height, self.font_width, self.font_height, self.stride, self.bitsPerComponent, self.dirty?"YES":"NO"]));
 
 }
 
@@ -380,13 +294,7 @@ BXVGAImageView * imgview;
     return;
   }
 
-  if (self.bpp > 16) {
-    [imgview renderVGAdisplayRGB];
-  } else {
-    [imgview renderVGAdisplay:self.palette size:self.palette_size];
-  }
-
-  [imgview setNeedsDisplayInRect:VGAdirty];
+  [self.imgview renderVGAdisplayContent];
 
   self.dirty = NO;
 
@@ -395,24 +303,17 @@ BXVGAImageView * imgview;
 /**
  * set one entry in palette
  */
-- (BOOL)setPaletteRGB:(unsigned)index red:(char) r green:(char) g blue:(char) b {
-
-  unsigned ofs;
+- (BOOL)setPaletteRGB:(unsigned)index red:(unsigned char) r green:(unsigned char) g blue:(unsigned char) b {
 
   // do not overwrite ...
   if (index >= self.palette_size) {
+    BXL_ERROR(([NSString stringWithFormat:@"setPaletteRGB index overflow max=%d index=%d", self.palette_size-1, index]));
     return NO;
   }
 
-  BXL_DEBUG(([NSString stringWithFormat:@"setPaletteRGB index=%d red=%d green=%d blue=%d", index, r, g, b]));
-
-  // calc ofs
-  ofs = index * 3;
-  self.palette[ofs] = r;
-  self.palette[ofs+1] = g;
-  self.palette[ofs+2] = b;
-
-  return NO;
+  self.palette[index] = (0x00000000 | (b << 16) | (g << 8) | r );
+  
+  return YES;
 
 }
 
@@ -420,8 +321,7 @@ BXVGAImageView * imgview;
  * fill screen with 0
  */
 - (void)clearScreen {
-  // TODO : set flag IsClear, check if don't do
-  memset((void *)imgview.VGAdisplay, 0, (self.stride * self.height) * sizeof(unsigned char));
+  memset((void *)self.imgview.VGAdisplay, 0, (self.imgview.stride * self.height) * sizeof(unsigned char));
 }
 
 /**
@@ -495,12 +395,11 @@ BXVGAImageView * imgview;
 
   unsigned short int * selectedFont;
   unsigned short int * selectedChar;
-  unsigned screenStartY;
-  unsigned screenStartXbytes;
-  // unsigned screenStartXbits;
-  unsigned char noOfComponents;
-  unsigned char vgaAccessMode;
+  UInt32 bg_abgr;
+  UInt32 fg_abgr;
   unsigned charMaxHeight;
+  unsigned short int maskend;
+  unsigned screenStartXbytes;
 
   // Font format
   // 8bit hi 8bit lo - repeated h times
@@ -514,67 +413,40 @@ BXVGAImageView * imgview;
   selectedFont = f2 ? self.FontB : self.FontA;
   selectedChar = &selectedFont[charpos * CHARACTER_WORDS];
   NSAssert(selectedChar < (selectedFont + (FONT_DATA_SIZE * sizeof(unsigned short int))), @"paintChar char out of range [%d]", charpos);
-
-  if (self.bitsPerComponent == 8) {
-    noOfComponents = self.bpp / self.bitsPerComponent;
-    screenStartXbytes = ((unsigned)rect.origin.x) * noOfComponents;
-    // screenStartXbits = 0;
-    vgaAccessMode = noOfComponents >= 3 ? VGA_ACCESS_MODE_DWORD : noOfComponents;
-  } else {
-    noOfComponents = 0;
-    // screenStartXbits = 0;
-    vgaAccessMode = VGA_ACCESS_MODE_BYTE; // unused !
-    NSAssert(NO, @"Not yet implemented.");
-  }
-
+  bg_abgr = self.palette[bg];
+  fg_abgr = self.palette[fg];
+  
+  // destination is 4 byte each pixel
+  
   charMaxHeight = ((unsigned)rect.size.height > self.font_height) ? self.font_height : (unsigned)rect.size.height;
-
-  // depending on bpp <=8 <=16 <=32 - different access to screen memory
-  switch (vgaAccessMode) {
-    case VGA_ACCESS_MODE_BYTE: {
-
-      unsigned short int maskend;
-      unsigned char * screenMemory;
-
-      maskend = VGA_WORD_BIT_MASK>>(unsigned)rect.size.width;
-
-      for (unsigned charRow=0; charRow<charMaxHeight; charRow++) {
-
-        unsigned short int mask;
-
-        screenStartY = (((unsigned)(rect.origin.y) + charRow) * self.stride);
-        screenMemory = (unsigned char *)(imgview.VGAdisplay + screenStartY + screenStartXbytes);
-
-        // each bit of selectedChar
-        for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {
-          if ((*selectedChar & mask) | crsr) {
-            *screenMemory = fg;
-          } else {
-            *screenMemory = bg;
-          }
-          screenMemory++;
-        }
-
-        selectedChar++;
-
+  maskend = VGA_WORD_BIT_MASK >> (unsigned)rect.size.width;
+  screenStartXbytes = ((unsigned)rect.origin.x) * 4;
+  
+  for (unsigned charRow=0; charRow<charMaxHeight; charRow++) {
+    
+    unsigned short int mask;
+    unsigned screenStartY;
+    UInt32 * screenMemory;
+    
+    screenStartY = (((unsigned)(rect.origin.y) + charRow) * self.imgview.stride);
+    screenMemory = (UInt32 *)(self.imgview.VGAdisplay + screenStartY + screenStartXbytes);
+    
+    // each bit of selectedChar
+    for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {
+      
+      if ((*selectedChar & mask) | crsr) {
+        *screenMemory = fg_abgr;
+      } else {
+        *screenMemory = bg_abgr;
       }
-
-      break;
+      screenMemory++;
     }
-    case VGA_ACCESS_MODE_WORD: {
-      NSAssert(NO, @"Not yet implemented.");
-      break;
-    }
-    case VGA_ACCESS_MODE_DWORD: {
-      NSAssert(NO, @"Not yet implemented.");
-      break;
-    }
+    
+    selectedChar++;
+    
   }
-
-  // BXL_INFO(([NSString stringWithFormat:@"paintChar rect x=%d y=%d w=%d h=%d",
-  //   (unsigned)rect.origin.x, (unsigned)rect.origin.y, (unsigned)rect.size.width, (unsigned)rect.size.height]));
-  [imgview updateVGA:rect];
-  self.dirty = YES;
+  
+  [self clipRegionPosition:rect];
 
 }
 
@@ -582,123 +454,100 @@ BXVGAImageView * imgview;
  * clip gfx region into screen
  */
 - (void)clipRegion:(unsigned char * _Nonnull) src position:(NSRect) rect {
-
-  unsigned screenStartY;
-  unsigned screenStartXbytes;
-  // unsigned screenStartXbits;
-  unsigned char noOfComponents;
-  unsigned char vgaAccessMode;
-  unsigned blitMaxHeight;
-  unsigned char * srcMemory;
-
-  // do not allow write outside screen
-  if (((unsigned)rect.origin.x + (unsigned)rect.size.width) > self.width) {
-    return;
-  }
-  if (((unsigned)rect.origin.y + (unsigned)rect.size.height) > self.height) {
-    return;
-  }
-  NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"clipRegion x out of range max[%d] is[%d]", self.width, ((unsigned)rect.origin.x + (unsigned)rect.size.width));
-  NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"clipRegion y out of range max[%d] is[%d]", self.height, ((unsigned)rect.origin.y + (unsigned)rect.size.height));
-
-
-  if (self.bitsPerComponent == 8) {
-    noOfComponents = self.bpp / self.bitsPerComponent;
-    screenStartXbytes = ((unsigned)rect.origin.x) * noOfComponents;
-    // screenStartXbits = 0;
-    vgaAccessMode = noOfComponents >= 3 ? VGA_ACCESS_MODE_DWORD : noOfComponents;
-  } else {
-    noOfComponents = 0;
-    // screenStartXbits = 0;
-    vgaAccessMode = VGA_ACCESS_MODE_BYTE; // unused !
-    NSAssert(NO, @"Not yet implemented.");
-  }
-
-  // font height only set in text mode !!!
-  blitMaxHeight = (unsigned)rect.size.height;
-
-  BXL_DEBUG(([NSString stringWithFormat:@"clipRegion vgaAccessMode=%d blitMaxHeight=%d font_height=%d", vgaAccessMode, blitMaxHeight, self.font_height]));
-
-  // depending on bpp <=8 <=16 <=32 - different access to screen memory
-  switch (vgaAccessMode) {
-    case VGA_ACCESS_MODE_BYTE: {
-
-      // print_buf(src, ((unsigned)rect.size.width * (unsigned)rect.size.height));
-      // NSAssert(NO, @"Not yet implemented.");
-
-      // unsigned short int maskend;
-      unsigned char * screenMemory;
-      //
-      // maskend = VGA_WORD_BIT_MASK>>(unsigned)rect.size.width;
-      srcMemory = src;
-      //
-      for (unsigned blitRow=0; blitRow<blitMaxHeight; blitRow++) {
-      //
-      //   unsigned short int mask;
-      //
-        screenStartY = (((unsigned)(rect.origin.y) + blitRow) * self.stride);
-        screenMemory = (unsigned char *)(imgview.VGAdisplay + screenStartY + screenStartXbytes);
-
-        // first try memcopy
-        memcpy((void *)screenMemory, srcMemory, (unsigned)rect.size.width * sizeof(unsigned char));
-        // memset((void *)screenMemory, 0x34, (unsigned)rect.size.width * sizeof(unsigned char));
-
-      //
-      //   // each bit of selectedChar
-      //   for (mask = VGA_WORD_BIT_MASK; mask != maskend; mask >>=1) {
-      //     if ((*selectedChar & mask) | crsr) {
-      //       *screenMemory = fg;
-      //     } else {
-      //       *screenMemory = bg;
-      //     }
-      //     screenMemory++;
-      //   }
-      //
-        srcMemory += (unsigned)rect.size.width;
-      //
+  
+  unsigned x_overflow;
+  unsigned y_overflow;
+  
+  // bug in vgacore
+  // sending regions outside screen
+  // until this is fixed we can't assert !!!
+//  NSAssert(((unsigned)rect.origin.x + (unsigned)rect.size.width) <= self.width, @"clipRegion x out of range max[%d] is[%d]", self.width, ((unsigned)rect.origin.x + (unsigned)rect.size.width));
+//  NSAssert(((unsigned)rect.origin.y + (unsigned)rect.size.height) <= self.height, @"clipRegion y out of range max[%d] is[%d]", self.height, ((unsigned)rect.origin.y + (unsigned)rect.size.height));
+  
+  x_overflow = ((unsigned)rect.origin.x + (unsigned)rect.size.width) > self.width ? ((unsigned)rect.origin.x + (unsigned)rect.size.width) - self.width : 0;
+  y_overflow = ((unsigned)rect.origin.y + (unsigned)rect.size.height) > self.height ? ((unsigned)rect.origin.y + (unsigned)rect.size.height) - self.height : 0;
+  
+  switch (self.bitsPerComponent) {
+      
+    case 8: {
+      
+      unsigned char noOfComponents;
+      unsigned screenStartXbytes;
+      
+      noOfComponents = self.bpp / self.bitsPerComponent;
+      screenStartXbytes = ((unsigned)rect.origin.x) * (self.imgview.bpp / self.imgview.bitsPerComponent);
+      
+      switch (noOfComponents) {
+        case 1: { // 8 bit
+          
+          unsigned char * srcMemory;
+          unsigned screenStartY;
+          UInt32 * screenMemory;
+          
+          srcMemory = src;
+          for (unsigned blitRow=0; blitRow < ((unsigned)rect.size.height - y_overflow); blitRow++) {
+            
+            screenStartY = (((unsigned)(rect.origin.y) + blitRow) * self.imgview.stride);
+            screenMemory = (UInt32 *)(self.imgview.VGAdisplay + screenStartY + screenStartXbytes);
+            
+            for (unsigned blitCol=0; blitCol < ((unsigned)rect.size.width - x_overflow); blitCol++) {
+              *screenMemory = self.palette[*srcMemory];
+              srcMemory++;
+              screenMemory++;
+            }
+            if (x_overflow) {
+              srcMemory = src + (blitRow * (unsigned)rect.size.width);
+            }
+            
+          }
+          
+          break;
+        }
+        case 2: { // 16 bit
+          NSAssert(NO, @"Not yet implemented.");
+        }
+        case 3: { // 24 bit
+          NSAssert(NO, @"Not yet implemented.");
+        }
+        case 4: { // 32 bit
+          NSAssert(NO, @"Not yet implemented.");
+        }
+        default: {
+          NSAssert(NO, @"illegal no of components [%d]", noOfComponents);
+        }
       }
-
       break;
     }
-    case VGA_ACCESS_MODE_WORD: {
+    default: {
       NSAssert(NO, @"Not yet implemented.");
-      break;
-    }
-    case VGA_ACCESS_MODE_DWORD: {
-      NSAssert(NO, @"Not yet implemented.");
-      break;
     }
   }
-
-  [imgview updateVGA:rect];
-  self.dirty = YES;
-
-
+  
+  [self clipRegionPosition:rect];
+  
 }
 
 /**
  * VGAdisplayRAM Ptr
  */
 - (const unsigned char * _Nonnull)VGAdisplayRAM {
-  return (const unsigned char *)imgview.VGAdisplay;
+  
+  return (const unsigned char *)self.imgview.VGAdisplay;
+  
 }
 
 /**
  * clipRegionPosition
  */
 - (void)clipRegionPosition:(NSRect) rect {
-  // BXL_INFO(([NSString stringWithFormat:@"clipRegionPosition rect x=%d y=%d w=%d h=%d",
-  //   (unsigned)rect.origin.x, (unsigned)rect.origin.y, (unsigned)rect.size.width, (unsigned)rect.size.height]));
 
-  [imgview updateVGA:rect];
+  NSRect udrect;
+  
+  udrect = NSMakeRect(rect.origin.x, self.height - (rect.origin.y + rect.size.height), rect.size.width, rect.size.height);
+
+  [self.imgview updateVGA:udrect];
   self.dirty = YES;
+  
 }
-
-
-
-
-
-
-
 
 @end

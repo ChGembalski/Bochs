@@ -60,9 +60,8 @@ extern int bxmain(void);
  */
 - (void)main {
 
-  NSLog(@"bochs thread started");
   bxmain();
-  NSLog(@"bochs thread stopped");
+
   // force app terminate ? direct or bypass it delayed on the main thread?
   dispatch_sync(dispatch_get_main_queue(), ^(void){
     [NSApp terminate:nil];
@@ -91,20 +90,11 @@ vga_settings_t default_vga_settings = {
 
   // Basic App setup
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-  NSApp.applicationIconImage = nil;//(NSImage *) BXwindow->createIconXPM();
+  NSApp.applicationIconImage = nil;
 
   // Window Controller
   self.bx_window_controller = [[BXNSWindowController alloc] init:default_vga_settings.headerbar_y VGAxRes:default_vga_settings.xres VGAyRes:default_vga_settings.yres];
 
-
-
-
-
-
-
-
-
-  // TODO : setup everithing else
   // Startup NSThread running the bochs core
   bochsThread = [[BXBochsThread alloc] init];
   [bochsThread start];
@@ -118,9 +108,7 @@ vga_settings_t default_vga_settings = {
  */
 - (void)terminate:(id _Nullable)sender {
 
-  // TODO : cleanup everithing else
   if (bochsThread != nil) {
-    NSLog(@"bochs thread executing %s", bochsThread.executing?"YES":"NO");
     if (bochsThread.executing) {
       [bochsThread cancel];
     }
@@ -159,27 +147,10 @@ vga_settings_t default_vga_settings = {
 
   }];
 
-  // BXL_DEBUG(([NSString stringWithFormat:@"ScreenResolution bpp=%d width=%d height=%d", *bpp, *w, *h]));
-
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @end
+
 
 /////////////////////////////////
 // Class BXGuiCocoaApplication //
@@ -207,14 +178,9 @@ BXGuiCocoaApplication::~BXGuiCocoaApplication() {
  * onBochsThreadExit
  */
 void BXGuiCocoaApplication::onBochsThreadExit() {
-  // NSLog(@"BXGuiCocoaApplication::onBochsThreadExit");
-  // if (NSThread.isMainThread) {
-  //   [BXCocoaApplication->BXNSApp.bx_window_controller onBochsThreadExit];
-  // } else {
     dispatch_sync(dispatch_get_main_queue(), ^(void){
       [BXCocoaApplication->BXNSApp.bx_window_controller onBochsThreadExit];
     });
-  // }
 }
 
 
@@ -222,35 +188,24 @@ void BXGuiCocoaApplication::onBochsThreadExit() {
  * showWindow
  */
 void BXGuiCocoaApplication::showWindow(gui_window_type_t window, bool bShow) {
-  NSLog(@"BXGuiCocoaApplication::showWindow");
-  // if (NSThread.isMainThread) {
-  //   [BXCocoaApplication->BXNSApp.bx_window_controller showWindow:window doShow:bShow];
-  // } else {
-    dispatch_sync(dispatch_get_main_queue(), ^(void){
-      [BXCocoaApplication->BXNSApp.bx_window_controller showWindow:window doShow:bShow];
-    });
-  // }
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller showWindow:window doShow:bShow];
+  });
 }
 
 /**
  * activateWindow
  */
 void BXGuiCocoaApplication::activateWindow(gui_window_type_t window) {
-  NSLog(@"BXGuiCocoaApplication::activateWindow");
-  // if (NSThread.isMainThread) {
-  //   [BXCocoaApplication->BXNSApp.bx_window_controller activateWindow:window];
-  // } else {
-    dispatch_sync(dispatch_get_main_queue(), ^(void){
-      [BXCocoaApplication->BXNSApp.bx_window_controller activateWindow:window];
-    });
-  // }
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller activateWindow:window];
+  });
 }
 
 /**
  * activateMenu
  */
 void BXGuiCocoaApplication::activateMenu(property_t type, bool bActivate) {
-  NSLog(@"BXGuiCocoaApplication::activateMenu");
   dispatch_sync(dispatch_get_main_queue(), ^(void){
     [BXCocoaApplication->BXNSApp.bx_window_controller activateMenu:type doActivate:bActivate];
   });
@@ -321,6 +276,7 @@ void BXGuiCocoaApplication::setSimulationState(simulation_state_t new_state) {
       [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_CONFIGURATION] config] loadColumnZero];
     });
   }
+  
 }
 
 /**
@@ -366,101 +322,10 @@ void BXGuiCocoaApplication::showModalParamRequest(void * vparam, int * result) {
   bx_param_c * param;
 
   param = (bx_param_c *)vparam;
-NSLog(@"showModalParamRequest %p", vparam);
-if(param == NULL) NSLog(@"no argument");
-
-NSLog(@"param type=%d",param->get_type());
-  // get type of request
-  switch (param->get_type()) {
-    case BXT_PARAM: {
-      NSLog(@"raw [%s] [%s] [%s]\n", param->get_name(), param->get_label(), param->get_description());
-      break;
-    }
-    case BXT_PARAM_NUM: {
-      bx_param_num_c * num_param;
-
-      num_param = (bx_param_num_c *)param;
-      NSLog(@"num [%s] [%s] [%s] [%d]\n", num_param->get_name(), num_param->get_label(), num_param->get_description(), num_param->get());
-      break;
-    }
-    case BXT_PARAM_BOOL: {
-      bx_param_bool_c * bool_param;
-
-      bool_param = (bx_param_bool_c *)param;
-      NSLog(@"bool [%s] [%s] [%s] [%d]\n", bool_param->get_name(), bool_param->get_label(), bool_param->get_description(), bool_param->get());
-      break;
-    }
-    case BXT_PARAM_ENUM: {
-      bx_param_enum_c * enum_param;
-
-      enum_param = (bx_param_enum_c *)param;
-      NSLog(@"enum\n");
-      break;
-    }
-    case BXT_PARAM_STRING: {
-      bx_param_string_c * string_param;
-printf("hit BXT_PARAM_STRING");
-      char ppa[512] = {0};
-
-      string_param = (bx_param_string_c *)param;
-      string_param->get_param_path(ppa, 512);
-      printf("string [%s] [%s] [%s] [%0X] [%s] [%s]\n",
-      string_param->get_name(),
-      string_param->get_label(),
-      string_param->get_description(),
-      string_param->get_options(),
-      string_param->getptr(),
-      ppa);
-      break;
-    }
-    case BXT_PARAM_BYTESTRING: {
-      bx_param_bytestring_c * bytestring_param;
-NSLog(@"hit BXT_PARAM_BYTESTRING");
-      bytestring_param = (bx_param_bytestring_c *)param;
-      NSLog(@"bytestring [%s] [%s] [%s] [%0X] [%s]\n",
-      bytestring_param->get_name(), bytestring_param->get_label(), bytestring_param->get_description(), bytestring_param->get_options(), bytestring_param->getptr());
-      break;
-    }
-    case BXT_PARAM_DATA: {
-      NSLog(@"unknown ... could not find this thing ...\n");
-
-      break;
-    }
-    case BXT_PARAM_FILEDATA: {
-      bx_param_filename_c * filename_param;
-NSLog(@"hit BXT_PARAM_FILEDATA");
-      filename_param = (bx_param_filename_c *)param;
-      NSLog(@"filename [%s] [%s] [%s] [%s] [%0X] [%s]\n",
-      filename_param->get_name(), filename_param->get_label(), filename_param->get_description(), filename_param->get_extension(),
-      filename_param->get_options(), filename_param->getptr());
-      break;
-    }
-    case BXT_LIST: {
-      bx_list_c * list_param;
-      char ppa[512] = {0};
-
-      list_param = (bx_list_c *)param;
-      list_param->get_param_path(ppa, 512);
-      NSLog(@"list [%s] [%s] [%s] [%s] [%0X] [%d] [%s]\n",
-      (const char *)list_param->get_name(), (const char *)list_param->get_label(),
-      (const char *)list_param->get_description(), (const char *)list_param->get_title(),
-      (unsigned)list_param->get_choice(), (unsigned)list_param->get_size(),
-      ppa);
-      break;
-    }
-    default: {
-      NSLog(@"[%s] [%s] [%s]\n",
-        param->get_name(), param->get_label(), param->get_description()
-        //, param->param->inital_val, param->param->maxsize
-      );
-      NSLog(@"Sorry not finished this one ...\n");
-    }
-  }
 
   dispatch_sync(dispatch_get_main_queue(), ^(void){
     *result = [BXNSWindowController showModalParamRequestDialog:param];
   });
-
 
 }
 
@@ -482,8 +347,7 @@ void BXGuiCocoaApplication::postLogMessage(unsigned char level, unsigned char mo
   dispatch_async(dispatch_get_main_queue(), ^(void){
     [BXCocoaApplication->BXNSApp.bx_window_controller.bx_log_queue enqueueSplit:msg_str LogLevel:level LogMode:mode];
   });
-  // NSLog(@"level=%d mode=%d prefix=%@ msg=%@",
-  //   level, mode, prefix==NULL?@"null":[NSString stringWithUTF8String:prefix], msg==NULL?@"null":[NSString stringWithUTF8String:msg]);
+  
 }
 
 
@@ -500,8 +364,7 @@ void BXGuiCocoaApplication::getScreenConfiguration(unsigned int * width, unsigne
  * dimension_update
  */
 void BXGuiCocoaApplication::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
-
-    dispatch_sync(dispatch_get_main_queue(), ^(void){
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
 
     // Change VGA display
     [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] changeBPP:bpp width:x height:y font_width:fwidth font_height:fheight];
@@ -542,14 +405,16 @@ unsigned BXGuiCocoaApplication::headerbar_bitmap(unsigned bmap_id, unsigned alig
  * replace_bitmap
  */
 void BXGuiCocoaApplication::replace_bitmap(unsigned hbar_id, unsigned bmap_id) {
-  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarBXBitmap:hbar_id data_id:bmap_id];
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarBXBitmap:hbar_id data_id:bmap_id];
+  });
 }
 
 /**
  * show_headerbar
  */
 void BXGuiCocoaApplication::show_headerbar(void) {
-  dispatch_sync(dispatch_get_main_queue(), ^(void){
+  dispatch_async(dispatch_get_main_queue(), ^(void){
     [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarCreate:[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] contentView]];
   });
 }

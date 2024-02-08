@@ -35,6 +35,9 @@
   #define BX_GUI_GAP_SIZE       10
 
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSHeaderBarButtonData
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSHeaderBarButtonData : NSObject
 
     @property (nonatomic, readwrite) CFDataRef _Nonnull data;
@@ -48,6 +51,9 @@
   @end
 
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSHeaderBarButton
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSHeaderBarButton : NSObject
 
     @property (nonatomic, readwrite, assign) NSUInteger data_id;
@@ -63,22 +69,34 @@
 
   @end
 
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSHeaderBarView
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSHeaderBarView : NSView
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
   @end
 
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSHeaderBar
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSHeaderBar : NSObject
 
+    @property (nonatomic, readwrite, strong) BXNSHeaderBarView * _Nonnull button_view;
+    @property (nonatomic, readwrite, strong) NSMutableArray<BXNSHeaderBarButtonData *> * _Nonnull button_data;
+    @property (nonatomic, readwrite, strong) NSMutableArray<BXNSHeaderBarButton *> * _Nonnull buttons;
     @property (nonatomic, readwrite) unsigned height;
     @property (nonatomic, readwrite) unsigned width;
     @property (nonatomic, readwrite) unsigned yofs;
     @property (nonatomic, readwrite) BOOL created;
+    @property (nonatomic, readwrite) unsigned last_lx;
+    @property (nonatomic, readwrite) unsigned last_rx;
 
     - (instancetype _Nonnull)init:(unsigned) headerbar_y width:(unsigned) w yofs:(unsigned) y;
 
-    - (NSImage * _Nonnull)createIconXPM;
     - (unsigned)createBXBitmap:(const unsigned char * _Nonnull)bmap xdim:(unsigned) x ydim:(unsigned) y;
     - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(ButtonHandler _Nullable) handler;
     - (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;

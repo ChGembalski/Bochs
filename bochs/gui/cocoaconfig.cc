@@ -165,50 +165,7 @@ ci_start_wait:
       break;
     }
     case CI_RUNTIME_CONFIG: {
-      // WARNING !!! this is called from the BX_GUI_WINDOW_VGA_DISPLAY
-      // now on a separate thread
-      // so we have to stop the simulation
-      // hide the sim window -> bring up the config
-      // set state to pause -> and then ? how to get it back running again?
-      if (!bx_gui->has_gui_console()) {
-//         // TODO : get Simulation State - start this window in modal?
-//         bxcocoagui->setSimulationState(SIM_PAUSE);
-//         bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
-//         bxcocoagui->activateWindow(BX_GUI_WINDOW_CONFIGURATION);
-//         // need to wait for one of BX_PROPERTY_START_SIM | BX_PROPERTY_EXIT_SIM | BX_PROPERTY_CONT_SIM
-// loopOn:
-//         bxcocoagui->getPropertySet(true, 3, BX_PROPERTY_START_SIM, BX_PROPERTY_EXIT_SIM, BX_PROPERTY_CONT_SIM);
-//         // check the properties
-//         if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, false) == 1) {
-//           printf("BX_PROPERTY_START_SIM");
-//         } else if (bxcocoagui->getProperty(BX_PROPERTY_CONT_SIM, false) == 1) {
-//           printf("BX_PROPERTY_CONT_SIM");
-//         } else if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
-//           printf("BX_PROPERTY_EXIT_SIM");
-//         } else {
-//           printf("NON VALID");
-//           sleep(1);
-//           goto loopOn;
-        // }
-
-
-
-//         if (bxcocoagui->getProperty(BX_PROPERTY_EXIT_SIM, false) == 1) {
-//           bxcocoagui->activateMenu(BX_PROPERTY_EXIT_SIM, false);
-//           bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, true);
-//           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
-//           bx_user_quit = 1;
-// #if !BX_DEBUGGER
-//           bx_atexit();
-//           SIM->quit_sim(1);
-// #else
-//           bx_dbg_exit(1);
-// #endif
-//           return -1;
-//         } else {
-//           printf("NO CONSOLE GUI!!!!!!!!");
-//         }
-      }
+      bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, true);
       break;
     }
     case CI_SHUTDOWN: {

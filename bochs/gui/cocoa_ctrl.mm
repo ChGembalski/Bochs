@@ -375,7 +375,7 @@
   if([partialString length] == 0) {
     return YES;
   }
-  NSLog(@"partial=[%@]", partialString);
+  
   scanner = [NSScanner scannerWithString:partialString];
   if(!([scanner scanHexInt:&value] && [scanner isAtEnd])) {
     NSBeep();
