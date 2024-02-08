@@ -518,10 +518,19 @@ unsigned long BXGuiCocoaApplication::getEvent(void) {
   return [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] getEvent];
 }
 
+/**
+ * get_clipboard_text
+ */
+int BXGuiCocoaApplication::get_clipboard_text(unsigned char **bytes, int *nbytes) {
+  return [BXCocoaApplication->BXNSApp.bx_window_controller getClipboardText:bytes Size:nbytes];
+}
 
-
-
-
+/**
+ * set_clipboard_text
+ */
+int BXGuiCocoaApplication::set_clipboard_text(char *text_snapshot, int len) {
+  return [BXCocoaApplication->BXNSApp.bx_window_controller setClipboardText:text_snapshot Size:len];
+}
 
 
 // DEBUGGER

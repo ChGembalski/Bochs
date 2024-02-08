@@ -120,6 +120,9 @@
     bool hasMouseCapture(void);
     bool hasEvent(void);
     unsigned long getEvent(void);
+    
+    int get_clipboard_text(unsigned char **bytes, int *nbytes);
+    int set_clipboard_text(char *text_snapshot, int len);
 
     // Debugger
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI

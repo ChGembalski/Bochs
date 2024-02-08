@@ -164,7 +164,8 @@
     - (int)getProperty:(property_t) p;
     - (void)waitPropertySet:(NSMutableArray<NSNumber *> * _Nonnull) property_list;
     - (void)setProperty:(property_t) p Value:(int) val;
-
+    - (int)getClipboardText:(unsigned char * _Nullable * _Nonnull) bytes Size:(int * _Nonnull) nbytes;
+    - (int)setClipboardText:(char * _Nullable)text Size:(int) len;
     - (void)onMenuEvent:(id _Nonnull) sender;
 
   @end

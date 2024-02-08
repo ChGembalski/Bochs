@@ -713,6 +713,50 @@ event_loop:
 }
 
 /**
+ * getClipboardText
+ */
+- (int)getClipboardText:(unsigned char * _Nullable * _Nonnull) bytes Size:(int * _Nonnull) nbytes {
+  
+  NSPasteboard * cb;
+  NSString * cb_data;
+  
+  cb = [NSPasteboard generalPasteboard];
+  cb_data = [cb stringForType:NSPasteboardTypeString];
+  if (cb_data == nil) {
+    *bytes = NULL;
+    *nbytes = 0;
+    return 0;
+  }
+  
+  *nbytes = [cb_data lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+  *bytes = new unsigned char[(*nbytes + 1) * sizeof(unsigned char)];
+  memset(*bytes, 0, *nbytes + 1);
+  memcpy(*bytes, cb_data.UTF8String, *nbytes * sizeof(unsigned char));
+  return 1;
+  
+}
+
+/**
+ * setClipboardText
+ */
+- (int)setClipboardText:(char * _Nullable)text Size:(int) len {
+  
+  NSPasteboard * cb;
+  NSString * cb_data;
+  
+  if (len == 0 | text == NULL) {
+    return 1;
+  }
+  cb = [NSPasteboard generalPasteboard];
+  [cb clearContents];
+  cb_data = [NSString stringWithUTF8String:text];
+  [cb setString:cb_data forType:NSPasteboardTypeString];
+  
+  return 1;
+  
+}
+
+/**
  * onMenuEvent
  */
 - (void)onMenuEvent:(id _Nonnull) sender {
