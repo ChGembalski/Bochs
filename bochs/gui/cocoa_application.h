@@ -44,6 +44,7 @@
     - (void)terminate:(id _Nullable)sender;
 
     - (void)getMaxScreenResolution:(unsigned char * _Nonnull) bpp width:(unsigned int * _Nonnull) w height:(unsigned int * _Nonnull) h;
+    - (void)beep;
 
   @end
 

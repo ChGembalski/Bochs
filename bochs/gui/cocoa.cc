@@ -224,13 +224,13 @@ public:
   // is set to DISP_MODE_SIM when the Bochs simulation resumes.  The
   // enum is defined in gui/siminterface.h.
   // virtual void set_display_mode (disp_mode_t newmode);
-  #if BX_USE_IDLE_HACK
+#if BX_USE_IDLE_HACK
     // this is called from the CPU model when the HLT instruction is executed.
-    virtual void sim_is_idle(void);
-  #endif
-  //   virtual void show_ips(Bit32u ips_count);
-  //   virtual void beep_on(float frequency);
-  //   virtual void beep_off();
+  virtual void sim_is_idle(void);
+#endif
+  virtual void show_ips(Bit32u ips_count);
+  virtual void beep_on(float frequency);
+  virtual void beep_off();
   //   virtual void get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp);
   virtual void set_mouse_mode_absxy(bool mode);
   // #if BX_USE_GUI_CONSOLE
@@ -666,10 +666,7 @@ void bx_cocoa_gui_c::show_headerbar(void)
 
 int bx_cocoa_gui_c::get_clipboard_text(Bit8u **bytes, Bit32s *nbytes)
 {
-  UNUSED(bytes);
-  UNUSED(nbytes);
-  BX_INFO(("bx_cocoa_gui_c::get_clipboard_text"));
-  return 0;
+  return bxcocoagui->get_clipboard_text(bytes, nbytes);
 }
 
 
@@ -680,10 +677,7 @@ int bx_cocoa_gui_c::get_clipboard_text(Bit8u **bytes, Bit32s *nbytes)
 
 int bx_cocoa_gui_c::set_clipboard_text(char *text_snapshot, Bit32u len)
 {
-  UNUSED(text_snapshot);
-  UNUSED(len);
-  BX_INFO(("bx_cocoa_gui_c::set_clipboard_text"));
-  return 0;
+  return bxcocoagui->set_clipboard_text(text_snapshot, len);
 }
 
 
@@ -828,9 +822,23 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
 
 
 
-
+////////////////////////////////////////////////////////////////////////////////
 // Cocoa implementation of optional bx_gui_c methods (see gui.h)
+////////////////////////////////////////////////////////////////////////////////
+///
+void bx_cocoa_gui_c::show_ips(Bit32u ips_count) {
+//  BX_INFO(("bx_cocoa_gui_c::show_ips %d", ips_count));
+  // TODO : show in header
+}
 
+void bx_cocoa_gui_c::beep_on(float frequency) {
+  UNUSED(frequency);
+  // mac just use default Beep ...
+  bxcocoagui->beep();
+}
+void bx_cocoa_gui_c::beep_off() {
+  // do nothing ... we can't stop it
+}
 
 // // set_display_mode() changes the mode between the configuration interface
 // // and the simulation.  This is primarily intended for display libraries

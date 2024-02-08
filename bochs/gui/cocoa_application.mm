@@ -149,6 +149,13 @@ vga_settings_t default_vga_settings = {
 
 }
 
+/**
+ * beep
+ */
+- (void)beep {
+  NSBeep();
+}
+
 @end
 
 
@@ -531,6 +538,14 @@ int BXGuiCocoaApplication::get_clipboard_text(unsigned char **bytes, int *nbytes
 int BXGuiCocoaApplication::set_clipboard_text(char *text_snapshot, int len) {
   return [BXCocoaApplication->BXNSApp.bx_window_controller setClipboardText:text_snapshot Size:len];
 }
+
+/**
+ * beep
+ */
+void BXGuiCocoaApplication::beep(void) {
+  [BXCocoaApplication->BXNSApp beep];
+}
+
 
 
 // DEBUGGER
