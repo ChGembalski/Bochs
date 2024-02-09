@@ -129,6 +129,8 @@
     int get_clipboard_text(unsigned char **bytes, int *nbytes);
     int set_clipboard_text(char *text_snapshot, int len);
     void beep(void);
+    void show_ips(unsigned ips_count);
+    void toggle_fullscreen(bool enable);
     
     // Debugger
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI

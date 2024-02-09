@@ -41,6 +41,7 @@
     @property (nonatomic, readwrite) unsigned bpp;
     @property (nonatomic, readwrite) unsigned stride;
     @property (nonatomic, readwrite) unsigned bitsPerComponent;
+    @property (nonatomic, readwrite) NSRect restoreSize;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect) frameRect;
     - (void)dealloc;

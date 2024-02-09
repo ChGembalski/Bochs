@@ -223,7 +223,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSConfigurationWindow
   ////////////////////////////////////////////////////////////////////////////////
-  @interface BXNSConfigurationWindow : BXNSGenericWindow <NSApplicationDelegate>
+  @interface BXNSConfigurationWindow : BXNSGenericWindow <NSApplicationDelegate, NSWindowDelegate>
 
     @property (nonatomic, readwrite, strong) BXNSBrowser * _Nonnull config;
 
@@ -234,7 +234,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSSimulationWindow
   ////////////////////////////////////////////////////////////////////////////////
-  @interface BXNSSimulationWindow : BXNSGenericWindow <NSApplicationDelegate>
+  @interface BXNSSimulationWindow : BXNSGenericWindow <NSApplicationDelegate, NSWindowDelegate>
 
     @property (nonatomic, readwrite) BXNSHeaderBar * _Nonnull BXToolbar;
     @property (nonatomic, readwrite, strong) BXVGAdisplay * _Nonnull BXVGA;
@@ -242,6 +242,8 @@
     @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
     @property (nonatomic, readwrite) BOOL MouseCaptureActive;
     @property (nonatomic, readwrite, strong) BXNSEventQueue * _Nonnull BXEventQueue;
+    @property (nonatomic, readwrite) NSRect restoreSize;
+    @property (nonatomic, readwrite) BOOL inFullscreen;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller HeaderBarHeight:(UInt8) headerbar_y VGAxRes:(UInt16) vga_xres VGAyRes:(UInt16) vga_yres;
 
@@ -264,6 +266,10 @@
     - (void)mouseUp:(NSEvent* _Nonnull)event;
     - (void)rightMouseUp:(NSEvent * _Nonnull)event;
     - (void)otherMouseUp:(NSEvent * _Nonnull)event;
+    - (void)updateIPS:(unsigned) val;
+    - (void)toggleFullscreen:(BOOL) enable;
+    - (void)windowWillEnterFullScreen:(NSNotification * _Nullable)notification;
+    - (void)windowWillExitFullScreen:(NSNotification * _Nullable)notification;
 
   @end
 

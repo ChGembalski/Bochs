@@ -1387,6 +1387,9 @@ event_loop:
 
     [self setTitle:BOCHS_WINDOW_NAME];
 
+    [self setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
     self.BXEventQueue = [[BXNSEventQueue alloc] init];
 
     self.MouseCaptureAbsolute = NO;
@@ -1394,12 +1397,14 @@ event_loop:
 
     // Setup VGA display
     self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga_xres height:vga_yres font_width:0 font_height:0 view:[self contentView]];
-
+    
     // setup Toolbar
     self.BXToolbar = [[BXNSHeaderBar alloc] init:headerbar_y width:vga_xres yofs:vga_yres];
 
     [self setAcceptsMouseMovedEvents:YES];
-
+    [self setDelegate:self];
+    self.inFullscreen = NO;
+    
   }
 
   return self;
@@ -1616,6 +1621,66 @@ event_loop:
 - (void)otherMouseUp:(NSEvent * _Nonnull)event {
   
   [self handleMouse:event];
+  
+}
+
+/**
+ * updateIPS
+ */
+- (void)updateIPS:(unsigned) val {
+  
+}
+
+/**
+ * toggleFullscreen
+ */
+- (void)toggleFullscreen:(BOOL) enable {
+  
+  if (enable & self.inFullscreen) {
+    return;
+  }
+  if (!enable & !self.inFullscreen) {
+    return;
+  }
+  [self toggleFullScreen:self];
+    
+}
+
+/**
+ * windowWillEnterFullScreen
+ */
+- (void)windowWillEnterFullScreen:(NSNotification * _Nullable)notification {
+  
+  // hide other windows
+  [self.bx_controller showWindow:BX_GUI_WINDOW_CONFIGURATION doShow:NO];
+  [self.bx_controller showWindow:BX_GUI_WINDOW_LOGGING doShow:NO];
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+  [self.bx_controller showWindow:BX_GUI_WINDOW_DEBUGGER doShow:NO];
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
+  
+  self.restoreSize = self.frame;
+  self.BXVGA.imgview.restoreSize = self.BXVGA.imgview.frame;
+  
+  self.BXVGA.imgview.frame = self.screen.frame;
+  [self setFrame:self.screen.frame display:YES];
+  
+  [self.BXToolbar.button_view setHidden:YES];
+  
+  self.inFullscreen = YES;
+  
+}
+
+/**
+ * windowWillExitFullScreen
+ */
+- (void)windowWillExitFullScreen:(NSNotification * _Nullable)notification {
+  
+  self.BXVGA.imgview.frame = self.BXVGA.imgview.restoreSize;
+  [self setFrame:self.restoreSize display:YES];
+  
+  [self.BXToolbar.button_view setHidden:NO];
+  
+  self.inFullscreen = NO;
   
 }
 

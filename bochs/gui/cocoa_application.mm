@@ -546,7 +546,23 @@ void BXGuiCocoaApplication::beep(void) {
   [BXCocoaApplication->BXNSApp beep];
 }
 
+/**
+ * show_ips
+ */
+void BXGuiCocoaApplication::show_ips(unsigned ips_count) {
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] updateIPS:ips_count];
+  });
+}
 
+/**
+ * toggle_fullscreen
+ */
+void BXGuiCocoaApplication::toggle_fullscreen(bool enable) {
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] toggleFullscreen:enable];
+  });
+}
 
 // DEBUGGER
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI

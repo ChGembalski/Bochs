@@ -355,7 +355,14 @@ void bx_cocoa_gui_c::handle_events(void)
       scancode = event & ~MACOS_NSEventModifierFlagMask;
       released = (event & MACOS_NSEventModifierFlagKeyUp) == 0;
       BX_DEBUG((">>> event %lx mouse %s scancode %x scanflags %x released %x", event, mouse?"YES":"NO", scancode, scanflags, released));
-
+      
+      // Fullscreen toggle
+      if ((scancode == kVK_F19) && !released) {
+        bx_gui->set_fullscreen_mode(!fullscreen_mode);
+        bxcocoagui->toggle_fullscreen(fullscreen_mode);
+        BX_INFO(("fullscreen_mode=%d", fullscreen_mode));
+      }
+      
       if (scancode < 0x80) {
         BX_DEBUG(("scancode %x scanflags %x released %x", scancode, scanflags, released));
         if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
@@ -793,10 +800,9 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
 ////////////////////////////////////////////////////////////////////////////////
 // Cocoa implementation of optional bx_gui_c methods (see gui.h)
 ////////////////////////////////////////////////////////////////////////////////
-///
+
 void bx_cocoa_gui_c::show_ips(Bit32u ips_count) {
-//  BX_INFO(("bx_cocoa_gui_c::show_ips %d", ips_count));
-  // TODO : show in header
+  bxcocoagui->show_ips(ips_count);
 }
 
 void bx_cocoa_gui_c::beep_on(float frequency) {
