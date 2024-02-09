@@ -50,3 +50,4 @@ BX_KEY_8+BX_KEY_ALT_R                         '['        kVK_ANSI_5+kMod_Option_
 BX_KEY_9+BX_KEY_ALT_R                         ']'        kVK_ANSI_6+kMod_Option_Right
 BX_KEY_0+BX_KEY_ALT_R                         '}'        kVK_ANSI_9+kMod_Option_Right
 BX_KEY_Q+BX_KEY_ALT_R                         '@'        kVK_ANSI_L+kMod_Option_Right
+BX_KEY_0+BX_KEY_SHIFT_L                       '='        kVK_ANSI_KeypadEquals

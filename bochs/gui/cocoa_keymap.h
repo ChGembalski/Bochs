@@ -40,7 +40,7 @@ Bit32s scancode_tbl[] = {
   BX_KEY_X,
   BX_KEY_C,
   BX_KEY_V,
-  BX_KEY_UNHANDLED, // kVK_ISO_Section
+  BX_KEY_GRAVE, // kVK_ISO_Section
   BX_KEY_B,
   BX_KEY_Q,
   BX_KEY_W,
@@ -83,7 +83,7 @@ Bit32s scancode_tbl[] = {
   // 30 ... 3F
     BX_KEY_TAB,
     BX_KEY_SPACE,
-  BX_KEY_GRAVE,
+  BX_KEY_LEFT_BACKSLASH, // kVK_ANSI_Grave
     BX_KEY_BACKSPACE,
   BX_KEY_UNHANDLED,
     BX_KEY_ESC,
@@ -116,7 +116,7 @@ Bit32s scancode_tbl[] = {
   BX_KEY_UNHANDLED,// F18
   // 50 ... 5F
   BX_KEY_UNHANDLED,// F19
-  BX_KEY_EQUALS,
+  BX_KEY_UNHANDLED, // kVK_ANSI_KeypadEquals
   BX_KEY_0,
   BX_KEY_1,
   BX_KEY_2,
