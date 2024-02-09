@@ -812,12 +812,13 @@ event_loop:
 /**
  * initWithBXController
  */
-- (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag {
+- (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag Custom:(UInt32) cust_val {
 
   self = [super initWithContentRect:rect styleMask:style backing:backingStoreType defer:flag];
   if (self) {
 
     self.bx_controller = controller;
+    self.cust_val = cust_val;
 
   }
 
@@ -829,7 +830,7 @@ event_loop:
  * windowShouldClose
  */
 - (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender {
-  [self setIsVisible:NO];
+  [self.bx_controller showWindow:(gui_window_type_t)self.cust_val doShow:false];
   return NO;
 }
 
@@ -1339,6 +1340,7 @@ event_loop:
                     NSWindowStyleMaskResizable
            backing: NSBackingStoreBuffered
              defer: NO
+            Custom: BX_GUI_WINDOW_CONFIGURATION
   ];
 
   if (self) {
@@ -1378,6 +1380,7 @@ event_loop:
                     NSWindowStyleMaskMiniaturizable
            backing: NSBackingStoreBuffered
              defer: NO
+            Custom: BX_GUI_WINDOW_VGA_DISPLAY
   ];
 
   if (self) {
@@ -1637,6 +1640,7 @@ event_loop:
                     NSWindowStyleMaskResizable
            backing: NSBackingStoreBuffered
              defer: NO
+            Custom: BX_GUI_WINDOW_LOGGING
   ];
   if (self) {
 
@@ -2154,6 +2158,7 @@ BXNSRegisterView * registerView;
                     NSWindowStyleMaskResizable
            backing: NSBackingStoreBuffered
              defer: NO
+            Custom: BX_GUI_WINDOW_DEBUGGER
   ];
 
   if (self) {

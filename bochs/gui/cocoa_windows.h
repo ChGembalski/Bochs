@@ -175,8 +175,9 @@
   @interface BXNSGenericWindow : NSWindow <NSApplicationDelegate>
 
     @property (nonatomic, readwrite) BXNSWindowController * _Nonnull bx_controller;
+    @property (nonatomic, readwrite) UInt32 cust_val;
 
-    - (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag;
+    - (instancetype _Nonnull)initWithBXController:(BXNSWindowController * _Nonnull) controller contentRect:(NSRect) rect styleMask:(NSWindowStyleMask) style backing:(NSBackingStoreType) backingStoreType defer:(BOOL) flag Custom:(UInt32) cust_val;
 
     - (BOOL)windowShouldClose:(NSWindow * _Nonnull)sender;
     - (BOOL)onMenuEvent:(NSString * _Nonnull) path;
