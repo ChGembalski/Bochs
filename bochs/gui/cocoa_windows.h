@@ -30,8 +30,6 @@
   #include "cocoa_bochs.h"
   #include "cocoa_headerbar.h"
 
-  #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
-  #define MACOS_NSEventModifierFlagMouse      0x4000000000000000
 
   #define BX_ALERT_MSG_STYLE_INFO             1
   #define BX_ALERT_MSG_STYLE_WARN             2

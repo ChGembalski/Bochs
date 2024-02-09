@@ -1414,7 +1414,7 @@ event_loop:
 
 /**
  * return the Event
- * if none exist return 0
+ * if none exists return 0
  */
 - (UInt64)getEvent {
   
@@ -1459,8 +1459,8 @@ event_loop:
  */
 - (void)keyDown:(NSEvent * _Nonnull)event {
 
-  [self.BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
-
+  [self.BXEventQueue enqueue:((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode | (((unsigned long)event.modifierFlags & ~NSEventModifierFlagDeviceIndependentFlagsMask) << 32) ];
+  
 }
 
 /**
@@ -1468,7 +1468,7 @@ event_loop:
  */
 - (void)keyUp:(NSEvent * _Nonnull)event {
 
-  [self.BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode];
+  [self.BXEventQueue enqueue:MACOS_NSEventModifierFlagKeyUp | ((unsigned long)event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask) | event.keyCode | (((unsigned long)event.modifierFlags & ~NSEventModifierFlagDeviceIndependentFlagsMask) << 32) ];
 
 }
 
