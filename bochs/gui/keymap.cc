@@ -149,7 +149,7 @@ static Bit32s get_next_word(char *output)
   return 0;
 }
 
-static Bit32s get_next_keymap_line(FILE *fp, char *bxsym, char *modsym, Bit32s *ascii, char *hostsym)
+static Bit32s get_next_keymap_line(FILE *fp, char *bxsym, char *modsym, Bit32s *ascii, char *hostsym, char *hostmod)
 {
   char line[256];
   char buf[256];
@@ -189,7 +189,14 @@ static Bit32s get_next_keymap_line(FILE *fp, char *bxsym, char *modsym, Bit32s *
       } else {
         BX_PANIC(("keymap line %d: ascii equivalent is \"%s\" but it must be char constant like 'x', or one of space,tab,return,none", lineCount, buf));
       }
-      if (get_next_word(hostsym) < 0) {
+      if (get_next_word(hostsym) >= 0) {
+        hostmod[0] = 0;
+        if ((p = strchr(hostsym, '+')) != NULL) {
+          *p = 0;  // truncate hostsym.
+          p++;  // move one char beyond the +
+          strcpy(hostmod, p);  // copy the rest to hostmod
+        }
+      } else {
         BX_PANIC (("keymap line %d: expected 3 columns", lineCount));
         return -1;
       }
@@ -202,9 +209,9 @@ static Bit32s get_next_keymap_line(FILE *fp, char *bxsym, char *modsym, Bit32s *
 void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*), const char* filename)
 {
   FILE   *keymapFile;
-  char baseSym[256], modSym[256], hostSym[256];
+  char baseSym[256], modSym[256], hostSym[256], hostMod[256];
   Bit32s ascii = 0;
-  Bit32u baseKey, modKey, hostKey;
+  Bit32u baseKey, modKey, hostKey, hostKeyMod;
   struct stat status;
 
   if (stat(filename, &status)) {
@@ -225,14 +232,17 @@ void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*), const char* fil
   // Read keymap file one line at a time
   while(1) {
     if (get_next_keymap_line (keymapFile,
-          baseSym, modSym, &ascii, hostSym) < 0) { break; }
+          baseSym, modSym, &ascii, hostSym, hostMod) < 0) { break; }
 
     // convert X_KEY_* symbols to values
     baseKey = convertStringToBXKey(baseSym);
     modKey = convertStringToBXKey(modSym);
     hostKey = 0;
-    if (stringToSymbol != NULL)
+    hostKeyMod = 0;
+    if (stringToSymbol != NULL) {
       hostKey = stringToSymbol(hostSym);
+      hostKeyMod = stringToSymbol(hostMod);
+    }
 
     BX_DEBUG(("baseKey='%s' (%d), modSym='%s' (%d), ascii=%d, guisym='%s' (%d)", baseSym, baseKey, modSym, modKey, ascii, hostSym, hostKey));
 
@@ -256,6 +266,7 @@ void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*), const char* fil
     keymapTable[keymapCount].modKey=modKey;
     keymapTable[keymapCount].ascii=ascii;
     keymapTable[keymapCount].hostKey=hostKey;
+    keymapTable[keymapCount].hostMod=hostKeyMod;
 
     keymapCount++;
   }
@@ -280,14 +291,26 @@ Bit32u bx_keymap_c::convertStringToBXKey(const char* string)
 
 BXKeyEntry *bx_keymap_c::findHostKey(Bit32u key)
 {
+  return findHostKey(key, 0);
+}
+
+BXKeyEntry *bx_keymap_c::findHostKey(Bit32u key, Bit32u keymod)
+{
   // We look through the keymap table to find the searched key
   for (Bit16u i=0; i<keymapCount; i++) {
-    if (keymapTable[i].hostKey == key) {
-      BX_DEBUG (("key 0x%02x matches hostKey for entry #%d", key, i));
-      return &keymapTable[i];
+    if (keymod == 0) {
+      if (keymapTable[i].hostKey == key) {
+        BX_DEBUG (("key 0x%02x matches hostKey for entry #%d", key, i));
+        return &keymapTable[i];
+      }
+    } else {
+      if ((keymapTable[i].hostKey == key) && ((keymapTable[i].hostMod & keymod) == keymod)) {
+        BX_DEBUG (("key 0x%02x 0x%02x matches hostKey for entry #%d", key, keymod, i));
+        return &keymapTable[i];
+      }
     }
   }
-  BX_DEBUG(("key %02x matches no entries", key));
+  BX_DEBUG(("key %02x 0x%02x matches no entries", key, keymod));
 
   // Return default
   return NULL;

@@ -50,10 +50,11 @@
 
 // Structure of an element of the keymap table
 typedef struct BOCHSAPI {
-  Bit32u baseKey;   // base key
+  Bit32u baseKey;  // base key
   Bit32u modKey;   // modifier key that must be held down
   Bit32s ascii;    // ascii equivalent, if any
   Bit32u hostKey;  // value that the host's OS or library recognizes
+  Bit32u hostMod;  // host modifier bitmask
 } BXKeyEntry;
 
 class BOCHSAPI bx_keymap_c : public logfunctions {
@@ -65,7 +66,8 @@ public:
   void   loadKeymap(Bit32u(*)(const char*),const char *filename);
   bool   isKeymapLoaded();
 
-  BXKeyEntry *findHostKey(Bit32u hostkeynum);
+  BXKeyEntry *findHostKey(Bit32u key);
+  BXKeyEntry *findHostKey(Bit32u key, Bit32u keymod);
   BXKeyEntry *findAsciiChar(Bit8u ascii);
   const char *getBXKeyName(Bit32u key);
 
