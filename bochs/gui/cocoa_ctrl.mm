@@ -970,3 +970,69 @@
 }
 
 @end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSToolbar
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSToolbar
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init {
+  
+  self = [super initWithIdentifier:@"bx_toolbar"];
+  if (self) {
+    
+    self.displayMode = NSToolbarDisplayModeLabelOnly;
+    self.ips_item = nil;
+    
+    [self setDelegate:self];
+    
+  }
+  
+  return self;
+  
+}
+
+- (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarAllowedItemIdentifiers:(NSToolbar * _Nonnull)toolbar {
+  
+  return @[ @"ips_item" ];
+    
+}
+
+- (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarDefaultItemIdentifiers:(NSToolbar * _Nonnull)toolbar {
+  
+  return @[ @"ips_item" ];
+  
+}
+
+- (NSToolbarItem * _Nullable)toolbar:(NSToolbar * _Nonnull)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier _Nonnull)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
+  
+  if([toolbar.identifier isEqualToString:@"bx_toolbar"]) {
+    
+    if([itemIdentifier isEqualToString:@"ips_item"]) {
+      
+      if (self.ips_item == nil) {
+        self.ips_item = [[NSToolbarItem alloc] initWithItemIdentifier:@"ips_item"];
+        [self updateIPS:0];
+      }
+      
+      return self.ips_item;
+      
+    }
+    
+  }
+  
+  return nil;
+  
+}
+
+- (void)updateIPS:(unsigned) val {
+  
+  self.ips_item.label = [NSString stringWithFormat:@"IPS : %010d", val];
+  
+}
+
+@end

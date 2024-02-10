@@ -1398,11 +1398,18 @@ event_loop:
     // Setup VGA display
     self.BXVGA = [[BXVGAdisplay alloc] init:8 width:vga_xres height:vga_yres font_width:0 font_height:0 view:[self contentView]];
     
-    // setup Toolbar
+    // setup Toolbar bochs
     self.BXToolbar = [[BXNSHeaderBar alloc] init:headerbar_y width:vga_xres yofs:vga_yres];
 
+#if BX_SHOW_IPS
+    // setup Toolbar ips
+    self.toolbar = [[BXNSToolbar alloc] init];
+    self.toolbarStyle = NSWindowToolbarStyleUnified;
+#endif /* BX_SHOW_IPS */
+    
     [self setAcceptsMouseMovedEvents:YES];
     [self setDelegate:self];
+    self.contentAspectRatio = NSMakeSize(1.0,1.0);
     self.inFullscreen = NO;
     
   }
@@ -1624,12 +1631,16 @@ event_loop:
   
 }
 
+#if BX_SHOW_IPS
 /**
  * updateIPS
  */
 - (void)updateIPS:(unsigned) val {
   
+  [((BXNSToolbar *)self.toolbar) updateIPS:val];
+  
 }
+#endif /* BX_SHOW_IPS */
 
 /**
  * toggleFullscreen
@@ -1647,6 +1658,41 @@ event_loop:
 }
 
 /**
+ * backupWindowState
+ */
+- (void)backupWindowState {
+  
+  self.restoreSize = self.frame;
+  self.BXVGA.imgview.restoreSize = self.BXVGA.imgview.frame;
+  
+}
+
+/**
+ * restoreWindowState
+ */
+- (void)restoreWindowState {
+  
+  self.BXVGA.imgview.frame = self.BXVGA.imgview.restoreSize;
+  [self setFrame:self.restoreSize display:YES];
+  
+}
+
+/**
+ * resizeByRatio
+ */
+- (void)resizeByRatio {
+  
+  CGFloat ratio;
+  NSRect rect;
+  
+  ratio = MIN(self.screen.frame.size.width / self.BXVGA.width, self.screen.frame.size.height / self.BXVGA.height);
+  rect = NSMakeRect(0, 0, ratio * self.BXVGA.width, ratio * self.BXVGA.height);
+  self.BXVGA.imgview.frame = rect;
+  [self setFrame:rect display:YES];
+  
+}
+
+/**
  * windowWillEnterFullScreen
  */
 - (void)windowWillEnterFullScreen:(NSNotification * _Nullable)notification {
@@ -1658,11 +1704,12 @@ event_loop:
   [self.bx_controller showWindow:BX_GUI_WINDOW_DEBUGGER doShow:NO];
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   
-  self.restoreSize = self.frame;
-  self.BXVGA.imgview.restoreSize = self.BXVGA.imgview.frame;
-  
-  self.BXVGA.imgview.frame = self.screen.frame;
-  [self setFrame:self.screen.frame display:YES];
+#if BX_SHOW_IPS
+  [self toggleToolbarShown:self];
+#endif /* BX_SHOW_IPS */
+
+  [self backupWindowState];
+  [self resizeByRatio];
   
   [self.BXToolbar.button_view setHidden:YES];
   
@@ -1675,11 +1722,20 @@ event_loop:
  */
 - (void)windowWillExitFullScreen:(NSNotification * _Nullable)notification {
   
-  self.BXVGA.imgview.frame = self.BXVGA.imgview.restoreSize;
-  [self setFrame:self.restoreSize display:YES];
+  NSPoint wnd_location;
   
   [self.BXToolbar.button_view setHidden:NO];
+
+  [self restoreWindowState];
+  wnd_location = NSMakePoint(self.restoreSize.origin.x, self.restoreSize.origin.y);
   
+#if BX_SHOW_IPS
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [self toggleToolbarShown:self];
+    [self setFrameOrigin:wnd_location];
+  });
+#endif /* BX_SHOW_IPS */
+
   self.inFullscreen = NO;
   
 }

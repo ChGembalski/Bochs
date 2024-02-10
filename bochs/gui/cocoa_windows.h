@@ -268,6 +268,9 @@
     - (void)otherMouseUp:(NSEvent * _Nonnull)event;
     - (void)updateIPS:(unsigned) val;
     - (void)toggleFullscreen:(BOOL) enable;
+    - (void)backupWindowState;
+    - (void)restoreWindowState;
+    - (void)resizeByRatio;
     - (void)windowWillEnterFullScreen:(NSNotification * _Nullable)notification;
     - (void)windowWillExitFullScreen:(NSNotification * _Nullable)notification;
 

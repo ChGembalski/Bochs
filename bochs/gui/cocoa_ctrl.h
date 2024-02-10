@@ -214,9 +214,19 @@
 
 
   ////////////////////////////////////////////////////////////////////////////////
-  //
+  // BXNSToolbar
   ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSToolbar : NSToolbar <NSToolbarDelegate>
 
+@property (nonatomic, readwrite, strong) NSToolbarItem * _Nullable ips_item;
 
+    - (instancetype _Nonnull)init;
+
+- (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarAllowedItemIdentifiers:(NSToolbar * _Nonnull)toolbar;
+- (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarDefaultItemIdentifiers:(NSToolbar * _Nonnull)toolbar;
+- (NSToolbarItem * _Nullable)toolbar:(NSToolbar * _Nonnull)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier _Nonnull)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag;
+- (void)updateIPS:(unsigned) val;
+
+  @end
 
 #endif /* BX_GUI_COCOA_CTRL_H */

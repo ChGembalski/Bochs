@@ -104,7 +104,9 @@ public:
     // this is called from the CPU model when the HLT instruction is executed.
   virtual void sim_is_idle(void);
 #endif
+#if BX_SHOW_IPS
   virtual void show_ips(Bit32u ips_count);
+#endif /* BX_SHOW_IPS */
   virtual void beep_on(float frequency);
   virtual void beep_off();
   //   virtual void get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp);
@@ -360,7 +362,12 @@ void bx_cocoa_gui_c::handle_events(void)
       if ((scancode == kVK_F19) && !released) {
         bx_gui->set_fullscreen_mode(!fullscreen_mode);
         bxcocoagui->toggle_fullscreen(fullscreen_mode);
-        BX_INFO(("fullscreen_mode=%d", fullscreen_mode));
+      }
+      
+      // Mouse toggle
+      if ((scancode == kVK_F18) && !released) {
+        SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(!bxcocoagui->hasMouseCapture());
+        bx_gui->mouse_enabled_changed(!bxcocoagui->hasMouseCapture());
       }
       
       if (scancode < 0x80) {
@@ -801,9 +808,11 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
 // Cocoa implementation of optional bx_gui_c methods (see gui.h)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if BX_SHOW_IPS
 void bx_cocoa_gui_c::show_ips(Bit32u ips_count) {
   bxcocoagui->show_ips(ips_count);
 }
+#endif /* BX_SHOW_IPS */
 
 void bx_cocoa_gui_c::beep_on(float frequency) {
   UNUSED(frequency);

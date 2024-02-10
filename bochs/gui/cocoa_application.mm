@@ -372,14 +372,28 @@ void BXGuiCocoaApplication::getScreenConfiguration(unsigned int * width, unsigne
  */
 void BXGuiCocoaApplication::dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp) {
   dispatch_sync(dispatch_get_main_queue(), ^(void){
-
+    
+    if ([[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] inFullscreen]) {
+      
+      [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] restoreWindowState];
+      
+    }
+    
     // Change VGA display
     [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA] changeBPP:bpp width:x height:y font_width:fwidth font_height:fheight];
-
+ 
     // prepare window
     [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] setContentSize:NSMakeSize(x, y + [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar].height)];
-
+    
     [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] headerbarUpdate: [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXVGA]];
+    
+    if ([[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] inFullscreen]) {
+      
+      [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] backupWindowState];
+      [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] resizeByRatio];
+      
+    }
+    
   });
 }
 
