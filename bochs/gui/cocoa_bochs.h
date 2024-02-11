@@ -84,7 +84,6 @@
     BXGuiCocoaApplication();
     ~BXGuiCocoaApplication();
 
-
     void onBochsThreadExit();
 
     void showWindow(gui_window_type_t window, bool bShow);

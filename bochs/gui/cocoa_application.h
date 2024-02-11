@@ -38,6 +38,7 @@
 
   @interface BXNSApplication : NSApplication
 
+    @property (nonatomic, readwrite, strong) BXBochsThread * _Nullable bochsThread;
     @property (nonatomic, readwrite, strong) BXNSWindowController * _Nonnull bx_window_controller;
 
     - (void)finishLaunching;

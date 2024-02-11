@@ -54,7 +54,6 @@ extern int bxmain(void);
   return self;
 }
 
-
 /**
  * main
  */
@@ -69,7 +68,6 @@ extern int bxmain(void);
 
 }
 
-
 @end
 
 /////////////////////////////////
@@ -78,7 +76,6 @@ extern int bxmain(void);
 
 @implementation BXNSApplication
 
-BXBochsThread * bochsThread;
 vga_settings_t default_vga_settings = {
   32, 640, 480
 };
@@ -96,8 +93,8 @@ vga_settings_t default_vga_settings = {
   self.bx_window_controller = [[BXNSWindowController alloc] init:default_vga_settings.headerbar_y VGAxRes:default_vga_settings.xres VGAyRes:default_vga_settings.yres];
 
   // Startup NSThread running the bochs core
-  bochsThread = [[BXBochsThread alloc] init];
-  [bochsThread start];
+  self.bochsThread = [[BXBochsThread alloc] init];
+  [self.bochsThread start];
 
   [super finishLaunching];
 
@@ -108,9 +105,9 @@ vga_settings_t default_vga_settings = {
  */
 - (void)terminate:(id _Nullable)sender {
 
-  if (bochsThread != nil) {
-    if (bochsThread.executing) {
-      [bochsThread cancel];
+  if (self.bochsThread != nil) {
+    if (self.bochsThread.executing) {
+      [self.bochsThread cancel];
     }
   }
   [super terminate:sender];
@@ -177,8 +174,6 @@ BXGuiCocoaApplication::BXGuiCocoaApplication() : BXCocoaApplication(new BXNSAppl
  */
 BXGuiCocoaApplication::~BXGuiCocoaApplication() {
 }
-
-
 
 
 /**
