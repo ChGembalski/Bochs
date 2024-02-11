@@ -348,4 +348,15 @@ extern unsigned char flip_byte(unsigned char b);
 
 }
 
+/**
+ * setTooltip
+ */
+- (void)setTooltip:(unsigned)btn_id Text:(const char *)tiptext {
+  
+  BXNSHeaderBarButton * btn;
+  
+  btn = [self.buttons objectAtIndex:btn_id];
+  btn.button.toolTip = [NSString stringWithUTF8String:tiptext];
+}
+
 @end

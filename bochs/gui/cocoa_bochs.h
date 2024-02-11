@@ -110,12 +110,12 @@
     void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
     void show_headerbar(void);
 
-    void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
-    void set_font(bool font2, unsigned pos, unsigned char *charmap);
+    void setup_charmap(unsigned char * charmapA, unsigned char * charmapB, unsigned char w, unsigned char h);
+    void set_font(bool font2, unsigned pos, unsigned char * charmap);
     void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
     bool palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue);
 
-    void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
+    void graphics_tile_update(unsigned char * tile, unsigned x, unsigned y, unsigned w, unsigned h);
     const unsigned char * getVGAdisplayPtr(void);
     void graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h);
 
@@ -126,11 +126,13 @@
     bool hasEvent(void);
     unsigned long getEvent(void);
     
-    int get_clipboard_text(unsigned char **bytes, int *nbytes);
-    int set_clipboard_text(char *text_snapshot, int len);
+    int get_clipboard_text(unsigned char ** bytes, int * nbytes);
+    int set_clipboard_text(char * text_snapshot, int len);
     void beep(void);
     void show_ips(unsigned ips_count);
     void toggle_fullscreen(bool enable);
+    
+    void set_tooltip(unsigned hbar_id, const char * tip);
     
     // Debugger
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI

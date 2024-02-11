@@ -573,6 +573,20 @@ void BXGuiCocoaApplication::toggle_fullscreen(bool enable) {
   });
 }
 
+
+/**
+ * set_tooltip
+ */
+void BXGuiCocoaApplication::set_tooltip(unsigned hbar_id, const char * tip) {
+  dispatch_async(dispatch_get_main_queue(), ^(void){
+    [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_VGA_DISPLAY] BXToolbar] setTooltip:hbar_id Text:tip];
+  });
+}
+
+
+
+
+
 // DEBUGGER
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 

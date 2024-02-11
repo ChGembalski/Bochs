@@ -89,9 +89,9 @@ public:
   virtual void draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u yc,
                          Bit8u fw, Bit8u fh, Bit8u fx, Bit8u fy,
                          bool gfxcharw9, Bit8u cs, Bit8u ce, bool curs, bool font2);
-  // // optional gui methods (stubs or default code in gui.cc)
+  // optional gui methods (stubs or default code in gui.cc)
   // virtual void statusbar_setitem_specific(int element, bool active, bool w);
-  // virtual void set_tooltip(unsigned hbar_id, const char *tip);
+  virtual void set_tooltip(unsigned hbar_id, const char *tip);
   // set_display_mode() changes the mode between the configuration interface
   // and the simulation.  This is primarily intended for display libraries
   // which have a full-screen mode such as SDL or term.  The display mode is
@@ -221,6 +221,16 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   bxcocoagui->activateWindow(BX_GUI_WINDOW_VGA_DISPLAY);
   bxcocoagui->setup_charmap((unsigned char *)bx_vgafont, (unsigned char *)bx_vgafont, 8, 16);
 
+  // status items // led_timer_index
+  //if (statusitem_count > 0) {
+    for (int i=0; i<BX_MAX_STATUSITEMS; i++) {
+      if (statusitem[i].in_use) {
+        // add
+        BX_INFO(("found statusitem[%d] [%s]", i, statusitem[i].text));
+      }
+    }
+  //}
+  
   // redirect notify callback
   SIM->get_notify_callback(&old_callback, &old_callback_arg);
   assert(old_callback != NULL);
@@ -815,6 +825,10 @@ void bx_cocoa_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
 ////////////////////////////////////////////////////////////////////////////////
 // Cocoa implementation of optional bx_gui_c methods (see gui.h)
 ////////////////////////////////////////////////////////////////////////////////
+
+void bx_cocoa_gui_c::set_tooltip(unsigned hbar_id, const char *tip) {
+  bxcocoagui->set_tooltip(hbar_id, tip);
+}
 
 #if BX_SHOW_IPS
 void bx_cocoa_gui_c::show_ips(Bit32u ips_count) {
