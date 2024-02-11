@@ -542,11 +542,13 @@ Bit8u bx_svga_cirrus_c::mem_read(bx_phy_address addr)
         (addr < (BX_CIRRUS_THIS pci_bar[0].addr + CIRRUS_PNPMEM_SIZE))) {
       Bit8u *ptr;
 
+      Bit32u offset = addr & BX_CIRRUS_THIS memsize_mask;
       if ((BX_CIRRUS_THIS sequencer.reg[0x07] & 0x01) == CIRRUS_SR7_BPP_VGA) {
-        return 0xff;
+        if (offset >= 0x100000) {
+          return 0xff;
+        }
       }
 
-      Bit32u offset = addr & BX_CIRRUS_THIS memsize_mask;
       if ((offset >= (BX_CIRRUS_THIS s.memsize - 256)) &&
           ((BX_CIRRUS_THIS sequencer.reg[0x17] & 0x44) == 0x44)) {
         return svga_mmio_blt_read(offset & 0xff);
@@ -672,11 +674,13 @@ void bx_svga_cirrus_c::mem_write(bx_phy_address addr, Bit8u value)
     if ((addr >= BX_CIRRUS_THIS pci_bar[0].addr) &&
         (addr < (BX_CIRRUS_THIS pci_bar[0].addr + CIRRUS_PNPMEM_SIZE))) {
 
+      Bit32u offset = addr & BX_CIRRUS_THIS memsize_mask;
       if ((BX_CIRRUS_THIS sequencer.reg[0x07] & 0x01) == CIRRUS_SR7_BPP_VGA) {
-        return;
+        if (offset >= 0x100000) {
+          return;
+        }
       }
 
-      Bit32u offset = addr & BX_CIRRUS_THIS memsize_mask;
       if ((offset >= (BX_CIRRUS_THIS s.memsize - 256)) &&
           ((BX_CIRRUS_THIS sequencer.reg[0x17] & 0x44) == 0x44)) {
         svga_mmio_blt_write(addr & 0xff, value);
@@ -1208,7 +1212,7 @@ void bx_svga_cirrus_c::update(void)
   }
   if ((BX_CIRRUS_THIS sequencer.reg[0x07] & 0x01) == CIRRUS_SR7_BPP_VGA) {
     if (BX_CIRRUS_THIS svga_needs_update_mode) {
-      BX_CIRRUS_THIS s.vga_mem_updated = 1;
+      BX_CIRRUS_THIS s.vga_mem_updated = 0x0f;
       BX_CIRRUS_THIS svga_needs_update_mode = 0;
     }
     BX_CIRRUS_THIS bx_vgacore_c::update();
@@ -1731,12 +1735,16 @@ void bx_svga_cirrus_c::svga_write_crtc(Bit32u address, unsigned index, Bit8u val
 
   if (update_pitch) {
     if ((BX_CIRRUS_THIS crtc.reg[0x1b] & 0x02) != 0) {
+#ifndef VGA_MEM_FIX
       if (!BX_CIRRUS_THIS s.sequencer.chain_four) {
         BX_CIRRUS_THIS s.plane_shift = 19;
       }
+#endif
       BX_CIRRUS_THIS s.ext_offset = BX_CIRRUS_THIS bank_base[0];
     } else {
+#ifndef VGA_MEM_FIX
       BX_CIRRUS_THIS s.plane_shift = 16;
+#endif
       BX_CIRRUS_THIS s.ext_offset = 0;
     }
     BX_CIRRUS_THIS svga_pitch = (BX_CIRRUS_THIS crtc.reg[0x13] << 3) | ((BX_CIRRUS_THIS crtc.reg[0x1b] & 0x10) << 7);

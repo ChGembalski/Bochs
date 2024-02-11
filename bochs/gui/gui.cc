@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2023  The Bochs Project
+//  Copyright (C) 2002-2024  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -914,13 +914,6 @@ void bx_gui_c::set_text_charmap(Bit8u map, Bit8u *fbuffer)
   BX_GUI_THIS charmap_updated = 1;
 }
 
-void bx_gui_c::set_text_charbyte(Bit8u map, Bit16u address, Bit8u data)
-{
-  BX_GUI_THIS vga_charmap[map][address] = data;
-  BX_GUI_THIS char_changed[map][address >> 5] = 1;
-  BX_GUI_THIS charmap_updated = 1;
-}
-
 void bx_gui_c::beep_on(float frequency)
 {
   BX_DEBUG(("GUI Beep ON (frequency=%.2f)", frequency));
@@ -1242,7 +1235,7 @@ void bx_gui_c::text_update_common(Bit8u *old_text, Bit8u *new_text,
         old_text[BX_GUI_THIS cursor_address] = ~new_text[BX_GUI_THIS cursor_address];
         BX_GUI_THIS cursor_address = cursor_address;
       }
-      if (cursor_address < 0xffff) {
+      if (cursor_address < 0x7fff) {
         old_text[cursor_address] = ~new_text[cursor_address];
       }
     }
