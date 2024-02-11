@@ -363,7 +363,15 @@ void bx_cocoa_gui_c::handle_events(void)
         bx_gui->set_fullscreen_mode(!fullscreen_mode);
         bxcocoagui->toggle_fullscreen(fullscreen_mode);
       }
-      
+      if ((event & MACOS_NSEventModifierFlagSpecial) == MACOS_NSEventModifierFlagSpecial) {
+        if (scancode == kVK_F19) {
+          bool fs_mode;
+          
+          fs_mode = ((event & (1l << 32)) > 0);
+          bx_gui->set_fullscreen_mode(fs_mode);
+        }
+      }
+
       // Mouse toggle
       if ((scancode == kVK_F18) && !released) {
         SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(!bxcocoagui->hasMouseCapture());

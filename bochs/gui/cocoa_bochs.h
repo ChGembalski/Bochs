@@ -30,6 +30,7 @@
   #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
   #define MACOS_NSEventModifierFlagMouse      0x4000000000000000
   #define MACOS_NSEventModifierFlagFocus      0x2000000000000000
+  #define MACOS_NSEventModifierFlagSpecial    0x1000000000000000
   #define MACOS_NSEventModifierMaskDepend     0x0000FFFF00000000
 
   struct BXNSApplicationImpl;

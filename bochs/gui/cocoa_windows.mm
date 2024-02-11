@@ -1712,6 +1712,8 @@ event_loop:
   [self resizeByRatio];
   
   [self.BXToolbar.button_view setHidden:YES];
+  // kVK_F19 -> 0x50
+  [self.BXEventQueue enqueue:(MACOS_NSEventModifierFlagSpecial | 0x50 | (1l << 32))];
   
   self.inFullscreen = YES;
   
@@ -1736,6 +1738,9 @@ event_loop:
   });
 #endif /* BX_SHOW_IPS */
 
+  // kVK_F19 -> 0x50
+  [self.BXEventQueue enqueue:(MACOS_NSEventModifierFlagSpecial | 0x50 )];
+  
   self.inFullscreen = NO;
   
 }
