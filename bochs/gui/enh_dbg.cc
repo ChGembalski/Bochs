@@ -3402,7 +3402,7 @@ BxEvent *enh_dbg_notify_callback(void *unused, BxEvent *event)
   {
     case BX_SYNC_EVT_GET_DBG_COMMAND:
       {
-        debug_cmd = new char[512];
+        debug_cmd = event->u.debugcmd.command;
         debug_cmd_ready = 0;
         HitBreak();
         while (debug_cmd_ready == 0 && bx_user_quit == 0)
@@ -3421,7 +3421,6 @@ BxEvent *enh_dbg_notify_callback(void *unused, BxEvent *event)
         if (bx_user_quit != 0) {
           bx_dbg_exit(0);
         }
-        event->u.debugcmd.command = debug_cmd;
         event->retcode = 1;
         return event;
       }

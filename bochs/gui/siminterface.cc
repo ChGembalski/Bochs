@@ -877,10 +877,15 @@ char *bx_real_sim_c::debug_get_next_command()
   BxEvent event;
   event.type = BX_SYNC_EVT_GET_DBG_COMMAND;
   BX_DEBUG(("asking for next debug command"));
+  event.u.debugcmd.command = new char[512];
+  event.retcode = -1;
   sim_to_ci_event (&event);
   BX_DEBUG(("received next debug command: '%s'", event.u.debugcmd.command));
-  if (event.retcode >= 0)
+  if (event.retcode >= 0) {
     return event.u.debugcmd.command;
+  } else {
+    delete [] event.u.debugcmd.command;
+  }
   return NULL;
 }
 

@@ -390,7 +390,7 @@ void bx_get_command(void)
       strncpy(tmp_buf, charptr_ret, sizeof(tmp_buf));
       tmp_buf[sizeof(tmp_buf) - 2] = '\0';
       strcat(tmp_buf, "\n");
-      // The returned string was allocated in wxmain.cc by "new char[]".
+      // The returned string was allocated in siminterface.cc by "new char[]".
       // Free it with delete[].
       delete [] charptr_ret;
       charptr_ret = &tmp_buf[0];
