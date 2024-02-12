@@ -9,9 +9,9 @@ AC_CONFIG_HEADERS([ltdlconf.h])
 
 dnl // Put Bochs version information right here so that it gets substituted
 dnl // into all the right places.
-VERSION="2.8.svn"
+VERSION="2.7.svn"
 VER_MAJOR=2
-VER_MINOR=8
+VER_MINOR=7
 dnl // this should be > 90 for pre-release of next version otherwise revision level
 VER_REVISION=0
 dnl // this should be 0 for release and 1 for svn version
@@ -2658,7 +2658,6 @@ if test "$with_cocoa" = yes; then
   AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "cocoaconfig")
   AC_DEFINE(BX_USE_TEXTCONFIG, 0)
   use_gui_console=0
-  AC_MSG_WARN([This Bochs feature is maintained by Ch.Gembalski])
 fi
 
 if test "$with_term" = yes; then

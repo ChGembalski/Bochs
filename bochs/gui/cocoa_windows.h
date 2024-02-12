@@ -141,6 +141,7 @@
     + (void)showModalInfoDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg;
     + (int)showModalQuestionDialog:(UInt8) level Title:(NSString * _Nonnull) title Message:(NSString * _Nonnull) msg;
     + (int)showModalParamRequestDialog:(void * _Nonnull) param;
+    + (int)showModalAboutDialog;
 
     - (void)onBochsThreadExit;
 
@@ -193,6 +194,19 @@
     - (BOOL)browser:(NSBrowser * _Nonnull)browser isLeafItem:(id _Nullable)item;
     - (id _Nonnull)browser:(NSBrowser * _Nonnull)browser objectValueForItem:(id _Nullable)item;
     - (NSViewController * _Nullable)browser:(NSBrowser * _Nonnull)browser previewViewControllerForLeafItem:(id _Nullable)item;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSAboutWindow
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSAboutWindow : NSWindow <NSApplicationDelegate>
+
+    - (instancetype _Nonnull)init;
+
+    - (void)onOKClick:(id _Nonnull)sender;
+    - (BOOL) getWorksWhenModal;
 
   @end
 
@@ -383,115 +397,5 @@
   @end
 
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // @interface BXGuiCocoaNSWindow : NSWindow <NSApplicationDelegate>
-  //
-  //   @property (nonatomic, readwrite, strong) BXVGAdisplay * BXVGA;
-  //   @property (nonatomic, readonly, getter=hasEvent) BOOL hasEvent;
-  //   @property (nonatomic, readwrite) BOOL MouseCaptureAbsolute;
-  //   @property (nonatomic, readwrite) BOOL MouseCaptureActive;
-  //   - (instancetype)init:(unsigned) headerbar_y VGAsize:(NSSize) vga;
-  //   // - (void)dealloc;
-  //
-  //   - (void)getMaxScreenResolution:(unsigned char *) bpp width:(unsigned int *) w height:(unsigned int *) h;
-  //
-  //   - (void)showAlertMessage:(const char *) msg style:(const char) type;
-  //
-  //   - (void)captureMouse:(BOOL) grab;
-  //   - (void)captureMouseXY:(NSPoint) XY;
-  //
-  //   - (NSImage *)createIconXPM;
-  //   - (unsigned)createBXBitmap:(const unsigned char *)bmap xdim:(unsigned) x ydim:(unsigned) y;
-  //   - (unsigned)headerbarBXBitmap:(unsigned) bmap_id alignment:(unsigned) align func:(void (*)()) f;
-  //   - (void)headerbarCreate;
-  //   - (void)headerbarUpdate;
-  //   - (void)headerbarSwitchBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
-  //   - (unsigned)getHeaderbarHeight;
-  //   - (void)renderVGA;
-  //   - (BOOL)changeVGApalette:(unsigned)index red:(char) r green:(char) g blue:(char) b;
-  //   - (void)clearVGAscreen;
-  //   - (void)charmapVGA:(unsigned char *) dataA charmap:(unsigned char *) dataB width:(unsigned char)w height:(unsigned char) h;
-  //   - (void)charmapVGAat:(unsigned) pos isFont2:(BOOL)font2 map:(unsigned char *) data;
-  //   - (void)paintcharVGA:(unsigned short int) charpos isCrsr:(BOOL) crsr font2:(BOOL) f2 bgcolor:(unsigned char) bg fgcolor:(unsigned char) fg position:(NSRect) rect;
-  //   - (BOOL)hasEvent;
-  //   - (UInt64)getEvent;
-  //   - (void)handleMouse:(NSEvent *)event;
-  //   - (void)clipRegionVGA:(unsigned char *) src position:(NSRect) rect;
-  //   - (const unsigned char *) getVGAMemory;
-  //   - (void)clipRegionVGAPosition:(NSRect) rect;
-  //
-  // // -(NSButton *)createNSButtonWithImage:(const unsigned char *) data width:(size_t) w height:(size_t) h;
-  // // -(NSArray<NSButton *> *)createToolbar;
-  // // -(void)updateToolbar:(NSSize) size;
-  // @end
-
-
-
-
-
-
-  // struct BXGuiCocoaWindowImpl;
-  //
-  // class BXGuiCocoaWindow {
-  //
-  // private:
-  //   BXGuiCocoaWindowImpl * BXCocoaWindow;
-  //
-  // public:
-  //   BXGuiCocoaWindow(unsigned x, unsigned y, unsigned headerbar_y);
-  //   ~BXGuiCocoaWindow();
-  //
-  //   void getScreenConfiguration(unsigned int * width, unsigned int * height, unsigned char * bpp);
-  //
-  //   void showAlertMessage(const char *msg, const char type);
-  //
-  //   void captureMouse(bool cap, unsigned x, unsigned y);
-  //   void captureMouse(unsigned x, unsigned y);
-  //   bool hasMouseCapture(void);
-  //
-  //   void * createIconXPM(void);
-  //   unsigned create_bitmap(const unsigned char *bmap, unsigned xdim, unsigned ydim);
-  //   unsigned headerbar_bitmap(unsigned bmap_id, unsigned alignment, void (*f)(void));
-  //   void show_headerbar(void);
-  //   void dimension_update(unsigned x, unsigned y, unsigned fwidth, unsigned fheight, unsigned bpp);
-  //   void render(void);
-  //   bool palette_change(unsigned char index, unsigned char red, unsigned char green, unsigned char blue);
-  //   void clear_screen(void);
-  //   void replace_bitmap(unsigned hbar_id, unsigned bmap_id);
-  //   void setup_charmap(unsigned char *charmapA, unsigned char *charmapB, unsigned char w, unsigned char h);
-  //   void set_font(bool font2, unsigned pos, unsigned char *charmap);
-  //   void draw_char(bool crsr, bool font2, unsigned char fgcolor, unsigned char bgcolor, unsigned short int charpos, unsigned short int x, unsigned short int y, unsigned char w, unsigned char h);
-  //   bool hasEvent(void);
-  //   void setEventMouseABS(bool abs);
-  //   unsigned long getEvent(void);
-  //   void graphics_tile_update(unsigned char *tile, unsigned x, unsigned y, unsigned w, unsigned h);
-  //   const unsigned char * getVGAdisplayPtr(void);
-  //   void graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h);
-  //
-  // };
-
-
-
-
 
 #endif /* BX_GUI_COCOA_WINDOWS_H */

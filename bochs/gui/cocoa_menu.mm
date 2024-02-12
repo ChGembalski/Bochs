@@ -33,7 +33,7 @@ menu_opts_t menu_options[] = {
   {"Bochs.Configuration",   "Load",           NO,   nil,  0,                          YES,  BX_PROPERTY_CONFIG_LOAD},
   {"Bochs.Configuration",   "Save",           NO,   nil,  0,                          YES,  BX_PROPERTY_CONFIG_SAVE},
   {"Bochs.Configuration",   "Reset",          NO,   nil,  0,                          YES,  BX_PROPERTY_CONFIG_RESET},
-  {"Bochs",                 "About",          NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Bochs",                 "About",          NO,   nil,  0,                          YES,  BX_PROPERTY_BOCHS_ABOUT},
   {"Bochs",                 "-",              NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {"Bochs",                 "Quit",           NO,   @"q", NSEventModifierFlagCommand, YES,  BX_PROPERTY_QUIT_SIM},
   {NULL,                    "Simulation",     YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},

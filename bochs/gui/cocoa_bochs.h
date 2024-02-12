@@ -27,6 +27,8 @@
 
   #define BX_GUI_COCOA_BOCHS_H
 
+  #include "../config.h"
+
   #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
   #define MACOS_NSEventModifierFlagMouse      0x4000000000000000
   #define MACOS_NSEventModifierFlagFocus      0x2000000000000000
@@ -58,7 +60,8 @@
     BX_PROPERTY_RESET_SIM,
     BX_PROPERTY_CONFIG_LOAD,
     BX_PROPERTY_CONFIG_SAVE,
-    BX_PROPERTY_CONFIG_RESET
+    BX_PROPERTY_CONFIG_RESET,
+    BX_PROPERTY_BOCHS_ABOUT
   } property_t;
 
   typedef struct {

@@ -481,7 +481,9 @@ gui_window_t window_list[] = {
 
 }
 
-
+/**
+ * showModalParamRequestDialog
+ */
 + (int)showModalParamRequestDialog:(void * _Nonnull) param {
 
   BXNSParamRequestWindow * request;
@@ -498,7 +500,24 @@ gui_window_t window_list[] = {
 
 }
 
+/**
+ * showModalAboutDialog
+ */
++ (int)showModalAboutDialog {
+  
+  BXNSAboutWindow * about;
+  NSModalResponse response;
+  
+  about = [[BXNSAboutWindow alloc] init];
+  
+  response = [NSApp runModalForWindow:about];
+  if (response == NSModalResponseOK) {
+    return 1;
+  }
 
+  return 0;
+  
+}
 
 
 
@@ -778,6 +797,12 @@ event_loop:
     return;
   }
 
+  // special handling About
+  if ([BXNSMenuBar getMenuItemProperty:senderPath] == BX_PROPERTY_BOCHS_ABOUT) {
+    [BXNSWindowController showModalAboutDialog];
+    return;
+  }
+  
   NSLog(@"Hit that menu %@", senderPath);
   // [self.bx_p_col setProperty:senderPath value:1];
 
@@ -1245,6 +1270,91 @@ event_loop:
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// BXNSAboutWindow
+////////////////////////////////////////////////////////////////////////////////
+extern unsigned char bochs_logo [128 * 128 * 4 + 1];
+@implementation BXNSAboutWindow
+
+- (instancetype _Nonnull)init {
+
+  self = [super initWithContentRect:NSMakeRect(0, 0, 640, 480)
+    styleMask: NSWindowStyleMaskTitled
+      backing: NSBackingStoreBuffered
+        defer: NO
+  ];
+  if (self) {
+
+    NSStackView * inner;
+    NSStackView * buttons;
+    NSButton * OK_BUTTON;
+    CFDataRef bochs_image_data;
+    NSImage * bochs_image;
+    NSImageView * bochs_imageview;
+    CGColorSpaceRef colorspace;
+    CGDataProviderRef provider;
+    CGImageRef rgbImageRef;
+
+    [self setLevel:NSPopUpMenuWindowLevel];
+    [self setTitle:BOCHS_WINDOW_NAME];
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self.contentView setWantsLayer: YES];
+    self.contentView.layer.backgroundColor = [[NSColor blackColor] CGColor];
+
+    inner = [[NSStackView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
+    inner.orientation = NSUserInterfaceLayoutOrientationVertical;
+    [self.contentView addSubview:inner];
+
+    // add control on top
+    [inner addArrangedSubview:[NSTextField labelWithString:@""]];
+    [inner addArrangedSubview:[NSTextField labelWithString:BOCHS_WINDOW_NAME]];
+    [inner addArrangedSubview:[NSTextField labelWithString:@""]];
+    
+    bochs_image_data = CFDataCreateWithBytesNoCopy(NULL, (const UInt8 *)bochs_logo, (128 * 128 * 4), kCFAllocatorNull);
+    colorspace = CGColorSpaceCreateDeviceRGB();
+    provider = CGDataProviderCreateWithCFData(bochs_image_data);
+    rgbImageRef = CGImageCreate(128, 128, 8, 32, 128*4, colorspace, kCGImageAlphaNoneSkipLast, provider, NULL, false, kCGRenderingIntentDefault);
+    CGDataProviderRelease(provider);
+    CGColorSpaceRelease(colorspace);
+    bochs_image =  [[NSImage alloc] initWithCGImage:rgbImageRef size:NSZeroSize];
+    CGImageRelease(rgbImageRef);
+    CFRelease(bochs_image_data);
+    bochs_imageview = [[NSImageView alloc] initWithFrame:NSMakeRect(0, 0, 130, 130)];
+    bochs_imageview.image = bochs_image;
+    [inner addArrangedSubview:bochs_imageview];
+    
+    [inner addArrangedSubview:[NSTextField labelWithString:@""]];
+    [inner addArrangedSubview:[NSTextField labelWithString:@"Bochs was originally written by Kevin Lawton"]];
+    [inner addArrangedSubview:[NSTextField labelWithString:@""]];
+    [inner addArrangedSubview:[NSTextField labelWithString:@"MacOS X GUI written by Christoph Gembalski"]];
+    [inner addArrangedSubview:[NSTextField labelWithString:@"MacOS X DEBUGGER GUI written by Christoph Gembalski"]];
+    [inner addArrangedSubview:[NSTextField labelWithString:@""]];
+
+    buttons = [[NSStackView alloc] initWithFrame:NSMakeRect(0, 0, 640, 50)];
+    [inner addArrangedSubview:buttons];
+
+    OK_BUTTON = [NSButton buttonWithTitle:@"OK" target:self action:@selector(onOKClick:)];
+
+    [buttons addArrangedSubview:OK_BUTTON];
+
+  }
+
+  return self;
+
+}
+
+- (void)onOKClick:(id _Nonnull)sender {
+  [self setIsVisible:NO];
+  [NSApp stopModalWithCode:NSModalResponseOK];
+}
+
+- (BOOL) getWorksWhenModal {
+  return YES;
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
 // BXNSParamRequestWindow
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSParamRequestWindow
@@ -1305,16 +1415,25 @@ event_loop:
 
 }
 
+/**
+ * onOKClick
+ */
 - (void)onOKClick:(id _Nonnull)sender {
   [self setIsVisible:NO];
   [NSApp stopModalWithCode:NSModalResponseOK];
 }
 
+/**
+ * onCancelClick
+ */
 - (void)onCancelClick:(id _Nonnull)sender {
   [self setIsVisible:NO];
   [NSApp stopModalWithCode:NSModalResponseCancel];
 }
 
+/**
+ * getWorksWhenModal
+ */
 - (BOOL) getWorksWhenModal {
   return YES;
 }
