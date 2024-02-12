@@ -88,6 +88,7 @@ static int cocoa_ci_callback(void *userdata, ci_command_t command) {
         bxcocoagui->setSimulationState(SIM_STOP);
         bxcocoagui->showWindow(BX_GUI_WINDOW_LOGGING, false);
         bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
+        bxcocoagui->activateMenu(BX_PROPERTY_RESET_SIM, true);
         bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_LOAD, false);
         bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_SAVE, false);
         bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_RESET, false);
@@ -112,6 +113,7 @@ ci_start_wait:
 
         if (bxcocoagui->getProperty(BX_PROPERTY_START_SIM, false) == 1) {
           bxcocoagui->activateMenu(BX_PROPERTY_START_SIM, false);
+          bxcocoagui->activateMenu(BX_PROPERTY_RESET_SIM, true);
           bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_LOAD, false);
           bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_SAVE, false);
           bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_RESET, false);

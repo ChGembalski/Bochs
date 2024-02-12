@@ -1023,7 +1023,7 @@ event_loop:
 
       if (dev_name.length == 0) {
         dev_name = @"not available";
-        acces_name = [[NSString alloc] initWithFormat:@"not_available_%d", (unsigned)index];
+        acces_name = [NSString stringWithFormat:@"not_available_%d", (unsigned)index];
         leaf = YES;
       }
 
@@ -1875,7 +1875,7 @@ event_loop:
     mask = 1 << entry.level;
     
     if ((self.loglevelMask & mask) != 0) {
-      fmsg = [[NSString alloc] initWithFormat:@"%@ (%d)[%@] %@", entry.timecode, entry.level, entry.module, entry.msg];
+      fmsg = [NSString stringWithFormat:@"%@ (%d)[%@] %@", entry.timecode, entry.level, entry.module, entry.msg];
       msg = [[NSAttributedString alloc] initWithString:fmsg attributes:self.attributesText];
       [[self.messagesText textStorage] appendAttributedString:msg];
     }

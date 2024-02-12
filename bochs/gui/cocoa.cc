@@ -62,7 +62,7 @@
 // callback keymap init
 static Bit32u convertStringToMacKey (const char *string) {
   keyTableEntry * ptr;
-  
+
   for (ptr = &keytable[0]; ptr->name != NULL; ptr++) {
     //BX_DEBUG (("comparing string '%s' to key '%s'", string, ptr->name));
     if (!strcmp(string, ptr->name))
@@ -80,6 +80,7 @@ private:
   void *old_callback_arg;
 protected:
   static void power_handler(void);
+  static void reset_handler(void);
 public:
   bx_cocoa_gui_c (void) {}
   DECLARE_GUI_VIRTUAL_METHODS()
@@ -230,7 +231,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
       }
     }
   //}
-  
+
   // redirect notify callback
   SIM->get_notify_callback(&old_callback, &old_callback_arg);
   assert(old_callback != NULL);
@@ -244,7 +245,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
     bx_keymap.loadKeymap(convertStringToMacKey);
   }
-  
+
   // ??? Need this one here ?
   if (SIM->get_param_bool(BXPN_PRIVATE_COLORMAP)->get()) {
     BX_INFO(("private_colormap option ignored."));
@@ -339,7 +340,7 @@ void bx_cocoa_gui_c::handle_events(void)
 
       //if (sdl_event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
       //DEV_kbd_release_keys();
-      
+
       event = bxcocoagui->getEvent();
       mouse = (event & MACOS_NSEventModifierFlagMouse) == MACOS_NSEventModifierFlagMouse;
       if (mouse) {
@@ -367,18 +368,20 @@ void bx_cocoa_gui_c::handle_events(void)
       scancode = event & ~MACOS_NSEventModifierFlagMask;
       released = (event & MACOS_NSEventModifierFlagKeyUp) == 0;
       BX_DEBUG((">>> event %lx mouse %s scancode %x scanflags %x released %x", event, mouse?"YES":"NO", scancode, scanflags, released));
-      
+
       // Fullscreen toggle
       if ((scancode == kVK_F19) && !released) {
         bx_gui->set_fullscreen_mode(!fullscreen_mode);
         bxcocoagui->toggle_fullscreen(fullscreen_mode);
+        return;
       }
       if ((event & MACOS_NSEventModifierFlagSpecial) == MACOS_NSEventModifierFlagSpecial) {
         if (scancode == kVK_F19) {
           bool fs_mode;
-          
+
           fs_mode = ((event & (1l << 32)) > 0);
           bx_gui->set_fullscreen_mode(fs_mode);
+          return;
         }
       }
 
@@ -387,7 +390,7 @@ void bx_cocoa_gui_c::handle_events(void)
         SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(!bxcocoagui->hasMouseCapture());
         bx_gui->mouse_enabled_changed(!bxcocoagui->hasMouseCapture());
       }
-      
+
       if (scancode < 0x80) {
         BX_DEBUG(("scancode %x scanflags %x released %x", scancode, scanflags, released));
         if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
@@ -396,9 +399,9 @@ void bx_cocoa_gui_c::handle_events(void)
           // use mapping
           BXKeyEntry * entry;
           Bit16u keyMod;
-          
+
           keyMod = 0;
-          
+
           keyMod |= (scanflags & (MACOS_NSEventModifierFlagShiftLeft)) ? kMod_Shift_Left : 0;
           keyMod |= (scanflags & (MACOS_NSEventModifierFlagShiftRight)) ? kMod_Shift_Right : 0;
           keyMod |= (scanflags & (MACOS_NSEventModifierFlagControlLeft)) ? kMod_Control_Left : 0;
@@ -407,7 +410,7 @@ void bx_cocoa_gui_c::handle_events(void)
           keyMod |= (scanflags & (MACOS_NSEventModifierFlagOptionRight)) ? kMod_Option_Right : 0;
           keyMod |= (scanflags & (MACOS_NSEventModifierFlagCommandLeft)) ? kMod_Command_Left : 0;
           keyMod |= (scanflags & (MACOS_NSEventModifierFlagCommandRight)) ? kMod_Command_Right : 0;
-                    
+
           entry = bx_keymap.findHostKey(scancode, keyMod);
           if (!entry) {
             // fallback
@@ -417,10 +420,10 @@ void bx_cocoa_gui_c::handle_events(void)
             if (!released) {
               DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | entry->baseKey);
             }
-            
+
             if (entry->modKey) {
               Bit16u mk;
-              
+
               mk = 0;
               if (entry->modKey == BX_KEY_CAPS_LOCK) {
                 mk = BX_MOD_KEY_CAPS;
@@ -432,10 +435,10 @@ void bx_cocoa_gui_c::handle_events(void)
                 mk = BX_MOD_KEY_ALT;
               }
               bx_gui->set_modifier_keys(mk, released);
-              
+
               DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | entry->modKey);
             }
-            
+
             // Send keycode
             if (released) {
               DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | entry->baseKey);
@@ -457,18 +460,18 @@ void bx_cocoa_gui_c::handle_events(void)
             ((scanflags>>16) & 0b00000010)>>1, ((scanflags>>16) & 0b00000001),
             (scanflags > 0)
           ));
-          
+
           // Send keycode if released
           if (!released) {
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | scancode);
           }
-          
+
           // resolve scanflags (seems each must be send one after one)
           if ((scanflags & MACOS_NSEventModifierFlagCapsLock) > 0) {
             bx_gui->set_modifier_keys(BX_MOD_KEY_CAPS, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CAPS_LOCK);
           }
-          
+
           if ((scanflags & MACOS_NSEventModifierFlagShiftLeft) > 0) {
             bx_gui->set_modifier_keys(BX_MOD_KEY_SHIFT, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_SHIFT_L);
@@ -477,7 +480,7 @@ void bx_cocoa_gui_c::handle_events(void)
             bx_gui->set_modifier_keys(BX_MOD_KEY_SHIFT, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_SHIFT_R);
           }
-          
+
           if ((scanflags & MACOS_NSEventModifierFlagControlLeft) > 0) {
             set_modifier_keys(BX_MOD_KEY_CTRL, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CTRL_L);
@@ -486,7 +489,7 @@ void bx_cocoa_gui_c::handle_events(void)
             set_modifier_keys(BX_MOD_KEY_CTRL, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_CTRL_R);
           }
-          
+
           if ((scanflags & MACOS_NSEventModifierFlagOptionLeft) > 0) {
             set_modifier_keys(BX_MOD_KEY_ALT, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_ALT_L);
@@ -495,7 +498,7 @@ void bx_cocoa_gui_c::handle_events(void)
             set_modifier_keys(BX_MOD_KEY_ALT, released);
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_ALT_R);
           }
-          
+
           if ((scanflags & MACOS_NSEventModifierFlagCommandLeft) > 0) {
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_WIN_L);
             return;
@@ -504,16 +507,16 @@ void bx_cocoa_gui_c::handle_events(void)
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | BX_KEY_WIN_R);
             return;
           }
-          
+
           if ((scanflags & MACOS_NSEventModifierFlagFunction) > 0) {
             // ? free to extend ...
           }
-          
+
           // Send keycode
           if (released) {
             DEV_kbd_gen_scancode((released?0:BX_KEY_RELEASED) | scancode);
           }
-          
+
         }
       } else {
         BX_ERROR((">>> event dropped"));
@@ -585,7 +588,7 @@ void bx_cocoa_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
   host_xres = x;
   host_yres = y;
   host_bpp = 32; //bpp;
- 
+
 }
 
 
@@ -625,6 +628,10 @@ unsigned bx_cocoa_gui_c::headerbar_bitmap(unsigned bmap_id, unsigned alignment, 
   // replace the power handler ! org handler not usable here
   if (f == bx_gui_c::power_handler) {
     return(bxcocoagui->headerbar_bitmap(bmap_id, alignment, power_handler));
+  }
+  // replace the reset handler ! org handler called in event processing
+  if (f == bx_gui_c::reset_handler) {
+    return(bxcocoagui->headerbar_bitmap(bmap_id, alignment, reset_handler));
   }
   return(bxcocoagui->headerbar_bitmap(bmap_id, alignment, f));
 }
@@ -707,9 +714,9 @@ void bx_cocoa_gui_c::exit(void)
     //TODO : close_debug_dialog();
   }
 #endif
-  
+
   bxcocoagui->onBochsThreadExit();
-  
+
 }
 
 // ::POWER_HANDLER
@@ -717,6 +724,13 @@ void bx_cocoa_gui_c::exit(void)
 // Called from headerbar button
 void bx_cocoa_gui_c::power_handler(void) {
   bxcocoagui->setProperty(BX_PROPERTY_QUIT_SIM, 1);
+}
+
+// ::RESET_HANDLER
+//
+// Called from headerbar button
+void bx_cocoa_gui_c::reset_handler(void) {
+  bxcocoagui->setProperty(BX_PROPERTY_RESET_SIM, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -900,7 +914,9 @@ BxEvent * bx_cocoa_gui_c::notify_callback(void *unused, BxEvent *event) {
     }
     case BX_SYNC_EVT_TICK: {
       // simulator -> CI, wait for response.
-      // printf("notify_callback BX_SYNC_EVT_TICK\n");
+      if (bxcocoagui->getProperty(BX_PROPERTY_RESET_SIM, false) == 1) {
+        bx_gui->reset_handler();
+      }
       break;
     }
     case BX_SYNC_EVT_LOG_DLG: {

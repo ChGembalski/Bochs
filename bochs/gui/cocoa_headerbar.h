@@ -102,7 +102,7 @@
     - (void)headerbarBXBitmap:(unsigned) btn_id data_id:(unsigned) bmap_id;
     - (void)headerbarCreate:(NSView * _Nonnull) view;
     - (void)headerbarUpdate:(BXVGAdisplay * _Nonnull) vga;
-    - (void)setTooltip:(unsigned)btn_id Text:(const char *)tiptext;
+    - (void)setTooltip:(unsigned)btn_id Text:(const char * _Nonnull)tiptext;
 
   @end
 

@@ -38,6 +38,7 @@ menu_opts_t menu_options[] = {
   {"Bochs",                 "Quit",           NO,   @"q", NSEventModifierFlagCommand, YES,  BX_PROPERTY_QUIT_SIM},
   {NULL,                    "Simulation",     YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {"Simulation",            "Start",          NO,   nil,  0,                          YES,  BX_PROPERTY_START_SIM},
+  {"Simulation",            "Reset",          NO,   nil,  0,                          NO,   BX_PROPERTY_RESET_SIM},
   {"Simulation",            "-",              NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {"Simulation",            "Clipboard",      YES,  nil,  0,                          NO,   BX_PROPERTY_UNDEFINED},
   {"Simulation.Clipboard",  "Copy",           NO,   @"c", NSEventModifierFlagCommand, NO,   BX_PROPERTY_UNDEFINED},
@@ -236,7 +237,7 @@ menu_opts_t menu_options[] = {
   curMenu = menuitem.menu;
 
   while ((curMenu != nil) & (curMenu.title != nil)) {
-    menuPath = [[NSString alloc] initWithFormat:@"%@.%@", curMenu.title, menuPath];
+    menuPath = [NSString stringWithFormat:@"%@.%@", curMenu.title, menuPath];
     curMenu = curMenu.supermenu;
   };
 
@@ -255,7 +256,7 @@ menu_opts_t menu_options[] = {
 
   while ((menu_options[i].parent != NULL) | (menu_options[i].name != NULL)) {
     if (type == menu_options[i].type) {
-      return [[NSString alloc] initWithFormat:@"%s.%s", menu_options[i].parent, menu_options[i].name];
+      return [NSString stringWithFormat:@"%s.%s", menu_options[i].parent, menu_options[i].name];
     }
     i++;
   }
@@ -274,7 +275,7 @@ menu_opts_t menu_options[] = {
   i = 0;
 
   while ((menu_options[i].parent != NULL) | (menu_options[i].name != NULL)) {
-    if ([path isEqualToString:[[NSString alloc] initWithFormat:@"%s.%s", menu_options[i].parent, menu_options[i].name]]) {
+    if ([path isEqualToString:[NSString stringWithFormat:@"%s.%s", menu_options[i].parent, menu_options[i].name]]) {
       return menu_options[i].type;
     }
     i++;

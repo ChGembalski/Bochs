@@ -351,7 +351,7 @@ extern unsigned char flip_byte(unsigned char b);
 /**
  * setTooltip
  */
-- (void)setTooltip:(unsigned)btn_id Text:(const char *)tiptext {
+- (void)setTooltip:(unsigned)btn_id Text:(const char * _Nonnull)tiptext {
   
   BXNSHeaderBarButton * btn;
   
