@@ -895,7 +895,7 @@ void bx_real_sim_c::debug_puts(const char *text)
     // send message to the gui debugger
     BxEvent *event = new BxEvent();
     event->type = BX_ASYNC_EVT_DBG_MSG;
-    event->u.logmsg.msg = text;
+    event->u.logmsg.msg = text; // allocated on stack from caller ...
     sim_to_ci_event(event);
     delete event;
   } else {

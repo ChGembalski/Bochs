@@ -290,10 +290,6 @@ BxEvent *MyApp::DefaultCallback(void *thisptr, BxEvent *event)
     default:
       wxLogDebug(wxT("DefaultCallback: unknown event type %d"), event->type);
   }
-  if (BX_EVT_IS_ASYNC(event->type)) {
-    delete event;
-    event = NULL;
-  }
   return event;
 }
 
