@@ -35,6 +35,7 @@
 #if BX_WITH_COCOA
 
 #include <Cocoa/Cocoa.h>
+
 #include "gui/cocoa_application.h"
 
 class BXGuiCocoaApplication;

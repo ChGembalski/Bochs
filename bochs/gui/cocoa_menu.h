@@ -27,9 +27,6 @@
 
   #define BX_GUI_COCOA_MENU_H
 
-  #include "cocoa_windows.h"
-  #include "cocoa_bochs.h"
-
   typedef struct {
     const char * _Nullable parent;
     const char * _Nullable name;
@@ -40,6 +37,10 @@
     property_t             type;
   } menu_opts_t;
 
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSMenuBar
+  ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSMenuBar : NSObject
 
   - (instancetype _Nonnull)init:(id _Nonnull) target;
@@ -53,5 +54,6 @@
   + (property_t) getMenuItemProperty:(NSString * _Nonnull) path;
 
   @end
+
 
 #endif /* BX_GUI_COCOA_MENU_H */

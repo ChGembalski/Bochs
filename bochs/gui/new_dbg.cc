@@ -30,6 +30,7 @@
   #include "new_dbg.h"
   #include "bochs.h"
   #include "siminterface.h"
+//#include "cpu/decoder/instr.h"
 
   extern void new_dbg_handler_custom(bool init);
   extern bx_dbg_gui_c * bx_dbg_new;
@@ -80,18 +81,15 @@
 
 #if BX_CPU_LEVEL >= 6
 
-    "SSE.xmm00_0", "SSE.xmm01_0", "SSE.xmm02_0", "SSE.xmm03_0", "SSE.xmm04_0",
-    "SSE.xmm05_0", "SSE.xmm06_0", "SSE.xmm07_0",
+    "SSE.xmm00_0", "SSE.xmm00_1", "SSE.xmm01_0", "SSE.xmm01_1",
+    "SSE.xmm02_0", "SSE.xmm02_1", "SSE.xmm03_0", "SSE.xmm03_1",
+    "SSE.xmm04_0", "SSE.xmm04_1", "SSE.xmm05_0", "SSE.xmm05_1",
+    "SSE.xmm06_0", "SSE.xmm06_1", "SSE.xmm07_0", "SSE.xmm07_1",
 #if BX_SUPPORT_X86_64
-    "SSE.xmm08_0", "SSE.xmm09_0", "SSE.xmm10_0", "SSE.xmm11_0", "SSE.xmm12_0",
-    "SSE.xmm13_0", "SSE.xmm14_0", "SSE.xmm15_0",
-#endif /* BX_SUPPORT_X86_64 */
-
-    "SSE.xmm00_1", "SSE.xmm01_1", "SSE.xmm02_1", "SSE.xmm03_1", "SSE.xmm04_1",
-    "SSE.xmm05_1", "SSE.xmm06_1", "SSE.xmm07_1",
-#if BX_SUPPORT_X86_64
-    "SSE.xmm08_1", "SSE.xmm09_1", "SSE.xmm10_1", "SSE.xmm11_1", "SSE.xmm12_1",
-    "SSE.xmm13_1", "SSE.xmm14_1", "SSE.xmm15_1",
+    "SSE.xmm08_0", "SSE.xmm08_1", "SSE.xmm09_0", "SSE.xmm09_1",
+    "SSE.xmm10_0", "SSE.xmm10_1", "SSE.xmm11_0", "SSE.xmm11_1",
+    "SSE.xmm12_0", "SSE.xmm12_1", "SSE.xmm13_0", "SSE.xmm13_1",
+    "SSE.xmm14_0", "SSE.xmm14_1", "SSE.xmm15_0", "SSE.xmm15_1",
 #endif /* BX_SUPPORT_X86_64 */
 
 #endif /* BX_CPU_LEVEL >= 6 */
@@ -147,18 +145,15 @@
 
 #if BX_CPU_LEVEL >= 6
 
-    "XMM0", "XMM1", "XMM2", "XMM3", "XMM4",
-    "XMM5", "XMM6", "XMM7",
+    "XMM0", "XMM0", "XMM1", "XMM1",
+    "XMM2", "XMM2", "XMM3", "XMM3",
+    "XMM4", "XMM4", "XMM5", "XMM5",
+    "XMM6", "XMM6", "XMM7", "XMM7",
 #if BX_SUPPORT_X86_64
-    "XMM8", "XMM9", "XMM10", "XMM11", "XMM12",
-    "XMM13", "XMM14", "XMM15",
-#endif /* BX_SUPPORT_X86_64 */
-
-    "XMM0", "XMM1", "XMM2", "XMM3", "XMM4",
-    "XMM5", "XMM6", "XMM7",
-#if BX_SUPPORT_X86_64
-    "XMM8", "XMM9", "XMM10", "XMM11", "XMM12",
-    "XMM13", "XMM14", "XMM15",
+    "XMM8",  "XMM8",  "XMM9",  "XMM9",
+    "XMM10", "XMM10", "XMM11", "XMM11",
+    "XMM12", "XMM12", "XMM13", "XMM13",
+    "XMM14", "XMM14", "XMM15", "XMM15",
 #endif /* BX_SUPPORT_X86_64 */
 
 #endif /* BX_CPU_LEVEL >= 6 */
@@ -197,30 +192,32 @@
     "32-bit data",
     "Illegal",
     "Unused"
- };
+  };
 
- const char * dbg_idt_type_names[] = {
-   "",
-   "Task Gate",
-   "Interrupt Gate",
-   "Trap Gate"
- };
+  const char * dbg_idt_type_names[] = {
+    "",
+    "Task Gate",
+    "Interrupt Gate",
+    "Trap Gate"
+  };
 
- const char * dbg_eflags_names[] = {
-   "cf", "", "pf", "", "af", "", "zf", "tf",
-   "if", "df", "of", "iopl", "iopl", "nt", "", "rf",
-   "vm", "ac", "vif", "vip", "id", "", "", "",
-   "", "", "", "", "", "", "", ""
- };
+  const char * dbg_eflags_names[] = {
+    "cf", "", "pf", "", "af", "", "zf", "tf",
+    "if", "df", "of", "iopl", "iopl", "nt", "", "rf",
+    "vm", "ac", "vif", "vip", "id", "", "", "",
+    "", "", "", "", "", "", "", ""
+  };
 
- // depends on BxCpuMode
- const char * dbg_cpu_mode_names[] = {
-   "Real Mode",
-   "V8086 Mode",
-   "Protected Mode",
-   "Compatibility Mode",
-   "Long Mode"
- };
+  // depends on BxCpuMode
+  const char * dbg_cpu_mode_names[] = {
+    "Real Mode",
+    "V8086 Mode",
+    "Protected Mode",
+    "Compatibility Mode",
+    "Long Mode"
+  };
+
+
 
 
   // internal callback handler
@@ -228,6 +225,27 @@
   {
     switch (event->type)
     {
+      case BX_SYNC_EVT_GET_DBG_COMMAND: {
+        // simulator -> CI, wait for response.
+        printf("new_dbg_notify_callback BX_SYNC_EVT_GET_DBG_COMMAND\n");
+        // continue if we have a filled buffer
+        while ((event->retcode = bx_dbg_new->sync_evt_get_debug_command(event->u.debugcmd.command, 512)) == -1) {
+          // no valid buffer .. nap ...
+#ifdef WIN32
+          Sleep(10);
+#elif BX_HAVE_USLEEP
+          usleep(10000);
+#else
+          sleep(1);
+#endif
+        }
+        return event;
+      }
+      case BX_ASYNC_EVT_DBG_MSG: {
+        // simulator -> CI
+        printf("new_dbg_notify_callback BX_ASYNC_EVT_DBG_MSG [%s]\n", event->u.logmsg.msg);
+        return event;
+      }
       default: {
         return (*old_callback)(old_callback_arg, event);
       }
@@ -271,11 +289,19 @@
  */
 bx_dbg_gui_c::bx_dbg_gui_c(void) {
 
-  this->bCpuModeHasChanged = true;
-  this->currentCPUNo = 0;
-  this->CPUcount = BX_SMP_PROCESSORS;
-
+  // setup chain
+  this->cmd_chain = (struct bx_dbg_cmd_chain_t *)malloc(sizeof(struct bx_dbg_cmd_chain_t));
+  this->cmd_chain->pred = this->cmd_chain;
+  this->cmd_chain->succ = NULL;
+  this->cmd_chain->cmd = NULL;
+  atomic_flag_test_and_set(&this->cmd_chain_lock);
+  
+  // setup asm buffer
+  this->asm_buffer = (unsigned char *)malloc(ASM_BUFFER_SIZE * sizeof(unsigned char));
+  this->asm_text_buffer = (unsigned char *)malloc(ASM_TEXT_BUFFER_SIZE * sizeof(unsigned char));
+  
   this->init_register_refs();
+  
 }
 
 /**
@@ -283,9 +309,27 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
  */
 bx_dbg_gui_c::~bx_dbg_gui_c(void) {
 
+  struct bx_dbg_cmd_chain_t * next;
+  
+  next = this->cmd_chain;
+  while (next != NULL) {
+    struct bx_dbg_cmd_chain_t * node;
+    
+    node = next;
+    if (next->cmd != NULL) {
+      free(next->cmd);
+    }
+    next = next->succ;
+    free(node);
+  };
+  
+  free(this->asm_buffer);
+  free(this->asm_text_buffer);
+  
   if (this->smp_info.cpu_info != NULL) {
     free(this->smp_info.cpu_info);
   }
+  
 }
 
 /**
@@ -296,9 +340,45 @@ void bx_dbg_gui_c::init_internal(void) {
 
   this->read_dbg_gui_config();
 
+  
+  this->init_os_depended();
+  
 }
 
-
+/**
+ * sync_evt_get_debug_command
+ */
+size_t bx_dbg_gui_c::sync_evt_get_debug_command(char * buffer, size_t buffer_size) {
+  
+  bx_dbg_cmd_t * cmd;
+  
+  while(1) {
+    cmd = dequeue_cmd();
+    
+    if (cmd != NULL) {
+      if (cmd->cmd == DBG_EXIT) {
+        free(cmd);
+        buffer[0] = 'q';
+        buffer[1] = 0;
+        return 1;
+      }
+      process_cmd(cmd);
+      free(cmd);
+    } else {
+#ifdef WIN32
+      Sleep(1);
+#elif BX_HAVE_USLEEP
+      usleep(1000);
+#else
+      sleep(1);
+#endif
+    }
+    
+  };
+  
+  return -1;
+  
+}
 
 
 
@@ -405,6 +485,101 @@ char * bx_dbg_gui_c::strip_whitespace(char * s) {
 
 }
 
+/**
+ * enqueue_cmd
+ */
+void bx_dbg_gui_c::enqueue_cmd(bx_dbg_cmd_t * cmd) {
+  
+  struct bx_dbg_cmd_chain_t * chain_cmd;
+  
+  while(atomic_flag_test_and_set(&this->cmd_chain_lock)) {
+    usleep(100);
+  }
+  
+  // root pred points to last element
+  
+  chain_cmd = (struct bx_dbg_cmd_chain_t *)malloc(sizeof(struct bx_dbg_cmd_chain_t));
+  this->cmd_chain->pred->succ = chain_cmd;
+  chain_cmd->cmd = cmd;
+  chain_cmd->pred = this->cmd_chain->pred;
+  chain_cmd->succ = NULL;
+  this->cmd_chain->pred = chain_cmd;
+  
+  atomic_flag_clear(&this->cmd_chain_lock);
+  
+}
+
+/**
+ * dequeue_cmd
+ */
+bx_dbg_cmd_t * bx_dbg_gui_c::dequeue_cmd(void) {
+
+  bx_dbg_cmd_t * cmd;
+  struct bx_dbg_cmd_chain_t * next;
+  
+  if (this->cmd_chain->succ == NULL) {
+    return (NULL);
+  }
+  
+  while(atomic_flag_test_and_set(&this->cmd_chain_lock)) {
+    usleep(100);
+  }
+  
+  next = this->cmd_chain->succ;
+  this->cmd_chain->succ = next->succ;
+  if (next->succ != NULL) {
+    next->succ->pred = this->cmd_chain;
+  }
+  cmd = next->cmd;
+  free(next);
+  
+  atomic_flag_clear(&this->cmd_chain_lock);
+  
+  return (cmd);
+  
+}
+
+/**
+ * process_cmd
+ */
+void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
+  
+  switch (cmd->cmd) {
+    case DBG_CONTINUE:
+    case DBG_STEP: {
+      bx_dbg_step_over_command();
+      break;
+    }
+    case DBG_STEP_CPU: {
+      bx_dbg_stepN_command(cmd->data.ctrl.cpu, (Bit32u)cmd->data.ctrl.count);
+      break;
+    }
+    case DBG_STEP_ALL: {
+      bx_dbg_stepN_command(-1, (Bit32u)cmd->data.ctrl.count);
+      break;
+    }
+    case DBG_BREAK:
+    case DBG_VIRT_BREAK_POINT:
+    case DBG_VIRT_BREAK_POINT_COND:
+    case DBG_LIN_BREAK_POINT:
+    case DBG_LIN_BREAK_POINT_COND:
+    case DBG_TIME_BREAK_POINT:
+    case DBG_CPU_BREAK_POINT:
+    case DBG_INT_BREAK_POINT:
+    case DBG_CALL_BREAK_POINT:
+    case DBG_RET_BREAK_POINT:
+    case DBG_MEM_WARCH_READ:
+    case DBG_MEM_WATCH_WRITE:
+    case DBG_NONE:
+    default: {
+      // ignore
+    }
+  }
+  
+}
+
+
+
 
 
 /**
@@ -431,7 +606,7 @@ void bx_dbg_gui_c::init_register_refs(void) {
     while (dbg_param_names[cpuregno] != NULL) {
       this->smp_info.cpu_info[cpuNo].regs[cpuregno] = SIM->get_param_num(dbg_param_names[cpuregno], cpu_list);
       // tests
-      printf("[%s][%016X]\n",
+      printf("[%s][%016lX]\n",
         this->smp_info.cpu_info[cpuNo].regs[cpuregno]->get_name(),
         this->smp_info.cpu_info[cpuNo].regs[cpuregno]->get64()
       );
@@ -439,7 +614,7 @@ void bx_dbg_gui_c::init_register_refs(void) {
     }
 
     this->update_register(cpuNo);
-
+    
   }
 }
 
@@ -448,14 +623,139 @@ void bx_dbg_gui_c::init_register_refs(void) {
  */
 void bx_dbg_gui_c::update_register(unsigned cpuNo) {
 
+  unsigned cpuregno;
+  
+  this->smp_info.cpu_info[cpuNo].cpu_no = cpuNo;
   this->smp_info.cpu_info[cpuNo].cpu_mode = BX_CPU(cpuNo)->get_cpu_mode();
-  this->smp_info.cpu_info[cpuNo].cpu_mode32 = BX_CPU(cpuNo)->sregs[BX_SEG_REG_CS].cache.u.segment.d_b;
+  this->smp_info.cpu_info[cpuNo].cpu_mode32 = IS_CODE_32(BX_CPU(cpuNo)->guard_found.code_32_64);
+  this->smp_info.cpu_info[cpuNo].cpu_mode64 = IS_CODE_64(BX_CPU(cpuNo)->guard_found.code_32_64);
   this->smp_info.cpu_info[cpuNo].cpu_paging = this->smp_info.cpu_info[cpuNo].regs[CR0]->get64() & 0x80000000;
 
+  
+  // setup reg_value
+  cpuregno = 0;
+  while (cpuregno != CPU_REG_END) {
+    // set name
+    if (cpuregno <= RIP) {
+      if ((!this->smp_info.cpu_info[cpuNo].cpu_mode32 & !this->smp_info.cpu_info[cpuNo].cpu_mode64)) {
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].name = dbg_reg_names_16[cpuregno];
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 16;
+      } else if ((this->smp_info.cpu_info[cpuNo].cpu_mode32 & !this->smp_info.cpu_info[cpuNo].cpu_mode64)) {
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].name = dbg_reg_names_32[cpuregno];
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 32;
+      } else {
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].name = dbg_reg_names[cpuregno];
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 64;
+      }
+    } else {
+      this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].name = dbg_reg_names[cpuregno];
+      
+#if BX_SUPPORT_FPU
+      // fpu regs
+      if (cpuregno >= FPU_ST0_F & cpuregno <= FPU_ST7_E) {
+        if (((cpuregno - FPU_ST0_F) & 0x01) == 0) {
+          this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 64;
+        } else {
+          this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 16;
+        }
+      } else
+#endif /* BX_SUPPORT_FPU */
+      // set size
+      if ((!this->smp_info.cpu_info[cpuNo].cpu_mode32 & !this->smp_info.cpu_info[cpuNo].cpu_mode64)) {
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 16;
+#if BX_CPU_LEVEL >= 5
+        if (cpuregno >= CR0 & cpuregno <= CR4) {
+#else
+        if (cpuregno >= CR0 & cpuregno <= CR3) {
+#endif /* BX_CPU_LEVEL >= 5 */
+          this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 32;
+        }
+      } else if ((this->smp_info.cpu_info[cpuNo].cpu_mode32 & !this->smp_info.cpu_info[cpuNo].cpu_mode64)) {
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 32;
+      } else {
+        this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 64;
+      }
+    }
+    
+    // set value
+    this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].value = this->smp_info.cpu_info[cpuNo].regs[cpuregno]->get64();
+    
+    cpuregno++;
+  }
+  
 }
 
+/**
+ * disassemble
+ */
+void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas) {
+  
+  bx_address laddr;
+  bool read_ok;
+  Bit32u lineno;
+  Bit32u data_ofs;
+  unsigned char * text_ptr;
+  bxInstruction_c i;
+  Bit32u seg_base;
+  
+  dbg_cpu = cpuNo;
+  
+  if (seg) {
+    laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
+    seg_base = 0;
+  } else {
+    laddr = addr.ofs;
+    seg_base = 0;
+  }
 
+  // clear buffers
+  memset(this->asm_buffer, 0, ASM_BUFFER_SIZE);
+  memset(this->asm_text_buffer, 0, ASM_TEXT_BUFFER_SIZE);
+  
+  // ok now fill the buffer
+  read_ok = bx_dbg_read_linear(cpuNo, laddr, ASM_BUFFER_SIZE, this->asm_buffer);
+  if (!read_ok) {
+    return;
+  }
+  
+  // create disasm
+  data_ofs = 0;
+  text_ptr = this->asm_text_buffer;
+  for (lineno = 0; lineno<ASM_ENTRY_LINES; lineno++) {
+    
+    char buffer[64] = {0};
+    size_t buffer_len;
+    
+    disasm(
+      (const Bit8u *)&this->asm_buffer[data_ofs],
+      this->smp_info.cpu_info[cpuNo].cpu_mode32,
+      this->smp_info.cpu_info[cpuNo].cpu_mode64,
+      buffer,
+      &i, 
+      seg_base,
+      laddr,
+      gas ? BX_DISASM_GAS : BX_DISASM_INTEL
+    );
+    
+    buffer_len = strlen(buffer) + 1;
+    memcpy(text_ptr, buffer, buffer_len);
+        
+    // setup asm_lines
+    this->asm_lines[lineno].addr.seg = seg_base;
+    this->asm_lines[lineno].addr.ofs = laddr;
+    this->asm_lines[lineno].len = i.ilen();
+    this->asm_lines[lineno].data = &this->asm_buffer[data_ofs];
+    this->asm_lines[lineno].text = text_ptr;
+    
+    text_ptr += buffer_len;
+    laddr += this->asm_lines[lineno].len;
+    
+  }
+  
+  
+}
 
+  
 
 
 #endif

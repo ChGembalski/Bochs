@@ -27,8 +27,6 @@
 
   #define BX_GUI_COCOA_LOGGING_H
 
-  #include "config.h"
-
   #if __cplusplus
     extern "C" {
   #endif

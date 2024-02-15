@@ -27,7 +27,7 @@
 
   #define BX_GUI_COCOA_APPLICATION_H
 
-  #include "cocoa_windows.h"
+  @class BXNSWindowController;
 
   @interface BXBochsThread : NSThread
 

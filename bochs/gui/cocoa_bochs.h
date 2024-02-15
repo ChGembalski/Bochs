@@ -27,8 +27,6 @@
 
   #define BX_GUI_COCOA_BOCHS_H
 
-  #include "../config.h"
-
   #define MACOS_NSEventModifierFlagKeyUp      0x8000000000000000
   #define MACOS_NSEventModifierFlagMouse      0x4000000000000000
   #define MACOS_NSEventModifierFlagFocus      0x2000000000000000
@@ -45,7 +43,8 @@
     BX_GUI_WINDOW_VGA_DISPLAY,
     BX_GUI_WINDOW_LOGGING,
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
-    BX_GUI_WINDOW_DEBUGGER
+    BX_GUI_WINDOW_DEBUGGER,
+    BX_GUI_WINDOW_DEBUGGER_CONFIG
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   } gui_window_type_t;
 
@@ -61,7 +60,10 @@
     BX_PROPERTY_CONFIG_LOAD,
     BX_PROPERTY_CONFIG_SAVE,
     BX_PROPERTY_CONFIG_RESET,
-    BX_PROPERTY_BOCHS_ABOUT
+    BX_PROPERTY_BOCHS_ABOUT,
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+    BX_PROPERTY_WINDOW_DEBUGGER,
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   } property_t;
 
   typedef struct {
@@ -78,6 +80,52 @@
     SIM_TERMINATE
   } simulation_state_t;
 
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+
+  typedef enum {
+    DBG_V_REGISTER,
+    DBG_V_STACK,
+    DBG_V_INSTRUCTION,
+    DBG_V_GDT,
+    DBG_V_IDT,
+    DBG_V_PAGING,
+    DBG_V_BREAKPOINT,
+    DBG_V_MEMORY,
+    DBG_V_NONE
+  } debugger_views_t;
+
+  typedef enum {
+    DBG_LOC_LEFT,
+    DBG_LOC_RIGHT
+  } debugger_view_location_t;
+  
+  typedef struct {
+    debugger_views_t          view;
+    debugger_view_location_t  location;
+  } debugger_view_config_t;
+
+  typedef struct {
+    bool                      show_general_purpose_regs;
+    bool                      show_segment_regs;
+    bool                      show_control_regs;
+    bool                      show_fpu_regs;
+    bool                      show_test_regs;
+    bool                      show_sse_regs;
+    bool                      show_debug_regs;
+    bool                      use_gas_syntax;
+    
+    unsigned char             selected_cpu;
+    unsigned long             global_step_count;
+    
+    unsigned char             stack_bytes;
+    unsigned long             cpu_step_count;
+  } debugger_ctrl_config_t;
+
+  typedef struct {
+    unsigned int              reg_id;
+  } debugger_register_mapping_t;
+
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
   class BXGuiCocoaApplication {
 
@@ -141,6 +189,8 @@
     // Debugger
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 
+    void createDebuggerUI(void);
+    
     void dbg_addOutputText(char * txt);
 
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */

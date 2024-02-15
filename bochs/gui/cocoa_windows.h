@@ -27,10 +27,6 @@
 
   #define BX_GUI_COCOA_WINDOWS_H
 
-  #include "cocoa_bochs.h"
-  #include "cocoa_headerbar.h"
-
-
   #define BX_ALERT_MSG_STYLE_INFO             1
   #define BX_ALERT_MSG_STYLE_WARN             2
   #define BX_ALERT_MSG_STYLE_CRIT             3
@@ -40,11 +36,13 @@
     #define BOCHS_WINDOW_CONFIG_NAME @"Bochs x86-64 configurator MacOS X"
     #define BOCHS_WINDOW_LOGGER_NAME @"Bochs x86-64 logger MacOS X"
     #define BOCHS_WINDOW_DEBUGGER_NAME @"Bochs x86-64 debugger MacOS X"
+    #define BOCHS_WINDOW_DEBUGGER_CONFIG_NAME @"Bochs x86-64 debugger config MacOS X"
   #else
     #define BOCHS_WINDOW_NAME @"Bochs x86 emulator MacOS X"
     #define BOCHS_WINDOW_CONFIG_NAME @"Bochs x86 configurator MacOS X"
     #define BOCHS_WINDOW_LOGGER_NAME @"Bochs x86 logger MacOS X"
     #define BOCHS_WINDOW_DEBUGGER_NAME @"Bochs x86 debugger MacOS X"
+    #define BOCHS_WINDOW_DEBUGGER_CONFIG_NAME @"Bochs x86 debugger config MacOS X"
   #endif
 
   typedef struct {
@@ -144,6 +142,8 @@
     + (int)showModalAboutDialog;
 
     - (void)onBochsThreadExit;
+
+- (void)createDebuggerUI;
 
     - (void)showWindow:(gui_window_type_t) window doShow:(BOOL) show;
     - (void)activateWindow:(gui_window_type_t) window;
@@ -305,41 +305,6 @@
   ////////////////////////////////////////////////////////////////////////////////
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 
-  @interface BXNSVerticalSplitView : NSSplitView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSHorizontalSplitView : NSSplitView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSTabView : NSTabView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSMemoryView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSGDTView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSIDTView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
 
   @interface BXNSLDTView : NSView
 
@@ -347,35 +312,7 @@
 
   @end
 
-  @interface BXNSPagingView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNStackView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSInstructionView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSBreakpointView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
-
-  @interface BXNSRegisterView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-  @end
+  
 
   @interface BXNSOutputView : NSView
 
@@ -388,11 +325,27 @@
 
   @interface BXNSDebuggerWindow : BXNSGenericWindow <NSApplicationDelegate>
 
-    @property (nonatomic, readwrite, strong) BXNSOutputView * _Nonnull outputView;
+    @property (nonatomic, readwrite, strong) BXNSDebugView * _Nonnull debug_view;
 
-    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
+
+
+
+//    @property (nonatomic, readwrite, strong) BXNSOutputView * _Nonnull outputView;
+
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller SmpInfo:(bx_smp_info_t *) smp;
 
     - (BOOL)onMenuEvent:(NSString * _Nonnull) path;
+
+  @end
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSDebuggerConfigWindow
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSDebuggerConfigWindow : BXNSGenericWindow <NSApplicationDelegate>
+
+    @property (nonatomic, readwrite, strong) BXNSTabView * _Nonnull tabView;
+
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
 
   @end
 

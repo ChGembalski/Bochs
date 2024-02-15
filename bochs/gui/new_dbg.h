@@ -29,6 +29,7 @@
 #if BX_DEBUGGER && !BX_DEBUGGER_GUI && BX_NEW_DEBUGGER_GUI
 
 #include <stdio.h>
+#include <stdatomic.h>
 #include "bochs.h"
 #include "siminterface.h"
 // #include "bx_debug/debug.h"
@@ -55,7 +56,7 @@ protected:                                                                     \
 #define DECLARE_GUI_DEBUGGER_OPTIONAL_VIRTUAL_METHODS()                        \
   virtual bool parse_os_setting(const char * param, const char * value)        \
   virtual void write_os_setting(FILE * fd)
-
+//virtual size_t sync_evt_get_debug_command(char * buffer, size_t buffer_size)
 
 typedef enum {
 
@@ -149,42 +150,40 @@ typedef enum {
 #if BX_CPU_LEVEL >= 6
 
   SSE_XMM00_0,
-  SSE_XMM01_0,
-  SSE_XMM02_0,
-  SSE_XMM03_0,
-  SSE_XMM04_0,
-  SSE_XMM05_0,
-  SSE_XMM06_0,
-  SSE_XMM07_0,
-#if BX_SUPPORT_X86_64
-  SSE_XMM08_0,
-  SSE_XMM09_0,
-  SSE_XMM10_0,
-  SSE_XMM11_0,
-  SSE_XMM12_0,
-  SSE_XMM13_0,
-  SSE_XMM14_0,
-  SSE_XMM15_0,
-#endif /* BX_SUPPORT_X86_64 */
-
   SSE_XMM00_1,
+  SSE_XMM01_0,
   SSE_XMM01_1,
+  SSE_XMM02_0,
   SSE_XMM02_1,
+  SSE_XMM03_0,
   SSE_XMM03_1,
+  SSE_XMM04_0,
   SSE_XMM04_1,
+  SSE_XMM05_0,
   SSE_XMM05_1,
+  SSE_XMM06_0,
   SSE_XMM06_1,
+  SSE_XMM07_0,
   SSE_XMM07_1,
 #if BX_SUPPORT_X86_64
+  SSE_XMM08_0,
   SSE_XMM08_1,
+  SSE_XMM09_0,
   SSE_XMM09_1,
+  SSE_XMM10_0,
   SSE_XMM10_1,
+  SSE_XMM11_0,
   SSE_XMM11_1,
+  SSE_XMM12_0,
   SSE_XMM12_1,
+  SSE_XMM13_0,
   SSE_XMM13_1,
+  SSE_XMM14_0,
   SSE_XMM14_1,
+  SSE_XMM15_0,
   SSE_XMM15_1,
 #endif /* BX_SUPPORT_X86_64 */
+
 
 #endif /* BX_CPU_LEVEL >= 6 */
 
@@ -199,11 +198,18 @@ typedef enum {
 } dbg_cpu_reg_t;
 
 typedef struct {
+  const char *      name;
+  Bit64u            value;
+  Bit8u             size;
+} bx_cpu_reg_t;
+
+typedef struct {
+  unsigned          cpu_no;
   unsigned          cpu_mode;
   bool              cpu_mode32;
+  bool              cpu_mode64;
   bool              cpu_paging;
-  Bit64u            reg_value[CPU_REG_END];//?
-  Bit64u            reg_backup[CPU_REG_END];//?
+  bx_cpu_reg_t      reg_value[CPU_REG_END];
   bx_param_num_c *  regs[CPU_REG_END];
 } bx_cpu_info_t;
 
@@ -212,10 +218,86 @@ typedef struct {
   bx_cpu_info_t * cpu_info;
 } bx_smp_info_t;
 
+typedef enum {
+  DBG_NONE,
+  DBG_EXIT,
+  DBG_CONTINUE,
+  DBG_STEP,
+  DBG_STEP_CPU,
+  DBG_STEP_ALL,
+  DBG_BREAK,
+  DBG_VIRT_BREAK_POINT,
+  DBG_VIRT_BREAK_POINT_COND,
+  DBG_LIN_BREAK_POINT,
+  DBG_LIN_BREAK_POINT_COND,
+  DBG_TIME_BREAK_POINT,
+  DBG_CPU_BREAK_POINT,
+  DBG_INT_BREAK_POINT,
+  DBG_CALL_BREAK_POINT,
+  DBG_RET_BREAK_POINT,
+  DBG_MEM_WARCH_READ,
+  DBG_MEM_WATCH_WRITE
+} bx_cmd_t;
 
+typedef struct {
+  Bit16s                  cpu;
+  Bit64u                  count;
+} bx_dbg_ctrl_t;
 
+typedef struct {
+  bx_address              ofs;
+  Bit32u                  seg;
+} bx_dbg_address_t;
 
+typedef struct {
+  union {
+    bx_address            lin;
+    bx_dbg_address_t      seg;
+    Bit64u                time;
+  } addr;
+  char *                  condition;
+  bool                    enabled;
+} bx_dbg_breakpoint_t;
 
+typedef struct {
+  bx_phy_address          phy;
+  bool                    enabled;
+  bool                    on_read;
+} bx_dbg_watchpoint_t;
+
+typedef struct {
+  bool                    cpu;
+  bool                    irq;
+  bool                    call;
+  bool                    ret;
+} bx_dbg_modebreak_t;
+
+typedef struct {
+  bx_cmd_t                cmd;
+  union {
+    bx_dbg_ctrl_t         ctrl;
+    bx_dbg_breakpoint_t   brk;
+    bx_dbg_watchpoint_t   watch;
+    bx_dbg_modebreak_t    mode;
+  } data;
+} bx_dbg_cmd_t;
+
+struct bx_dbg_cmd_chain_t {
+  bx_dbg_cmd_chain_t *    pred;
+  bx_dbg_cmd_chain_t *    succ;
+  bx_dbg_cmd_t *          cmd;
+};
+
+typedef struct {
+  bx_dbg_address_t        addr;
+  Bit8u                   len;
+  unsigned char *         data;
+  unsigned char *         text;
+} bx_dbg_asm_entry_t;
+
+#define ASM_ENTRY_LINES       256
+#define ASM_BUFFER_SIZE       4096
+#define ASM_TEXT_BUFFER_SIZE  (40 * ASM_ENTRY_LINES)
 
 ////////////////////////////////////////////////////////////////////////////////
 // bx_dbg_gui_c
@@ -223,33 +305,49 @@ typedef struct {
 class BOCHSAPI bx_dbg_gui_c {
 
 public:
+  bx_smp_info_t smp_info;
+  bx_dbg_asm_entry_t asm_lines[ASM_ENTRY_LINES];
+
+private:
+  struct bx_dbg_cmd_chain_t * cmd_chain;
+  volatile atomic_flag cmd_chain_lock;
+  unsigned char * asm_buffer;
+  unsigned char * asm_text_buffer;
+  
+public:
   bx_dbg_gui_c(void);
   virtual ~bx_dbg_gui_c(void);
 
   void init_internal(void);
 
+  /// async call : fetch next debug command
+  /// buffer is allocated, buffer_size size of allocated buffer
+  /// fill the buffer and return no of bytes filled
+  virtual size_t sync_evt_get_debug_command(char * buffer, size_t buffer_size);
+
+  void disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas);
+  
 protected:
   virtual void init_os_depended(void) {};
   virtual bool parse_os_setting(const char * param, const char * value) { return false; };
   virtual void write_os_setting(FILE * fd) {};
 
+  
 private:
   void read_dbg_gui_config(void);
   void write_dbg_gui_config(void);
   char * strip_whitespace(char * s);
 
+  void enqueue_cmd(bx_dbg_cmd_t * cmd);
+  bx_dbg_cmd_t * dequeue_cmd(void);
+  void process_cmd(bx_dbg_cmd_t * cmd);
+  
   void init_register_refs(void);
   void update_register(unsigned cpuNo);
 
-  bx_smp_info_t smp_info;
-
-
-
-  bool bCpuModeHasChanged;  // set if cpu mode has changed
-  unsigned currentCPUNo;    // active cpu
-  bool showAllSMPCPUs;      // Display all SMP CPUs
-  unsigned CPUcount;        // # of CPUs in a multi-CPU simulation
-
+  
+  
+  
 
 };
 

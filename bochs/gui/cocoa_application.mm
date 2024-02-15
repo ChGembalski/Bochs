@@ -24,11 +24,23 @@
 // written by Christoph Gembalski <christoph@gembalski.de>
 
 #include <Cocoa/Cocoa.h>
-#include "cocoa_bochs.h"
-#include "cocoa_application.h"
 
 #include "bochs.h"
 #include "siminterface.h"
+
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+#include "bx_debug/debug.h"
+#include "new_dbg.h"
+#endif /* BX_DEBUGGER && !BX_DEBUGGER_GUI && BX_NEW_DEBUGGER_GUI */
+
+#include "cocoa_bochs.h"
+#include "cocoa_headerbar.h"
+#include "cocoa_ctrl.h"
+#include "cocoa_menu.h"
+#include "cocoa_windows.h"
+#include "cocoa_application.h"
+
+
 
 extern int bxmain(void);
 
@@ -590,14 +602,22 @@ void BXGuiCocoaApplication::set_tooltip(unsigned hbar_id, const char * tip) {
 // DEBUGGER
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 
+void BXGuiCocoaApplication::createDebuggerUI(void) {
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [BXCocoaApplication->BXNSApp.bx_window_controller createDebuggerUI];
+  });
+}
+
+
+
 /**
  * dbg_addOutputText
  */
 void BXGuiCocoaApplication::dbg_addOutputText(char * txt) {
   NSLog(@"dbg_addOutputText");
-  dispatch_sync(dispatch_get_main_queue(), ^(void){
-  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_DEBUGGER] outputView] appendText:[NSString stringWithUTF8String:txt]];
-});
+//  dispatch_sync(dispatch_get_main_queue(), ^(void){
+//  [[[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_DEBUGGER] outputView] appendText:[NSString stringWithUTF8String:txt]];
+//});
 }
 
 

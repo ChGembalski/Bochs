@@ -118,6 +118,9 @@ ci_start_wait:
           bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_SAVE, false);
           bxcocoagui->activateMenu(BX_PROPERTY_CONFIG_RESET, false);
           bxcocoagui->showWindow(BX_GUI_WINDOW_CONFIGURATION, false);
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+          bxcocoagui->activateMenu(BX_PROPERTY_WINDOW_DEBUGGER, true);
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
           bxcocoagui->setSimulationState(SIM_RUN);
           SIM->begin_simulation(main_argc, main_argv);
           // we don't expect it to return, but if it does, quit

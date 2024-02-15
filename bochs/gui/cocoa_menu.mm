@@ -24,6 +24,10 @@
 // written by Christoph Gembalski <christoph@gembalski.de>
 
 #include <Cocoa/Cocoa.h>
+
+#include "config.h"
+
+#include "cocoa_bochs.h"
 #include "cocoa_menu.h"
 
 
@@ -50,13 +54,19 @@ menu_opts_t menu_options[] = {
   {"Debugger.Simulation",   "Step",           NO,   @"s", NSEventModifierFlagControl, NO,   BX_PROPERTY_STEP_SIM},
   {"Debugger.Simulation",   "Step N",         NO,   nil,  0,                          NO,   BX_PROPERTY_STEP_N_SIM},
   {"Debugger.Simulation",   "Break",          NO,   @"x", NSEventModifierFlagControl, NO,   BX_PROPERTY_BREAK_SIM},
+  {"Debugger",              "Assembler",      YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Debugger.Assembler",    "AT&T Syntax",    NO,   @"a", NSEventModifierFlagOption,  YES,  BX_PROPERTY_UNDEFINED},
+  {"Debugger.Assembler",    "Linear Address", NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Debugger",              "Memory",         YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Debugger.Memory",       "Linear Address", NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   {NULL,                    "Window",         YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {"Window",                "Configuration",  NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {"Window",                "VGA Display",    NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {"Window",                "Logger",         NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
-  {"Window",                "Debugger",       NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
+  {"Window",                "Debugger",       NO,   nil,  0,                          NO,   BX_PROPERTY_WINDOW_DEBUGGER},
+  {"Window",                "Debugger Config",NO,   nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
   {NULL,                    "Help",           YES,  nil,  0,                          YES,  BX_PROPERTY_UNDEFINED},
   {NULL,                    NULL,             NO,   nil,  0,                          NO,   BX_PROPERTY_UNDEFINED}
@@ -64,9 +74,10 @@ menu_opts_t menu_options[] = {
 
 
 
-
+////////////////////////////////////////////////////////////////////////////////
+// BXNSMenuBar
+////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSMenuBar
-
 
 /**
  * init

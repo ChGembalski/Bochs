@@ -24,18 +24,24 @@
 // written by Christoph Gembalski <christoph@gembalski.de>
 
 #include <Cocoa/Cocoa.h>
-#include "cocoa_logging.h"
-#include "cocoa_windows.h"
-#include "cocoa_ctrl.h"
-#include "cocoa_menu.h"
+
 #include "config.h"
+#include "bochs.h"
 #include "siminterface.h"
 #include "param_names.h"
 
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 #include "bx_debug/debug.h"
-#include "enh_dbg.h"
-#endif /* BX_DEBUGGER && BX_DEBUGGER_GUI */
+#include "new_dbg.h"
+#endif /* BX_DEBUGGER && !BX_DEBUGGER_GUI && BX_NEW_DEBUGGER_GUI */
+
+#include "cocoa_bochs.h"
+#include "cocoa_logging.h"
+#include "cocoa_headerbar.h"
+#include "cocoa_ctrl.h"
+#include "cocoa_menu.h"
+#include "cocoa_windows.h"
+
 
 
 edit_opts_t root_options[] = {
@@ -63,7 +69,25 @@ edit_opts_t root_options[] = {
   { nil,                                    NULL }
 };
 
+/// debugger tab placement configuration
+debugger_view_config_t debugger_view_tab_options[] = {
+  {DBG_V_REGISTER,    DBG_LOC_LEFT  },
+  {DBG_V_STACK,       DBG_LOC_LEFT  },
+  {DBG_V_INSTRUCTION, DBG_LOC_RIGHT },
+  {DBG_V_GDT,         DBG_LOC_LEFT  },
+  {DBG_V_IDT,         DBG_LOC_LEFT  },
+  {DBG_V_PAGING,      DBG_LOC_RIGHT },
+  {DBG_V_BREAKPOINT,  DBG_LOC_RIGHT },
+  {DBG_V_MEMORY,      DBG_LOC_RIGHT },
+  {DBG_V_NONE,        DBG_LOC_RIGHT },
+};
 
+/// general debugger configuration
+debugger_ctrl_config_t debugger_ctrl_options = {
+  true, true, true, true, true, true, true, true,
+  0, 1l,
+  2, 1l
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // BXNSPropertyCollection
@@ -325,13 +349,14 @@ NSMutableArray<NSNumber *> * queue;
 BXNSMenuBar * menubar;
 
 gui_window_t window_list[] = {
-  {BX_GUI_WINDOW_CONFIGURATION, NULL, @"Window.Configuration"},
-  {BX_GUI_WINDOW_VGA_DISPLAY,   NULL, @"Window.VGA Display"},
-  {BX_GUI_WINDOW_LOGGING,       NULL, @"Window.Logger"},
+  {BX_GUI_WINDOW_CONFIGURATION,   NULL, @"Window.Configuration"},
+  {BX_GUI_WINDOW_VGA_DISPLAY,     NULL, @"Window.VGA Display"},
+  {BX_GUI_WINDOW_LOGGING,         NULL, @"Window.Logger"},
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
-  {BX_GUI_WINDOW_DEBUGGER,      NULL, @"Window.Debugger"},
+  {BX_GUI_WINDOW_DEBUGGER,        NULL, @"Window.Debugger"},
+  {BX_GUI_WINDOW_DEBUGGER_CONFIG, NULL, @"Window.Debugger Config"},
 #endif /** BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
-  {BX_GUI_WINDOW_UNDEFINED,     NULL, nil}
+  {BX_GUI_WINDOW_UNDEFINED,       NULL, nil}
 };
 
 /**
@@ -369,9 +394,10 @@ gui_window_t window_list[] = {
     [window_list[2].window setIsVisible:NO];
 
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
-    window_list[3].window = [[BXNSDebuggerWindow alloc] init:self];
-    [((NSWindow *)window_list[3].window) center];
-    [window_list[3].window setIsVisible:NO];
+    window_list[3].window = nil;
+    window_list[4].window = [[BXNSDebuggerConfigWindow alloc] init:self];
+    [((NSWindow *)window_list[4].window) center];
+    [window_list[4].window setIsVisible:NO];
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
   }
@@ -530,6 +556,23 @@ gui_window_t window_list[] = {
   [[[self getWindow:BX_GUI_WINDOW_LOGGING] refreshTimer] invalidate];
   
 }
+
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+/**
+ * createDebuggerUI
+ */
+- (void)createDebuggerUI {
+    
+  window_list[3].window = [[BXNSDebuggerWindow alloc] init:self SmpInfo:nil];
+    [((NSWindow *)window_list[3].window) center];
+    [window_list[3].window setIsVisible:NO];
+  
+}
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
+
+
+
+
 
 /**
  * showWindow
@@ -1275,6 +1318,9 @@ event_loop:
 extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 @implementation BXNSAboutWindow
 
+/**
+ * init
+ */
 - (instancetype _Nonnull)init {
 
   self = [super initWithContentRect:NSMakeRect(0, 0, 640, 480)
@@ -1342,11 +1388,17 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 
 }
 
+/**
+ * onOKClick
+ */
 - (void)onOKClick:(id _Nonnull)sender {
   [self setIsVisible:NO];
   [NSApp stopModalWithCode:NSModalResponseOK];
 }
 
+/**
+ * getWorksWhenModal
+ */
 - (BOOL) getWorksWhenModal {
   return YES;
 }
@@ -1359,6 +1411,9 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 ////////////////////////////////////////////////////////////////////////////////
 @implementation BXNSParamRequestWindow
 
+/**
+ * init
+ */
 - (instancetype _Nonnull)init:(void * _Nonnull) param {
 
   self = [super initWithContentRect:NSMakeRect(0, 0, 640, 480)
@@ -2052,133 +2107,16 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 ////////////////////////////////////////////////////////////////////////////////
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 
-@implementation BXNSVerticalSplitView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
-
-    self.arrangesAllSubviews = YES;
-    self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
-
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSHorizontalSplitView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
-
-    self.vertical = YES;
-    self.arrangesAllSubviews = YES;
-    self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
-
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSTabView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSMemoryView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSGDTView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
 
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSIDTView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
-
-
-
-  }
-
-  return self;
-
-}
-
-@end
 
 
 @implementation BXNSLDTView
@@ -2202,109 +2140,19 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 @end
 
 
-@implementation BXNSPagingView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNStackView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSInstructionView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
-
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSBreakpointView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
 
 
 
-  }
 
-  return self;
-
-}
-
-@end
-
-
-@implementation BXNSRegisterView
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
-
-
-
-  }
-
-  return self;
-
-}
-
-@end
 
 
 @implementation BXNSOutputView
@@ -2393,7 +2241,7 @@ BXNSRegisterView * registerView;
 /**
  * init
  */
-- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller SmpInfo:(bx_smp_info_t *) smp {
 
   self = [super initWithBXController:controller
        contentRect: NSMakeRect(0, 0, 1024, 768)
@@ -2412,7 +2260,21 @@ BXNSRegisterView * registerView;
 
     self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-    verticalSplitView = [[BXNSVerticalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    self.debug_view = [[BXNSDebugView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+//    self.debug_view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self.contentView addSubview:self.debug_view];
+    
+    
+//    // prepare cpu tabs
+//    self.cpu_tabs = [[BXNSCpuTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768) SmpInfo:nil];
+//    self.cpu_tabs.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+//    [self.contentView addSubview:self.cpu_tabs];
+//    
+    
+    
+    
+    
+/*    verticalSplitView = [[BXNSVerticalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
     verticalSplitView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [self.contentView addSubview:verticalSplitView];
 
@@ -2461,13 +2323,13 @@ BXNSRegisterView * registerView;
     outputViewItem.label = @"Output";
     outputViewItem.view = self.outputView;
     [tabViewBottom addTabViewItem:outputViewItem];
-
+*/
   }
 
   return self;
 
 }
-// extern void ActivateMenuItem (int LW);
+
 /**
  * onMenuEvent
  */
@@ -2497,5 +2359,59 @@ NSLog(@"onMenuEvent path=%@ property=%d", path, p);
 
 
 @end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSDebuggerConfigWindow
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSDebuggerConfigWindow
+
+/**
+ * init
+ */
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
+  
+  self = [super initWithBXController:controller
+       contentRect: NSMakeRect(0, 0, 1024, 768)
+         styleMask: NSWindowStyleMaskTitled |
+                    NSWindowStyleMaskClosable |
+                    NSWindowStyleMaskMiniaturizable |
+                    NSWindowStyleMaskResizable
+           backing: NSBackingStoreBuffered
+             defer: NO
+            Custom: BX_GUI_WINDOW_DEBUGGER_CONFIG
+  ];
+  if (self) {
+    
+    NSTabViewItem * item;
+    
+    [self setTitle:BOCHS_WINDOW_DEBUGGER_CONFIG_NAME];
+    self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
+    self.tabView = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    self.tabView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.tabView.autoresizesSubviews = YES;
+    [self.contentView addSubview:self.tabView];
+    
+    item = [[NSTabViewItem alloc] init];
+    item.label = @"Settings";
+    item.view = [[BXNSOptionCtrlView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    [self.tabView addTabViewItem:item];
+    
+    item = [[NSTabViewItem alloc] init];
+    item.label = @"Tabs";
+    item.view = [[BXNSOptionTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    [self.tabView addTabViewItem:item];
+    
+  }
+   
+  return self;
+    
+}
+
+@end
+
+
+
 
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */

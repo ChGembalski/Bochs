@@ -23,6 +23,21 @@
 // cocoa -- bochs GUI file for MacOS X with Cocoa API
 // written by Christoph Gembalski <christoph@gembalski.de>
 
+#include <Cocoa/Cocoa.h>
+#include "config.h"
+#include "siminterface.h"
+#include "param_names.h"
+
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+#include "bx_debug/debug.h"
+#include "new_dbg.h"
+#include "cocoa_bochs.h"
+
+extern bx_dbg_gui_c * bx_dbg_new;
+extern debugger_ctrl_config_t debugger_ctrl_options;
+
+#endif /* BX_DEBUGGER && !BX_DEBUGGER_GUI && BX_NEW_DEBUGGER_GUI */
+
 #include "cocoa_ctrl.h"
 
 
@@ -591,6 +606,29 @@
 }
 
 /**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect Value:(unsigned long)val {
+  
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    self.param = nil;
+    self.date = nil;
+    self.text = [BXNSTextField textFieldWithString:[NSString stringWithFormat:@"%ld", val] TypeNotif:NO];
+    self.text.autoresizingMask = NSViewHeightSizable;
+    [self.text setFormatter:[[BXNSNumberFormatter alloc] init]];
+    self.slider = nil;
+    
+    [self addView:self.text inGravity:NSStackViewGravityLeading];
+    
+  }
+  
+  return self;
+  
+}
+
+/**
  * sliderChanged
  */
 - (void)sliderChanged:(id _Nonnull)sender {
@@ -790,7 +828,7 @@
   panel.canDownloadUbiquitousContents = NO;
   panel.directoryURL = [NSURL URLWithString:self.text.stringValue];
   if (self.param->get_description() != NULL) {
-    panel.title = [[NSString alloc] initWithUTF8String:self.param->get_description()];
+    panel.title = [NSString stringWithUTF8String:self.param->get_description()];
   }
 
   if ([panel runModal] == NSModalResponseOK) {
@@ -821,7 +859,7 @@
   panel.treatsFilePackagesAsDirectories = NO;
   panel.directoryURL = [NSURL URLWithString:self.text.stringValue];
   if (self.param->get_description() != NULL) {
-    panel.title = [[NSString alloc] initWithUTF8String:self.param->get_description()];
+    panel.title = [NSString stringWithUTF8String:self.param->get_description()];
   }
 
   if ([panel runModal] == NSModalResponseOK) {
@@ -852,7 +890,7 @@
   panel.canDownloadUbiquitousContents = NO;
   panel.directoryURL = [NSURL URLWithString:self.text.stringValue];
   if (self.param->get_description() != NULL) {
-    panel.title = [[NSString alloc] initWithUTF8String:self.param->get_description()];
+    panel.title = [NSString stringWithUTF8String:self.param->get_description()];
   }
 
   if ([panel runModal] == NSModalResponseOK) {
@@ -908,9 +946,9 @@
     self.isLeaf = leaf;
     self.param_name = param_name;
     if (path.length == 0) {
-      self.path = [[NSString alloc] initWithUTF8String:param_name];
+      self.path = [NSString stringWithUTF8String:param_name];
     } else {
-      self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
+      self.path = [NSString stringWithFormat:@"%@.%@", path, [NSString stringWithUTF8String:param_name]];
     }
     self.dev_no = 0;
     self.sub_control = nil;
@@ -932,9 +970,9 @@
     self.isLeaf = leaf;
     self.param_name = param_name;
     if (path.length == 0) {
-      self.path = [[NSString alloc] initWithUTF8String:param_name];
+      self.path = [NSString stringWithUTF8String:param_name];
     } else {
-      self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
+      self.path = [NSString stringWithFormat:@"%@.%@", path, [NSString stringWithUTF8String:param_name]];
     }
     self.dev_no = dev_no;
     self.sub_control = nil;
@@ -956,9 +994,9 @@
     self.isLeaf = leaf;
     self.param_name = param_name;
     if (path.length == 0) {
-      self.path = [[NSString alloc] initWithUTF8String:param_name];
+      self.path = [NSString stringWithUTF8String:param_name];
     } else {
-      self.path = [NSString stringWithFormat:@"%@.%@", path, [[NSString alloc] initWithUTF8String:param_name]];
+      self.path = [NSString stringWithFormat:@"%@.%@", path, [NSString stringWithUTF8String:param_name]];
     }
     self.dev_no = 0;
     self.sub_control = ctrl;
@@ -996,18 +1034,27 @@
   
 }
 
+/**
+ * toolbarAllowedItemIdentifiers
+ */
 - (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarAllowedItemIdentifiers:(NSToolbar * _Nonnull)toolbar {
   
   return @[ @"ips_item" ];
     
 }
 
+/**
+ * toolbarDefaultItemIdentifiers
+ */
 - (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarDefaultItemIdentifiers:(NSToolbar * _Nonnull)toolbar {
   
   return @[ @"ips_item" ];
   
 }
 
+/**
+ * toolbar
+ */
 - (NSToolbarItem * _Nullable)toolbar:(NSToolbar * _Nonnull)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier _Nonnull)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   
   if([toolbar.identifier isEqualToString:@"bx_toolbar"]) {
@@ -1029,6 +1076,9 @@
   
 }
 
+/**
+ * updateIPS
+ */
 - (void)updateIPS:(unsigned) val {
   
   self.ips_item.label = [NSString stringWithFormat:@"IPS : %010d", val];
@@ -1036,3 +1086,1102 @@
 }
 
 @end
+
+
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+////////////////////////////////////////////////////////////////////////////////
+// BXNSVerticalSplitView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSVerticalSplitView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.arrangesAllSubviews = YES;
+    self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSHorizontalSplitView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSHorizontalSplitView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.vertical = YES;
+    self.arrangesAllSubviews = YES;
+    self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSTabView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSTabView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSRegisterView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSRegisterView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect) frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    NSTableColumn * nameCol;
+    NSTableColumn * hexCol;
+    NSTableColumn * decCol;
+    
+    self.cpuNo = 0;
+    self.register_mapping = nil;
+    self.register_count = 0;
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.hasVerticalScroller = YES;
+    self.hasHorizontalScroller = YES;
+    self.autohidesScrollers = YES;
+    self.borderType = NSNoBorder;
+    
+    self.table = [[NSTableView alloc] initWithFrame:frameRect];
+    self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.table.usesAlternatingRowBackgroundColors = YES;
+    self.table.headerView = [[NSTableHeaderView alloc] init];
+    self.table.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
+    self.table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    self.table.rowHeight = 18;
+    self.table.intercellSpacing = NSMakeSize(6, 6);
+    
+    nameCol = [[NSTableColumn alloc] initWithIdentifier:@"col.name"];
+    nameCol.headerCell = [[NSTableHeaderCell alloc] init];
+    nameCol.title = @"Name";
+    nameCol.editable = NO;
+//    nameCol.sortDescriptorPrototype = [[NSSortDescriptor alloc] initWithKey:@"col.name" ascending:YES];
+    [self.table addTableColumn:nameCol];
+    
+    hexCol = [[NSTableColumn alloc] initWithIdentifier:@"col.hex"];
+    hexCol.headerCell = [[NSTableHeaderCell alloc] init];
+    hexCol.title = @"Hex Value";
+    hexCol.editable = YES;
+    [self.table addTableColumn:hexCol];
+    
+    decCol = [[NSTableColumn alloc] initWithIdentifier:@"col.dec"];
+    decCol.headerCell = [[NSTableHeaderCell alloc] init];
+    decCol.title = @"Dec Value";
+    decCol.editable = YES;
+    [self.table addTableColumn:decCol];
+    
+    
+    self.table.dataSource = (id)self;
+    
+    [self setDocumentView:self.table];
+    
+    // now prepare the register
+    [self createRegisterMapping];
+    
+  }
+
+  return self;
+
+}
+
+/**
+ * dealloc
+ */
+- (void)dealloc {
+  if (self.register_mapping != nil) {
+    free(self.register_mapping);
+  }
+}
+
+/**
+ * createRegisterMapping
+ */
+- (void)createRegisterMapping {
+  
+  unsigned int curRow;
+  unsigned int reg_id;
+  
+  if (bx_dbg_new == NULL) {
+    self.register_count = 0;
+    return;
+  }
+  
+  self.register_count = 0;
+  
+  if (debugger_ctrl_options.show_general_purpose_regs) {
+#if BX_SUPPORT_X86_64 == 1
+    self.register_count = 18;
+#else
+    self.register_count = 10;
+#endif /* BX_SUPPORT_X86_64 == 1 */
+  }
+  
+  if (debugger_ctrl_options.show_segment_regs) {
+    self.register_count += 5;
+  }
+  
+  if (debugger_ctrl_options.show_control_regs) {
+    self.register_count += 3;
+#if BX_CPU_LEVEL >= 5
+    self.register_count += 1;
+#endif /* BX_CPU_LEVEL >= 5 */
+#if BX_CPU_LEVEL >= 6
+    self.register_count += 1; // efer
+#endif /* BX_CPU_LEVEL >= 6 */
+  }
+  
+  if (debugger_ctrl_options.show_fpu_regs) {
+    self.register_count += 8;
+  }
+  
+  if (debugger_ctrl_options.show_test_regs) {
+#if BX_CPU_TEST_REGISTER
+#if BX_CPU_LEVEL >= 3 && BX_CPU_LEVEL <= 6
+    self.register_count += 3;
+#if BX_CPU_LEVEL >= 4
+    self.register_count += 2;
+#endif /* BX_CPU_LEVEL >= 4 */
+#endif /* BX_CPU_LEVEL >= 3 && BX_CPU_LEVEL <= 6 */
+#endif /* BX_CPU_TEST_REGISTER */
+  }
+  
+  if (debugger_ctrl_options.show_sse_regs) {
+#if BX_CPU_LEVEL >= 6
+    self.register_count += 8;
+#if BX_SUPPORT_X86_64
+    self.register_count += 8; // depends on cpu mode (only if 64bit
+#endif /* BX_SUPPORT_X86_64 */
+#endif /* BX_CPU_LEVEL >= 6 */
+  }
+  
+  if (debugger_ctrl_options.show_debug_regs) {
+    self.register_count += 6;
+  }
+  
+  // free if needed
+  if (self.register_mapping != nil) {
+    free(self.register_mapping);
+  }
+  // allocate
+  self.register_mapping = (debugger_register_mapping_t *)malloc(self.register_count * sizeof(debugger_register_mapping_t));
+  
+  // create mapping
+  curRow = 0;
+  
+  if (debugger_ctrl_options.show_general_purpose_regs) {
+#if BX_SUPPORT_X86_64 == 1
+    for (reg_id=RAX; reg_id<=R15; reg_id++) {
+#else
+    for (reg_id=RAX; reg_id<=RIP; reg_id++) {
+#endif /* BX_SUPPORT_X86_64 == 1 */
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+    self.register_mapping[curRow].reg_id = EFLAGS;
+    curRow++;
+  }
+  
+  if (debugger_ctrl_options.show_segment_regs) {
+    for (reg_id=CS; reg_id<=GS; reg_id++) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+  }
+    
+  if (debugger_ctrl_options.show_control_regs) {
+    for (reg_id=CR0; reg_id<=CR3; reg_id++) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+#if BX_CPU_LEVEL >= 5
+    self.register_mapping[curRow].reg_id = CR4;
+    curRow++;
+#endif /* BX_CPU_LEVEL >= 5 */
+#if BX_CPU_LEVEL >= 6
+    self.register_mapping[curRow].reg_id = MSR_EFER;
+    curRow++;
+#endif /* BX_CPU_LEVEL >= 6 */
+  }
+    
+  if (debugger_ctrl_options.show_fpu_regs) {
+    for (reg_id=FPU_ST0_F; reg_id<=FPU_ST7_E; reg_id+=2) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+  }
+    
+  if (debugger_ctrl_options.show_test_regs) {
+#if BX_CPU_TEST_REGISTER
+#if BX_CPU_LEVEL >= 3 && BX_CPU_LEVEL <= 6
+    for (reg_id=TR3; reg_id<=TR5; reg_id++) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+#if BX_CPU_LEVEL >= 4
+    for (reg_id=TR6; reg_id<=TR7; reg_id++) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+#endif /* BX_CPU_LEVEL >= 4 */
+#endif /* BX_CPU_LEVEL >= 3 && BX_CPU_LEVEL <= 6 */
+#endif /* BX_CPU_TEST_REGISTER */
+  }
+    
+  if (debugger_ctrl_options.show_sse_regs) {
+#if BX_CPU_LEVEL >= 6
+    for (reg_id=SSE_XMM00_0; reg_id<=SSE_XMM07_1; reg_id+=2) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+#if BX_SUPPORT_X86_64
+    for (reg_id=SSE_XMM08_0; reg_id<=SSE_XMM15_1; reg_id+=2) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+#endif /* BX_SUPPORT_X86_64 */
+#endif /* BX_CPU_LEVEL >= 6 */
+  }
+    
+  if (debugger_ctrl_options.show_debug_regs) {
+    for (reg_id=DR0; reg_id<=DR7; reg_id++) {
+      self.register_mapping[curRow].reg_id = reg_id;
+      curRow++;
+    }
+  }
+    
+}
+
+
+
+
+/**
+ * numberOfRowsInTableView
+ */
+- (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
+  
+  return self.register_count;
+  
+}
+
+
+- (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+  
+  NSString * cellValue;
+  unsigned int rowRef;
+  
+  rowRef = self.register_mapping[row].reg_id;
+  
+  if ([tableColumn.identifier compare:@"col.name"] == NSOrderedSame) {
+    cellValue = [NSString stringWithUTF8String:bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].name];
+  } else {
+    UInt8 size;
+    BOOL isHex;
+    
+    size = bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].size;
+    isHex = ([tableColumn.identifier compare:@"col.hex"] == NSOrderedSame);
+    switch (size) {
+      case 8: {
+        if (isHex) {
+          cellValue = [NSString stringWithFormat:@"0x%02X", (UInt8) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+        } else {
+          cellValue = [NSString stringWithFormat:@"%d", (UInt8) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+        }
+        break;
+      }
+      case 16: {
+        if (isHex) {
+          cellValue = [NSString stringWithFormat:@"0x%04X", (UInt16) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+        } else {
+          cellValue = [NSString stringWithFormat:@"%d", (UInt16) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+        }
+        break;
+      }
+      case 32: {
+        if (isHex) {
+          cellValue = [NSString stringWithFormat:@"0x%08X", (UInt32) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+        } else {
+          cellValue = [NSString stringWithFormat:@"%d", (UInt32) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+        }
+        break;
+      }
+      default: {
+        if (isHex) {
+          cellValue = [NSString stringWithFormat:@"0x%016llX", (UInt64) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+        } else {
+          cellValue = [NSString stringWithFormat:@"%lld", (UInt64) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+        }
+        break;
+      }
+    }
+    
+    
+  }
+    
+  return cellValue;
+  
+}
+
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSInstructionView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSInstructionView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+    self.cpuNo = 0;
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
+    self.ctrl_view = [[NSStackView alloc] initWithFrame:NSMakeRect(10, frameRect.size.height - 30, frameRect.size.width - 20, 20)];
+    self.ctrl_view.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    [self addSubview:self.ctrl_view];
+    
+//    // CPU select - only 1 at the beginning
+//    self.cpu_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+//    [self.cpu_select addItemWithTitle:@"CPU 0"];
+//    [self.ctrl_view addArrangedSubview:self.cpu_select];
+    
+    self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_continue];
+    
+    self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_break];
+    
+    self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_step_over];
+
+    self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_step];
+    
+    self.cnt_title = [NSTextField labelWithString:@"count:"];
+    [self.ctrl_view addArrangedSubview:self.cnt_title];
+    
+    NSView * wrapper = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 80, 20)];
+//    wrapper.autoresizingMask = NSViewHeightSizable;
+    self.cnt_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
+    self.cnt_value.autoresizingMask = NSViewHeightSizable;
+    self.cnt_value.preferredMaxLayoutWidth = 80;
+    self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.cpu_step_count];
+    [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
+    [wrapper addSubview:self.cnt_value];
+    [self.ctrl_view addArrangedSubview:wrapper];
+    
+    self.adr_title = [NSTextField labelWithString:@"Type:"];
+    [self.ctrl_view addArrangedSubview:self.adr_title];
+    
+    self.adr_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+    [self.adr_select addItemWithTitle:@"linear"];
+    [self.adr_select addItemWithTitle:@"seg:ofs"];
+    self.adr_select.objectValue = [NSNumber numberWithInt:0];
+    [self.adr_select setAction:@selector(adrValueChanged:)];
+    [self.adr_select setTarget:self];
+    
+    [self.ctrl_view addArrangedSubview:self.adr_select];
+    
+    self.asm_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
+    self.asm_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.asm_scroll.hasVerticalScroller = YES;
+    self.asm_scroll.hasHorizontalScroller = YES;
+    self.asm_scroll.autohidesScrollers = YES;
+    self.asm_scroll.borderType = NSNoBorder;
+    
+    self.table = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
+    self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.table.usesAlternatingRowBackgroundColors = YES;
+    self.table.headerView = [[NSTableHeaderView alloc] init];
+    self.table.columnAutoresizingStyle = NSTableViewFirstColumnOnlyAutoresizingStyle;
+    self.table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    self.table.rowHeight = 18;
+    self.table.intercellSpacing = NSMakeSize(6, 6);
+    
+    self.markerCol = [[NSTableColumn alloc] initWithIdentifier:@"col.marker"];
+    self.markerCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.markerCol.title = @"";
+    self.markerCol.editable = NO;
+    [self.table addTableColumn:self.markerCol];
+    
+    self.addrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.addr"];
+    self.addrCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.addrCol.title = @"Address";
+    self.addrCol.editable = NO;
+    [self.table addTableColumn:self.addrCol];
+    
+    self.instrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.instr"];
+    self.instrCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.instrCol.title = @"Instruction";
+    self.instrCol.editable = NO;
+    [self.table addTableColumn:self.instrCol];
+    
+    self.bytesCol = [[NSTableColumn alloc] initWithIdentifier:@"col.bytes"];
+    self.bytesCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.bytesCol.title = @"Bytes";
+    self.bytesCol.editable = NO;
+    [self.table addTableColumn:self.bytesCol];
+    
+    self.table.dataSource = (id)self;
+    
+    [self.asm_scroll setDocumentView:self.table];
+    
+    [self addSubview:self.asm_scroll];
+    
+    [self updateFromMemory];
+    
+  }
+
+  return self;
+
+}
+
+/**
+ * updateFromMemory
+ */
+- (void)updateFromMemory {
+  
+  bx_dbg_new->disassemble(
+    self.cpuNo,
+    true,
+    {
+      bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value,
+      (UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value
+    }, 
+    debugger_ctrl_options.use_gas_syntax
+  );
+  
+}
+  
+  
+  
+  
+/**
+ * adrValueChanged
+ */
+- (void)adrValueChanged:(id _Nonnull)sender {
+  
+}
+
+/**
+ * numberOfRowsInTableView
+ */
+- (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
+  
+  return ASM_ENTRY_LINES;
+  
+}
+
+/**
+ * tableView
+ */
+- (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+  
+  NSString * cellValue;
+  
+  if ([tableColumn.identifier compare:@"col.marker"] == NSOrderedSame) {
+    cellValue = @"";
+  } else if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+    cellValue = [NSString stringWithFormat:@"0x%016lX", bx_dbg_new->asm_lines[row].addr.ofs];
+  } else if ([tableColumn.identifier compare:@"col.instr"] == NSOrderedSame) {
+    cellValue = [NSString stringWithUTF8String:(const char *)bx_dbg_new->asm_lines[row].text];
+  } else {
+    cellValue = @"";
+    for (int cnt=0; cnt<bx_dbg_new->asm_lines[row].len; cnt++) {
+      cellValue = [NSString stringWithFormat:@"%@0x%02X ", cellValue, bx_dbg_new->asm_lines[row].data[cnt]];
+    }
+  }
+  
+  return cellValue;
+  
+}
+  
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSGDTView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSGDTView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSIDTView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSIDTView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNStackView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNStackView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    self.cpuNo = 0;
+    self.stack_buf = nil;
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.orientation = NSUserInterfaceLayoutOrientationVertical;
+    
+    self.header = [[NSStackView alloc] init];
+    self.header.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self addArrangedSubview:self.header];
+    
+    self.size_label = [NSTextField labelWithString:@"Bytes"];
+    [self.header addArrangedSubview:self.size_label];
+    
+    self.size_stack = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+    [self.size_stack addItemWithTitle:@"2"];
+    [self.size_stack addItemWithTitle:@"4"];
+    [self.size_stack addItemWithTitle:@"8"];
+    self.size_stack.objectValue = [NSNumber numberWithInt:0];
+    [self.size_stack setAction:@selector(valueChanged:)];
+    [self.size_stack setTarget:self];
+    [self.header addArrangedSubview:self.size_stack];
+
+    self.stack_scroll = [[NSScrollView alloc] initWithFrame:frameRect];
+    self.stack_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.stack_scroll.hasVerticalScroller = YES;
+    self.stack_scroll.hasHorizontalScroller = YES;
+    self.stack_scroll.autohidesScrollers = YES;
+    self.stack_scroll.borderType = NSNoBorder;
+    
+    self.table = [[NSTableView alloc] initWithFrame:frameRect];
+    self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.table.usesAlternatingRowBackgroundColors = YES;
+    self.table.headerView = [[NSTableHeaderView alloc] init];
+    self.table.columnAutoresizingStyle = NSTableViewFirstColumnOnlyAutoresizingStyle;
+    self.table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    self.table.rowHeight = 18;
+    self.table.intercellSpacing = NSMakeSize(6, 6);
+    
+    self.dataCol = [[NSTableColumn alloc] initWithIdentifier:@"col.data"];
+    self.dataCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.dataCol.title = @"                  ";
+    self.dataCol.editable = YES;
+    [self.table addTableColumn:self.dataCol];
+    self.table.dataSource = (id)self;
+   
+    [self.stack_scroll setDocumentView:self.table];
+    
+    [self addArrangedSubview:self.stack_scroll];
+    
+    self.stack_buf = (unsigned char *)malloc(8 * 64 * sizeof(unsigned char));
+    
+    [self updateFromMemory];
+    
+  }
+
+  return self;
+
+}
+
+/**
+ * dealloc
+ */
+- (void)dealloc {
+  
+  if (self.stack_buf != nil) {
+    free(self.stack_buf);
+  }
+  
+}
+  
+/**
+ * updateFromMemory
+ */
+- (void)updateFromMemory {
+  
+  bx_address laddr;
+  
+  laddr = BX_CPU(self.cpuNo)->get_laddr(BX_SEG_REG_SS, (bx_address) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RSP].value);
+  
+  if (bx_dbg_read_linear(self.cpuNo, laddr, 8 * 64, self.stack_buf)) {
+    [self.table reloadData];
+  }
+  
+}
+  
+/**
+ * valueChanged
+ */
+- (void)valueChanged:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.stack_bytes = (unsigned char)[sender titleOfSelectedItem].intValue;
+  [self.table reloadData];
+  
+}
+  
+/**
+ * numberOfRowsInTableView
+ */
+- (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
+  
+  return 64;
+  
+}
+  
+/**
+ * tableView
+ */
+- (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+  
+  NSString * cellValue;
+  UInt16 * wRef;
+  UInt32 * dwRef;
+  UInt64 * qwRef;
+  
+  switch (debugger_ctrl_options.stack_bytes) {
+    case 2: {
+      wRef = (UInt16 *)self.stack_buf;
+      cellValue = [NSString stringWithFormat:@"0x%04X", wRef[row]];
+      break;
+    }
+    case 4: {
+      dwRef = (UInt32 *)self.stack_buf;
+      cellValue = [NSString stringWithFormat:@"0x%08X", dwRef[row]];
+      break;
+    }
+    case 8: {
+      qwRef = (UInt64 *)self.stack_buf;
+      cellValue = [NSString stringWithFormat:@"0x%016llX", qwRef[row]];
+      break;
+    }
+    default: {
+      cellValue = nil;
+    }
+  }
+  
+  return cellValue;
+  
+}
+  
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSBreakpointView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSBreakpointView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSPagingView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSPagingView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSMemoryView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSMemoryView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+
+  self = [super initWithFrame:frameRect];
+  if (self) {
+
+
+
+  }
+
+  return self;
+
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// ???
+////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSCpuTabContentView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSCpuTabContentView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect SmpInfo:(bx_smp_info_t *) smp {
+  
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
+    // setup tab views
+    self.tabViewLeft = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+    self.tabViewLeft.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self addArrangedSubview:self.tabViewLeft];
+    self.tabViewRight = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+    self.tabViewRight.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [self addArrangedSubview:self.tabViewRight];
+    
+
+    // insert into tab views
+    for (int i=0; i<DBG_V_NONE; i++) {
+      
+      NSTabViewItem * item;
+      
+      item = nil;
+      switch (debugger_view_tab_options[i].view) {
+        case DBG_V_REGISTER: {
+          self.registerView = [[BXNSRegisterView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"Register";
+          item.view = self.registerView;
+          break;
+        }
+        case DBG_V_STACK: {
+          self.stackView = [[BXNStackView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"Stack";
+          item.view = self.stackView;
+          break;
+        }
+        case DBG_V_INSTRUCTION: {
+          self.instructionView = [[BXNSInstructionView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"Instruction";
+          item.view = self.instructionView;
+          break;
+        }
+        case DBG_V_GDT: {
+          self.gdtView = [[BXNSGDTView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"GDT";
+          item.view = self.gdtView;
+          break;
+        }
+        case DBG_V_IDT: {
+          self.idtView = [[BXNSIDTView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"IDT";
+          item.view = self.idtView;
+          break;
+        }
+        case DBG_V_PAGING: {
+          self.pagingView = [[BXNSPagingView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"Paging";
+          item.view = self.pagingView;
+          break;
+        }
+        case DBG_V_BREAKPOINT: {
+          self.breakpointView = [[BXNSBreakpointView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"Breakpoints";
+          item.view = self.idtView;
+          break;
+        }
+        case DBG_V_MEMORY: {
+          self.memoryView = [[BXNSMemoryView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
+          item = [[NSTabViewItem alloc] init];
+          item.label = @"Memory";
+          item.view = self.memoryView;
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+      
+      if (item != nil) {
+        if (debugger_view_tab_options[i].location == DBG_LOC_LEFT) {
+          [self.tabViewLeft addTabViewItem:item];
+        } else {
+          [self.tabViewRight addTabViewItem:item];
+        }
+      }
+      
+    }
+    
+  }
+  
+  return self;
+  
+}
+
+/**
+ * moveToView
+ */
+- (void)moveToView:(debugger_view_location_t) dest View:(debugger_views_t) view {
+  
+  // TODO : ...
+  
+}
+
+
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSDebugView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSDebugView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+  
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.autoresizesSubviews = YES;
+    
+    self.ctrl_view = [[NSStackView alloc] initWithFrame:NSMakeRect(10, frameRect.size.height - 30, frameRect.size.width - 20, 20)];
+    self.ctrl_view.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    [self addSubview:self.ctrl_view];
+    
+    // CPU select - only 1 at the beginning
+    self.cpu_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+    for (UInt16 i=0; i<bx_dbg_new->smp_info.cpu_count; i++) {
+      [self.cpu_select addItemWithTitle:[NSString stringWithFormat:@"CPU %d",i]];
+    }
+    self.cpu_select.objectValue = [NSNumber numberWithInt:debugger_ctrl_options.selected_cpu];
+    [self.cpu_select setAction:@selector(cpuValueChanged:)];
+    [self.cpu_select setTarget:self];
+    [self.ctrl_view addArrangedSubview:self.cpu_select];
+    
+    self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_continue];
+    
+    self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_break];
+    
+    self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_step_over];
+
+    self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:nil];
+    [self.ctrl_view addArrangedSubview:self.btn_step];
+    
+    self.cnt_title = [NSTextField labelWithString:@"count:"];
+    [self.ctrl_view addArrangedSubview:self.cnt_title];
+    
+    NSView * wrapper = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 80, 20)];
+//    wrapper.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.cnt_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
+    self.cnt_value.autoresizingMask = NSViewHeightSizable;
+    self.cnt_value.preferredMaxLayoutWidth = 80;
+    self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.global_step_count];
+    [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
+    [wrapper addSubview:self.cnt_value];
+    [self.ctrl_view addArrangedSubview:wrapper];
+ 
+    
+    self.cpu_view = [[BXNSCpuTabContentView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40) SmpInfo:nil];
+    [self addSubview:self.cpu_view];
+    
+  }
+  
+  return self;
+  
+}
+
+/**
+ * cpuValueChanged
+ */
+- (void)cpuValueChanged:(id _Nonnull)sender {
+  
+}
+  
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSOptionCtrlView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSOptionCtrlView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+  
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.autoresizesSubviews = YES;
+    
+  }
+  
+  return self;
+  
+}
+
+@end
+
+
+////////////////////////////////////////////////////////////////////////////////
+// BXNSOptionTabView
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSOptionTabView
+
+/**
+ * initWithFrame
+ */
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
+  
+  self = [super initWithFrame:frameRect];
+  if (self) {
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.autoresizesSubviews = YES;
+    
+  }
+  
+  return self;
+  
+}
+
+@end
+
+
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */

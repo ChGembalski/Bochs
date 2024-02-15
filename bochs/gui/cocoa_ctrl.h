@@ -27,11 +27,7 @@
 
   #define BX_GUI_COCOA_CTRL_H
 
-  #include <Cocoa/Cocoa.h>
-  #include "config.h"
-  #include "siminterface.h"
-  #include "param_names.h"
-
+  extern debugger_view_config_t debugger_view_tab_options[];
 
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSPreView
@@ -160,12 +156,13 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSNumberSelector : NSStackView
 
-    @property (nonatomic, readwrite) bx_param_num_c * _Nonnull param;
+    @property (nonatomic, readwrite) bx_param_num_c * _Nullable param;
     @property (nonatomic, readwrite, strong) NSSlider * _Nullable slider;
     @property (nonatomic, readwrite, strong) BXNSTextField * _Nullable text;
     @property (nonatomic, readwrite, strong) NSDatePicker * _Nullable date;
 
     - (instancetype _Nonnull)initWithBrowser:(NSBrowser * _Nonnull) browser Param:(bx_param_num_c * _Nonnull) param;
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect Value:(unsigned long)val;
 
     - (void)sliderChanged:(id _Nonnull)sender;
     - (void)valueChanged:(id _Nonnull)sender;
@@ -218,15 +215,254 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSToolbar : NSToolbar <NSToolbarDelegate>
 
-@property (nonatomic, readwrite, strong) NSToolbarItem * _Nullable ips_item;
+    @property (nonatomic, readwrite, strong) NSToolbarItem * _Nullable ips_item;
 
     - (instancetype _Nonnull)init;
 
-- (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarAllowedItemIdentifiers:(NSToolbar * _Nonnull)toolbar;
-- (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarDefaultItemIdentifiers:(NSToolbar * _Nonnull)toolbar;
-- (NSToolbarItem * _Nullable)toolbar:(NSToolbar * _Nonnull)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier _Nonnull)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag;
-- (void)updateIPS:(unsigned) val;
+    - (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarAllowedItemIdentifiers:(NSToolbar * _Nonnull)toolbar;
+    - (NSArray<NSToolbarItemIdentifier> * _Nonnull)toolbarDefaultItemIdentifiers:(NSToolbar * _Nonnull)toolbar;
+    - (NSToolbarItem * _Nullable)toolbar:(NSToolbar * _Nonnull)toolbar itemForItemIdentifier:(NSToolbarItemIdentifier _Nonnull)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag;
+    - (void)updateIPS:(unsigned) val;
 
   @end
+
+
+#if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSVerticalSplitView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSVerticalSplitView : NSSplitView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSHorizontalSplitView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSHorizontalSplitView : NSSplitView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSTabView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSTabView : NSTabView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSRegisterView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSRegisterView : NSScrollView <NSTableViewDataSource>
+
+    @property (nonatomic, readwrite, strong) NSTableView * _Nonnull table;
+    @property (nonatomic, readwrite) unsigned cpuNo;
+    @property (nonatomic, readwrite) debugger_register_mapping_t * _Nullable register_mapping;
+    @property (nonatomic, readwrite) NSInteger register_count;
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect) frameRect;
+    - (void)dealloc;
+
+    - (void)createRegisterMapping;
+    - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
+    - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSInstructionView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSInstructionView : NSView <NSTableViewDataSource>
+
+    @property (nonatomic, readwrite, strong) NSStackView * _Nonnull ctrl_view;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_continue;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_break;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_step_over;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_step;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull cnt_title;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull cnt_value;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull adr_title;
+    @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull adr_select;
+
+    @property (nonatomic, readwrite, strong) NSScrollView * _Nonnull asm_scroll;
+    @property (nonatomic, readwrite, strong) NSTableView * _Nonnull table;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull markerCol;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull addrCol;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull instrCol;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull bytesCol;
+    @property (nonatomic, readwrite) unsigned cpuNo;
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    - (void)updateFromMemory;
+
+    - (void)adrValueChanged:(id _Nonnull)sender;
+
+    - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
+    - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSGDTView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSGDTView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSIDTView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSIDTView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNStackView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNStackView : NSStackView <NSTableViewDataSource>
+
+    @property (nonatomic, readwrite, strong) NSStackView * _Nonnull header;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull size_label;
+    @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull size_stack;
+    @property (nonatomic, readwrite, strong) NSScrollView * _Nonnull stack_scroll;
+    @property (nonatomic, readwrite, strong) NSTableView * _Nonnull table;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull dataCol;
+    @property (nonatomic, readwrite) unsigned cpuNo;
+    @property (nonatomic, readwrite) unsigned char * _Nullable stack_buf;
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+    - (void)dealloc;
+
+    - (void)updateFromMemory;
+    - (void)valueChanged:(id _Nonnull)sender;
+
+    - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
+    - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSBreakpointView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSBreakpointView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSPagingView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSPagingView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSMemoryView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSMemoryView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // ???
+  ////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSCpuTabContentView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSCpuTabContentView : BXNSHorizontalSplitView
+
+    @property (nonatomic, readwrite, strong) BXNSTabView * _Nonnull tabViewLeft;
+    @property (nonatomic, readwrite, strong) BXNSTabView * _Nonnull tabViewRight;
+    
+    @property (nonatomic, readwrite, strong) BXNSRegisterView * _Nonnull registerView;
+    @property (nonatomic, readwrite, strong) BXNSInstructionView * _Nonnull instructionView;
+    @property (nonatomic, readwrite, strong) BXNSGDTView * _Nonnull gdtView;
+    @property (nonatomic, readwrite, strong) BXNSIDTView * _Nonnull idtView;
+    @property (nonatomic, readwrite, strong) BXNStackView * _Nonnull stackView;
+    @property (nonatomic, readwrite, strong) BXNSBreakpointView * _Nonnull breakpointView;
+    @property (nonatomic, readwrite, strong) BXNSPagingView * _Nonnull pagingView;
+    @property (nonatomic, readwrite, strong) BXNSMemoryView * _Nonnull memoryView;
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect SmpInfo:(bx_smp_info_t *) smp;
+
+    - (void)moveToView:(debugger_view_location_t) dest View:(debugger_views_t) view;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSDebugView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSDebugView : NSView 
+
+    @property (nonatomic, readwrite, strong) NSStackView * _Nonnull ctrl_view;
+    @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull cpu_select;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_continue;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_break;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_step_over;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_step;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull cnt_title;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull cnt_value;
+    @property (nonatomic, readwrite, strong) BXNSCpuTabContentView * _Nonnull cpu_view;
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    - (void)cpuValueChanged:(id _Nonnull)sender;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSOptionCtrlView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSOptionCtrlView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // BXNSOptionTabView
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSOptionTabView : NSView
+
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+  @end
+
+
+#endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */
 
 #endif /* BX_GUI_COCOA_CTRL_H */

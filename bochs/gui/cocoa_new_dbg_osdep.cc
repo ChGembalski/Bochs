@@ -27,6 +27,8 @@
 
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 
+  #include "cocoa_bochs.h"
+
   #include "new_dbg.h"
 
 class bx_cocoa_dbg_gui_c : public bx_dbg_gui_c {
@@ -59,7 +61,8 @@ IMPLEMENT_GUI_DEBUGGER(bx_cocoa_dbg_gui_c);
 // }
 
 void bx_cocoa_dbg_gui_c::init_os_depended(void) {
-
+  bxcocoagui->createDebuggerUI();
+  bxcocoagui->showWindow(BX_GUI_WINDOW_DEBUGGER, true);
 }
 
 
