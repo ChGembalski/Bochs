@@ -299,7 +299,9 @@
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull addrCol;
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull instrCol;
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull bytesCol;
+    @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
     @property (nonatomic, readwrite) unsigned cpuNo;
+    @property (nonatomic, readwrite) bx_address cs_rip_addr_lin;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
@@ -346,6 +348,7 @@
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull dataCol;
     @property (nonatomic, readwrite) unsigned cpuNo;
     @property (nonatomic, readwrite) unsigned char * _Nullable stack_buf;
+    @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
     - (void)dealloc;
@@ -382,9 +385,50 @@
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSMemoryView
   ////////////////////////////////////////////////////////////////////////////////
-  @interface BXNSMemoryView : NSView
+  @interface BXNSMemoryView : NSView <NSTableViewDataSource>
+
+    @property (nonatomic, readwrite, strong) NSView * _Nonnull ctrl_view;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull addr_label;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull addr_value;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull page_label;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull prev_button;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull succ_button;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull bytes_label;
+    @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull bytes_select;
+    @property (nonatomic, readwrite, strong) NSScrollView * _Nonnull bytes_scroll;
+    @property (nonatomic, readwrite, strong) NSTableView * _Nonnull bytes_view;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull addrCol;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_0;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_1;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_2;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_3;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_4;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_5;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_6;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_7;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_8;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_9;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_A;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_B;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_C;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_D;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_E;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull byteCol_F;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull stringCol;
+    @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
+    @property (nonatomic, readwrite) unsigned cpuNo;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    - (void)updateFromMemory;
+    - (void)bytesValueChanged:(id _Nonnull)sender;
+    - (void)prevButtonClick:(id _Nonnull)sender;
+    - (void)succButtonClick:(id _Nonnull)sender;
+    - (void)addrValueChanged:(id _Nonnull)sender;
+
+    - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView;
+    - (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row;
+    - (void)tableView:(NSTableView *)tableView setObjectValue:(id) object forTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row;
 
   @end
 

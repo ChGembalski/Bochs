@@ -300,6 +300,9 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
   this->asm_buffer = (unsigned char *)malloc(ASM_BUFFER_SIZE * sizeof(unsigned char));
   this->asm_text_buffer = (unsigned char *)malloc(ASM_TEXT_BUFFER_SIZE * sizeof(unsigned char));
   
+  // mem dump buffer
+  this->mem_buffer = (unsigned char *)realloc(NULL, 64 * sizeof(unsigned char));
+  
   this->init_register_refs();
   
 }
@@ -325,6 +328,10 @@ bx_dbg_gui_c::~bx_dbg_gui_c(void) {
   
   free(this->asm_buffer);
   free(this->asm_text_buffer);
+  
+  if (this->mem_buffer != NULL) {
+    free(this->mem_buffer);
+  }
   
   if (this->smp_info.cpu_info != NULL) {
     free(this->smp_info.cpu_info);
@@ -752,10 +759,27 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
     
   }
   
-  
 }
 
+/**
+ * memorydump
+ */
+void bx_dbg_gui_c::memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size) {
   
+  bx_address laddr;
+  
+  if (seg) {
+    laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
+  } else {
+    laddr = addr.ofs;
+  }
+  
+  // prepare buffer
+  this->mem_buffer = (unsigned char *)realloc(this->mem_buffer, buffer_size * sizeof(unsigned char));
+  
+  bx_dbg_read_linear(cpuNo, laddr, buffer_size, this->mem_buffer);
+  
+}
 
 
 #endif

@@ -1207,6 +1207,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     nameCol.headerCell = [[NSTableHeaderCell alloc] init];
     nameCol.title = @"Name";
     nameCol.editable = NO;
+    nameCol.width = 100;
 //    nameCol.sortDescriptorPrototype = [[NSSortDescriptor alloc] initWithKey:@"col.name" ascending:YES];
     [self.table addTableColumn:nameCol];
     
@@ -1214,12 +1215,14 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     hexCol.headerCell = [[NSTableHeaderCell alloc] init];
     hexCol.title = @"Hex Value";
     hexCol.editable = YES;
+    hexCol.width = 200;
     [self.table addTableColumn:hexCol];
     
     decCol = [[NSTableColumn alloc] initWithIdentifier:@"col.dec"];
     decCol.headerCell = [[NSTableHeaderCell alloc] init];
     decCol.title = @"Dec Value";
     decCol.editable = YES;
+    decCol.width = 200;
     [self.table addTableColumn:decCol];
     
     
@@ -1323,6 +1326,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   if (debugger_ctrl_options.show_general_purpose_regs) {
 #if BX_SUPPORT_X86_64 == 1
     for (reg_id=RAX; reg_id<=R15; reg_id++) {
+#if 0 /* without ide has parsing probs */
+    }
+#endif
 #else
     for (reg_id=RAX; reg_id<=RIP; reg_id++) {
 #endif /* BX_SUPPORT_X86_64 == 1 */
@@ -1560,24 +1566,28 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.markerCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.markerCol.title = @"";
     self.markerCol.editable = NO;
+    self.markerCol.width = 30;
     [self.table addTableColumn:self.markerCol];
     
     self.addrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.addr"];
     self.addrCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.addrCol.title = @"Address";
     self.addrCol.editable = NO;
+    self.addrCol.width = 150;
     [self.table addTableColumn:self.addrCol];
     
     self.instrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.instr"];
     self.instrCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.instrCol.title = @"Instruction";
     self.instrCol.editable = NO;
+    self.instrCol.width = 300;
     [self.table addTableColumn:self.instrCol];
     
     self.bytesCol = [[NSTableColumn alloc] initWithIdentifier:@"col.bytes"];
     self.bytesCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.bytesCol.title = @"Bytes";
     self.bytesCol.editable = NO;
+    self.bytesCol.width = 200;
     [self.table addTableColumn:self.bytesCol];
     
     self.table.dataSource = (id)self;
@@ -1585,6 +1595,11 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.asm_scroll setDocumentView:self.table];
     
     [self addSubview:self.asm_scroll];
+    
+    self.attributeMonospace = @{
+      NSForegroundColorAttributeName:NSColor.textColor,
+      NSFontAttributeName:[NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightRegular]
+    };
     
     [self updateFromMemory];
     
@@ -1598,6 +1613,8 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  * updateFromMemory
  */
 - (void)updateFromMemory {
+  
+  self.cs_rip_addr_lin = bx_dbg_get_laddr((UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value, bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value);
   
   bx_dbg_new->disassemble(
     self.cpuNo,
@@ -1635,22 +1652,37 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
-  NSString * cellValue;
-  
   if ([tableColumn.identifier compare:@"col.marker"] == NSOrderedSame) {
-    cellValue = @"";
-  } else if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
-    cellValue = [NSString stringWithFormat:@"0x%016lX", bx_dbg_new->asm_lines[row].addr.ofs];
-  } else if ([tableColumn.identifier compare:@"col.instr"] == NSOrderedSame) {
-    cellValue = [NSString stringWithUTF8String:(const char *)bx_dbg_new->asm_lines[row].text];
-  } else {
-    cellValue = @"";
-    for (int cnt=0; cnt<bx_dbg_new->asm_lines[row].len; cnt++) {
-      cellValue = [NSString stringWithFormat:@"%@0x%02X ", cellValue, bx_dbg_new->asm_lines[row].data[cnt]];
+    
+    if (self.cs_rip_addr_lin == bx_dbg_new->asm_lines[row].addr.ofs) {
+      // if cs:ip == address put image ->
+      return @"->";
     }
+    
+    return @"";
+    
+  } else if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+    
+    if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016lX", bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
+    } else {
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
+    }
+    
+  } else if ([tableColumn.identifier compare:@"col.instr"] == NSOrderedSame) {
+
+    return [[NSAttributedString alloc] initWithString:[NSString stringWithUTF8String:(const char *)bx_dbg_new->asm_lines[row].text] attributes:self.attributeMonospace];
+    
+  } else {
+    NSString * jStr;
+    
+    jStr = @"";
+    for (int cnt=0; cnt<bx_dbg_new->asm_lines[row].len; cnt++) {
+      jStr = [NSString stringWithFormat:@"%@0x%02X ", jStr, bx_dbg_new->asm_lines[row].data[cnt]];
+    }
+    
+    return [[NSAttributedString alloc] initWithString:jStr attributes:self.attributeMonospace];
   }
-  
-  return cellValue;
   
 }
   
@@ -1750,7 +1782,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.table = [[NSTableView alloc] initWithFrame:frameRect];
     self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.table.usesAlternatingRowBackgroundColors = YES;
-    self.table.headerView = [[NSTableHeaderView alloc] init];
+    self.table.headerView = nil;//[[NSTableHeaderView alloc] init];
     self.table.columnAutoresizingStyle = NSTableViewFirstColumnOnlyAutoresizingStyle;
     self.table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
     self.table.rowHeight = 18;
@@ -1758,8 +1790,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
     self.dataCol = [[NSTableColumn alloc] initWithIdentifier:@"col.data"];
     self.dataCol.headerCell = [[NSTableHeaderCell alloc] init];
-    self.dataCol.title = @"                  ";
+    self.dataCol.title = @"";
     self.dataCol.editable = YES;
+    self.dataCol.width = 200;
     [self.table addTableColumn:self.dataCol];
     self.table.dataSource = (id)self;
    
@@ -1768,6 +1801,11 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self addArrangedSubview:self.stack_scroll];
     
     self.stack_buf = (unsigned char *)malloc(8 * 64 * sizeof(unsigned char));
+    
+    self.attributeMonospace = @{
+      NSForegroundColorAttributeName:NSColor.textColor,
+      NSFontAttributeName:[NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightRegular]
+    };
     
     [self updateFromMemory];
     
@@ -1827,33 +1865,29 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
-  NSString * cellValue;
-  UInt16 * wRef;
-  UInt32 * dwRef;
-  UInt64 * qwRef;
-  
   switch (debugger_ctrl_options.stack_bytes) {
     case 2: {
+      UInt16 * wRef;
+      
       wRef = (UInt16 *)self.stack_buf;
-      cellValue = [NSString stringWithFormat:@"0x%04X", wRef[row]];
-      break;
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X", wRef[row]] attributes:self.attributeMonospace];
     }
     case 4: {
+      UInt32 * dwRef;
+      
       dwRef = (UInt32 *)self.stack_buf;
-      cellValue = [NSString stringWithFormat:@"0x%08X", dwRef[row]];
-      break;
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", dwRef[row]] attributes:self.attributeMonospace];
     }
     case 8: {
+      UInt64 * qwRef;
+      
       qwRef = (UInt64 *)self.stack_buf;
-      cellValue = [NSString stringWithFormat:@"0x%016llX", qwRef[row]];
-      break;
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016llX", qwRef[row]] attributes:self.attributeMonospace];
     }
     default: {
-      cellValue = nil;
+      return @"";
     }
   }
-  
-  return cellValue;
   
 }
   
@@ -1921,13 +1955,391 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   self = [super initWithFrame:frameRect];
   if (self) {
 
+    self.cpuNo = 0;
+    
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    
+    self.ctrl_view = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, 30)];
+    self.ctrl_view.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
+    [self addSubview:self.ctrl_view];
+    
+    self.addr_label = [NSTextField labelWithString:@"Address"];
+    self.addr_label.frame = NSMakeRect(10, 0, 60, 20);
+    [self.ctrl_view addSubview:self.addr_label];
+    
+    self.addr_value = [BXNSTextField textFieldWithString:@"09090909:09090909" TypeNotif:NO];
+//    self.cnt_value.autoresizingMask = NSViewHeightSizable;
+    self.addr_value.preferredMaxLayoutWidth = 160;
+    self.addr_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.mem_displ_addr];
+    [self.addr_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
+    self.addr_value.frame = NSMakeRect(70, 2, 160, 20);
+    [self.addr_value setAction:@selector(addrValueChanged:)];
+    [self.addr_value setTarget:self];
+    [self.ctrl_view addSubview:self.addr_value];
+    
+    self.page_label = [NSTextField labelWithString:@"Page"];
+    self.page_label.frame = NSMakeRect(250, 0, 40, 20);
+    [self.ctrl_view addSubview:self.page_label];
+    
+    self.prev_button = [NSButton buttonWithTitle:@"<" target:self action:nil];
+    self.prev_button.bezelStyle = NSBezelStyleSmallSquare;
+    self.prev_button.frame = NSMakeRect(290, 2, 30, 20);
+    [self.prev_button setAction:@selector(prevButtonClick:)];
+    [self.prev_button setTarget:self];
+    [self.ctrl_view addSubview:self.prev_button];
+    
+    self.succ_button = [NSButton buttonWithTitle:@">" target:self action:nil];
+    self.succ_button.bezelStyle = NSBezelStyleSmallSquare;
+    self.succ_button.frame = NSMakeRect(320, 2, 30, 20);
+    [self.succ_button setAction:@selector(succButtonClick:)];
+    [self.succ_button setTarget:self];
+    [self.ctrl_view addSubview:self.succ_button];
+    
+    self.bytes_label = [NSTextField labelWithString:@"Number of Bytes"];
+    self.bytes_label.frame = NSMakeRect(360, 0, 120, 20);
+    [self.ctrl_view addSubview:self.bytes_label];
+    
+    self.bytes_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+    [self.bytes_select addItemWithTitle:@"16"];
+    [self.bytes_select addItemWithTitle:@"32"];
+    [self.bytes_select addItemWithTitle:@"64"];
+    [self.bytes_select addItemWithTitle:@"128"];
+    [self.bytes_select addItemWithTitle:@"256"];
+    [self.bytes_select addItemWithTitle:@"512"];
+    [self.bytes_select addItemWithTitle:@"1024"];
+    [self.bytes_select addItemWithTitle:@"2048"];
+    [self.bytes_select addItemWithTitle:@"4096"];
+    [self.bytes_select addItemWithTitle:@"8192"];
+    [self.bytes_select addItemWithTitle:@"16384"];
+    [self.bytes_select addItemWithTitle:@"32768"];
+    [self.bytes_select addItemWithTitle:@"65536"];
+    self.bytes_select.objectValue = [NSNumber numberWithInt:debugger_ctrl_options.mem_displ_size];
+    [self.bytes_select setAction:@selector(bytesValueChanged:)];
+    [self.bytes_select setTarget:self];
+    self.bytes_select.frame = NSMakeRect(470, 0, 80, 20);
+    [self.ctrl_view addSubview:self.bytes_select];
+    
+    self.bytes_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 40, frameRect.size.width, frameRect.size.height - 40)];
+    self.bytes_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.bytes_scroll.hasVerticalScroller = YES;
+    self.bytes_scroll.hasHorizontalScroller = NO;
+    self.bytes_scroll.autohidesScrollers = YES;
+    self.bytes_scroll.borderType = NSNoBorder;
+    
+    self.bytes_view = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 40, frameRect.size.width, frameRect.size.height - 40)];
+    self.bytes_view.frame = NSMakeRect(0, 40, frameRect.size.width, frameRect.size.height - 40);
+    self.bytes_view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.bytes_view.headerView = [[NSTableHeaderView alloc] init];
+    self.bytes_view.dataSource = self;
+    self.bytes_view.allowsColumnReordering = NO;
+    self.bytes_view.gridStyleMask = NSTableViewSolidVerticalGridLineMask;
+    self.bytes_view.usesStaticContents = NO;
+    self.bytes_view.usesAlternatingRowBackgroundColors = YES;
+//    self.bytes_view.style = NSTableViewStyleFullWidth;
+    self.bytes_view.enabled = YES;
+    self.bytes_view.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    self.bytes_view.rowHeight = 18;
+    self.bytes_view.intercellSpacing = NSMakeSize(6, 6);
+    // gridStyleMask
+    
+    [self.bytes_scroll setDocumentView:self.bytes_view];
+    
+    self.addrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.addr"];
+    self.addrCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.addrCol.title = @"Address";
+    self.addrCol.editable = NO;
+    self.addrCol.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.addrCol];
 
+    self.byteCol_0 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.0"];
+    self.byteCol_0.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_0.title = @"00";
+    self.byteCol_0.width = 25;
+    self.byteCol_0.editable = NO;
+    self.byteCol_0.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_0];
 
+    self.byteCol_1 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.1"];
+    self.byteCol_1.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_1.title = @"01";
+    self.byteCol_1.width = 25;
+    self.byteCol_1.editable = NO;
+    self.byteCol_1.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_1];
+
+    self.byteCol_2 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.2"];
+    self.byteCol_2.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_2.title = @"02";
+    self.byteCol_2.width = 25;
+    self.byteCol_2.editable = NO;
+    self.byteCol_2.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_2];
+
+    self.byteCol_3 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.3"];
+    self.byteCol_3.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_3.title = @"03";
+    self.byteCol_3.width = 25;
+    self.byteCol_3.editable = NO;
+    self.byteCol_3.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_3];
+
+    self.byteCol_4 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.4"];
+    self.byteCol_4.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_4.title = @"04";
+    self.byteCol_4.width = 25;
+    self.byteCol_4.editable = NO;
+    self.byteCol_4.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_4];
+
+    self.byteCol_5 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.5"];
+    self.byteCol_5.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_5.title = @"05";
+    self.byteCol_5.width = 25;
+    self.byteCol_5.editable = NO;
+    self.byteCol_5.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_5];
+
+    self.byteCol_6 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.6"];
+    self.byteCol_6.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_6.title = @"06";
+    self.byteCol_6.width = 25;
+    self.byteCol_6.editable = NO;
+    self.byteCol_6.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_6];
+
+    self.byteCol_7 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.7"];
+    self.byteCol_7.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_7.title = @"07";
+    self.byteCol_7.width = 25;
+    self.byteCol_7.editable = NO;
+    self.byteCol_7.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_7];
+    
+    self.byteCol_8 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.8"];
+    self.byteCol_8.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_8.title = @"08";
+    self.byteCol_8.width = 25;
+    self.byteCol_8.editable = NO;
+    self.byteCol_8.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_8];
+
+    self.byteCol_9 = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.9"];
+    self.byteCol_9.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_9.title = @"09";
+    self.byteCol_9.width = 25;
+    self.byteCol_9.editable = NO;
+    self.byteCol_9.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_9];
+
+    self.byteCol_A = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.A"];
+    self.byteCol_A.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_A.title = @"0A";
+    self.byteCol_A.width = 25;
+    self.byteCol_A.editable = NO;
+    self.byteCol_A.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_A];
+
+    self.byteCol_B = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.B"];
+    self.byteCol_B.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_B.title = @"0B";
+    self.byteCol_B.width = 25;
+    self.byteCol_B.editable = NO;
+    self.byteCol_B.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_B];
+
+    self.byteCol_C = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.C"];
+    self.byteCol_C.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_C.title = @"0C";
+    self.byteCol_C.width = 25;
+    self.byteCol_C.editable = NO;
+    self.byteCol_C.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_C];
+
+    self.byteCol_D = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.D"];
+    self.byteCol_D.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_D.title = @"0D";
+    self.byteCol_D.width = 25;
+    self.byteCol_D.editable = NO;
+    self.byteCol_D.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_D];
+
+    self.byteCol_E = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.E"];
+    self.byteCol_E.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_E.title = @"0E";
+    self.byteCol_E.width = 25;
+    self.byteCol_E.editable = NO;
+    self.byteCol_E.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_E];
+
+    self.byteCol_F = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.F"];
+    self.byteCol_F.headerCell = [[NSTableHeaderCell alloc] init];
+    self.byteCol_F.title = @"0F";
+    self.byteCol_F.width = 25;
+    self.byteCol_F.editable = NO;
+    self.byteCol_F.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.byteCol_F];
+
+//    self.byteCol = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.0"];
+//    self.byteCol.headerCell = [[NSTableHeaderCell alloc] init];
+//    self.byteCol.title = @"Bytes";
+//    self.byteCol.editable = NO;
+//    self.byteCol.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+//    [self.bytes_view addTableColumn:self.byteCol];
+
+    self.stringCol = [[NSTableColumn alloc] initWithIdentifier:@"col.string"];
+    self.stringCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.stringCol.title = @"";
+    self.stringCol.width = 200;
+    self.stringCol.editable = NO;
+    self.stringCol.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+    [self.bytes_view addTableColumn:self.stringCol];
+
+    [self addSubview:self.bytes_scroll];
+    
+    self.attributeMonospace = @{
+      NSForegroundColorAttributeName:NSColor.textColor,
+      NSFontAttributeName:[NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightRegular]
+    };
+    
+    [self updateFromMemory];
+    
   }
 
   return self;
 
 }
+
+/**
+ * updateFromMemory
+ */
+- (void)updateFromMemory {
+  
+  size_t buffer_size;
+  
+  buffer_size = (1 << (debugger_ctrl_options.mem_displ_size + 4));
+  
+  if (debugger_ctrl_options.mem_displ_addr == 0) {
+    self.prev_button.enabled = NO;
+  } else {
+    self.prev_button.enabled = YES;
+  }
+  
+  bx_dbg_new->memorydump(self.cpuNo, false, {debugger_ctrl_options.mem_displ_addr, 0}, buffer_size);
+  
+  //bx_dbg_new->mem_buffer
+  [self.bytes_view reloadData];
+  
+}
+
+/**
+ * bytesValueChanged
+ */
+- (void)bytesValueChanged:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.mem_displ_size = (unsigned char)[sender indexOfSelectedItem];
+  [self updateFromMemory];
+  
+}
+
+- (void)prevButtonClick:(id _Nonnull)sender {
+  
+  size_t buffer_size;
+  
+  buffer_size = (1 << (debugger_ctrl_options.mem_displ_size + 4));
+  if (debugger_ctrl_options.mem_displ_addr < buffer_size) {
+    debugger_ctrl_options.mem_displ_addr = 0;
+  } else {
+    debugger_ctrl_options.mem_displ_addr -= buffer_size;
+  }
+  
+  if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
+    self.addr_value.stringValue = [NSString stringWithFormat:@"%016lX", debugger_ctrl_options.mem_displ_addr];
+  } else {
+    self.addr_value.stringValue = [NSString stringWithFormat:@"%08X", (UInt32)debugger_ctrl_options.mem_displ_addr];
+  }
+  
+  [self updateFromMemory];
+  
+}
+
+- (void)succButtonClick:(id _Nonnull)sender {
+  
+  size_t buffer_size;
+  
+  buffer_size = (1 << (debugger_ctrl_options.mem_displ_size + 4));
+  debugger_ctrl_options.mem_displ_addr += buffer_size;
+  
+  if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
+    self.addr_value.stringValue = [NSString stringWithFormat:@"%016lX", debugger_ctrl_options.mem_displ_addr];
+  } else {
+    self.addr_value.stringValue = [NSString stringWithFormat:@"%08X", (UInt32)debugger_ctrl_options.mem_displ_addr];
+  }
+  
+  [self updateFromMemory];
+  
+}
+
+- (void)addrValueChanged:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.mem_displ_addr = (UInt64)self.addr_value.hexnumberValue;
+  [self updateFromMemory];
+  
+}
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
+  
+  size_t buffer_size;
+  
+  buffer_size = (1 << (debugger_ctrl_options.mem_displ_size + 4));
+  
+  return buffer_size/16;
+  
+}
+
+- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row {
+  
+  if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+
+    if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016lX", debugger_ctrl_options.mem_displ_addr + (row * 8)] attributes:self.attributeMonospace];
+    } else {
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)debugger_ctrl_options.mem_displ_addr + (row * 16)] attributes:self.attributeMonospace];
+    }
+
+  } else if ([tableColumn.identifier hasPrefix:@"col.byte"]) {
+    
+    UInt8 bofs;
+    NSString * subStr;
+    
+    subStr = [tableColumn.identifier substringFromIndex:9];
+    bofs = subStr.UTF8String[0] - '0';
+    if (bofs > 9) {
+      bofs -= 7;
+    }
+    
+    return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%02X", (UInt8)bx_dbg_new->mem_buffer[(row * 16) + bofs]] attributes:self.attributeMonospace];
+    
+  } else {
+    NSString * jStr;
+    
+    jStr = @"";
+    for (int i=0; i<16; i++) {
+      if (isprint(bx_dbg_new->mem_buffer[(row * 16) + i])) {
+        jStr = [NSString stringWithFormat:@"%@%c", jStr, bx_dbg_new->mem_buffer[(row * 16) + i]];
+      } else {
+        jStr = [NSString stringWithFormat:@"%@.", jStr];
+      }
+    }
+    return [[NSAttributedString alloc] initWithString:jStr attributes:self.attributeMonospace];
+  }
+  
+}
+
+- (void)tableView:(NSTableView *)tableView setObjectValue:(id) object forTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row {
+  
+}
+
+
 
 @end
 
@@ -2128,6 +2540,8 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  * cpuValueChanged
  */
 - (void)cpuValueChanged:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.selected_cpu = (unsigned char)[sender titleOfSelectedItem].intValue;
   
 }
   

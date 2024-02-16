@@ -112,6 +112,7 @@
     bool                      show_test_regs;
     bool                      show_sse_regs;
     bool                      show_debug_regs;
+    
     bool                      use_gas_syntax;
     
     unsigned char             selected_cpu;
@@ -119,6 +120,9 @@
     
     unsigned char             stack_bytes;
     unsigned long             cpu_step_count;
+    
+    unsigned char             mem_displ_size;
+    unsigned long             mem_displ_addr;
   } debugger_ctrl_config_t;
 
   typedef struct {

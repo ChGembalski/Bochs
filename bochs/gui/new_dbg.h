@@ -307,6 +307,7 @@ class BOCHSAPI bx_dbg_gui_c {
 public:
   bx_smp_info_t smp_info;
   bx_dbg_asm_entry_t asm_lines[ASM_ENTRY_LINES];
+  unsigned char * mem_buffer;
 
 private:
   struct bx_dbg_cmd_chain_t * cmd_chain;
@@ -326,6 +327,7 @@ public:
   virtual size_t sync_evt_get_debug_command(char * buffer, size_t buffer_size);
 
   void disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas);
+  void memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size);
   
 protected:
   virtual void init_os_depended(void) {};
