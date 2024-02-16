@@ -273,7 +273,7 @@
 
     - (void)createRegisterMapping;
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
-    - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+    - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
   @end
 
@@ -308,9 +308,14 @@
     - (void)updateFromMemory;
 
     - (void)adrValueChanged:(id _Nonnull)sender;
+    - (void)continueButtonClick:(id _Nonnull)sender;
+    - (void)breakButtonClick:(id _Nonnull)sender;
+    - (void)stepoverButtonClick:(id _Nonnull)sender;
+    - (void)stepButtonClick:(id _Nonnull)sender;
+
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
-    - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+    - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
   @end
 
@@ -357,7 +362,7 @@
     - (void)valueChanged:(id _Nonnull)sender;
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
-    - (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+    - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
   @end
 
@@ -426,9 +431,9 @@
     - (void)succButtonClick:(id _Nonnull)sender;
     - (void)addrValueChanged:(id _Nonnull)sender;
 
-    - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView;
-    - (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row;
-    - (void)tableView:(NSTableView *)tableView setObjectValue:(id) object forTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row;
+    - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull)tableView;
+    - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+    - (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
   @end
 
@@ -483,6 +488,10 @@
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
     - (void)cpuValueChanged:(id _Nonnull)sender;
+    - (void)continueButtonClick:(id _Nonnull)sender;
+    - (void)breakButtonClick:(id _Nonnull)sender;
+    - (void)stepoverButtonClick:(id _Nonnull)sender;
+    - (void)stepButtonClick:(id _Nonnull)sender;
 
   @end
 

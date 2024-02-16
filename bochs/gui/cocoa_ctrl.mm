@@ -1421,8 +1421,10 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
-
-- (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+/**
+ * tableView objectValueForTableColumn
+ */
+- (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
   NSString * cellValue;
   unsigned int rowRef;
@@ -1509,16 +1511,16 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 //    [self.cpu_select addItemWithTitle:@"CPU 0"];
 //    [self.ctrl_view addArrangedSubview:self.cpu_select];
     
-    self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:nil];
+    self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:@selector(continueButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_continue];
     
-    self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:nil];
+    self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:@selector(breakButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_break];
     
-    self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:nil];
+    self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:@selector(stepoverButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_step_over];
 
-    self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:nil];
+    self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:@selector(stepButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_step];
     
     self.cnt_title = [NSTextField labelWithString:@"count:"];
@@ -1636,6 +1638,37 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)adrValueChanged:(id _Nonnull)sender {
   
+  debugger_ctrl_options.addr_displ_seg_ofs = ([sender indexOfSelectedItem] == 1);
+  [self.table reloadData];
+  
+}
+
+/**
+ * continueButtonClick
+ */
+- (void)continueButtonClick:(id _Nonnull)sender {
+  
+}
+
+/**
+ * breakButtonClick
+ */
+- (void)breakButtonClick:(id _Nonnull)sender {
+  
+}
+
+/**
+ * stepoverButtonClick
+ */
+- (void)stepoverButtonClick:(id _Nonnull)sender {
+  
+}
+
+/**
+ * stepButtonClick
+ */
+- (void)stepButtonClick:(id _Nonnull)sender {
+  
 }
 
 /**
@@ -1648,9 +1681,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 }
 
 /**
- * tableView
+ * tableView objectValueForTableColumn
  */
-- (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+- (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
   if ([tableColumn.identifier compare:@"col.marker"] == NSOrderedSame) {
     
@@ -1666,7 +1699,21 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
       return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016lX", bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
     } else {
-      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
+      if (!bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode32 && !bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
+        if (debugger_ctrl_options.addr_displ_seg_ofs) {
+          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%02X:%04X", (UInt8)bx_dbg_new->asm_lines[row].addr.seg, (UInt16)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
+        } else {
+          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%06X", (UInt32)(((UInt8)bx_dbg_new->asm_lines[row].addr.seg >> 4) + (UInt16)bx_dbg_new->asm_lines[row].addr.ofs)] attributes:self.attributeMonospace];
+        }
+      } else if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode32 && !bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
+        if (debugger_ctrl_options.addr_displ_seg_ofs) {
+          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X:%08X", (UInt16)bx_dbg_new->asm_lines[row].addr.seg, (UInt32)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
+        } else {
+          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt64)((UInt16)bx_dbg_new->asm_lines[row].addr.seg + (UInt32)bx_dbg_new->asm_lines[row].addr.ofs)] attributes:self.attributeMonospace];
+        }
+      } else {
+        return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
+      }
     }
     
   } else if ([tableColumn.identifier compare:@"col.instr"] == NSOrderedSame) {
@@ -1861,9 +1908,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 }
   
 /**
- * tableView
+ * tableView objectValueForTableColumn
  */
-- (id)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+- (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
   switch (debugger_ctrl_options.stack_bytes) {
     case 2: {
@@ -2179,13 +2226,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_F.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_F];
 
-//    self.byteCol = [[NSTableColumn alloc] initWithIdentifier:@"col.byte.0"];
-//    self.byteCol.headerCell = [[NSTableHeaderCell alloc] init];
-//    self.byteCol.title = @"Bytes";
-//    self.byteCol.editable = NO;
-//    self.byteCol.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
-//    [self.bytes_view addTableColumn:self.byteCol];
-
     self.stringCol = [[NSTableColumn alloc] initWithIdentifier:@"col.string"];
     self.stringCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.stringCol.title = @"";
@@ -2241,6 +2281,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
+/**
+ * prevButtonClick
+ */
 - (void)prevButtonClick:(id _Nonnull)sender {
   
   size_t buffer_size;
@@ -2262,6 +2305,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
+/**
+ * succButtonClick
+ */
 - (void)succButtonClick:(id _Nonnull)sender {
   
   size_t buffer_size;
@@ -2279,6 +2325,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
+/**
+ * addrValueChanged
+ */
 - (void)addrValueChanged:(id _Nonnull)sender {
   
   debugger_ctrl_options.mem_displ_addr = (UInt64)self.addr_value.hexnumberValue;
@@ -2286,7 +2335,10 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
+/**
+ * numberOfRowsInTableView
+ */
+- (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull)tableView {
   
   size_t buffer_size;
   
@@ -2296,14 +2348,17 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
-- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row {
+/**
+ * tableView objectValueForTableColumn
+ */
+- (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
   if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
 
     if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
       return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016lX", debugger_ctrl_options.mem_displ_addr + (row * 8)] attributes:self.attributeMonospace];
     } else {
-      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)debugger_ctrl_options.mem_displ_addr + (row * 16)] attributes:self.attributeMonospace];
+      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08lX", (UInt32)debugger_ctrl_options.mem_displ_addr + (row * 16)] attributes:self.attributeMonospace];
     }
 
   } else if ([tableColumn.identifier hasPrefix:@"col.byte"]) {
@@ -2335,7 +2390,10 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
-- (void)tableView:(NSTableView *)tableView setObjectValue:(id) object forTableColumn:(NSTableColumn *) tableColumn row:(NSInteger) row {
+/**
+ * tableView setObjectValue
+ */
+- (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
 }
 
@@ -2501,16 +2559,16 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.cpu_select setTarget:self];
     [self.ctrl_view addArrangedSubview:self.cpu_select];
     
-    self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:nil];
+    self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:@selector(continueButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_continue];
     
-    self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:nil];
+    self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:@selector(breakButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_break];
     
-    self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:nil];
+    self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:@selector(stepoverButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_step_over];
 
-    self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:nil];
+    self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:@selector(stepButtonClick:)];
     [self.ctrl_view addArrangedSubview:self.btn_step];
     
     self.cnt_title = [NSTextField labelWithString:@"count:"];
@@ -2545,6 +2603,35 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
   
+/**
+ * continueButtonClick
+ */
+- (void)continueButtonClick:(id _Nonnull)sender {
+  
+}
+
+/**
+ * breakButtonClick
+ */
+- (void)breakButtonClick:(id _Nonnull)sender {
+  
+}
+
+/**
+ * stepoverButtonClick
+ */
+- (void)stepoverButtonClick:(id _Nonnull)sender {
+  
+}
+
+/**
+ * stepButtonClick
+ */
+- (void)stepButtonClick:(id _Nonnull)sender {
+  
+}
+
+
 @end
 
 

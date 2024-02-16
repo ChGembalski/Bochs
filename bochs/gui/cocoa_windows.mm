@@ -87,7 +87,7 @@ debugger_ctrl_config_t debugger_ctrl_options = {
   true, true, true, true, true, true, true, 
   true,
   0, 1l,
-  2, 1l,
+  2, 1l, true,
   6, 0l
 };
 

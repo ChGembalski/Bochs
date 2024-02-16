@@ -33,6 +33,7 @@
 //#include "cpu/decoder/instr.h"
 
   extern void new_dbg_handler_custom(bool init);
+extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor);
   extern bx_dbg_gui_c * bx_dbg_new;
   extern bx_list_c * root_param;
 
@@ -704,12 +705,13 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   unsigned char * text_ptr;
   bxInstruction_c i;
   Bit32u seg_base;
+  bx_address lin_ofs;
   
   dbg_cpu = cpuNo;
   
   if (seg) {
     laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
-    seg_base = 0;
+    seg_base = addr.seg;
   } else {
     laddr = addr.ofs;
     seg_base = 0;
@@ -728,6 +730,14 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   // create disasm
   data_ofs = 0;
   text_ptr = this->asm_text_buffer;
+  
+  if (BX_CPU(dbg_cpu)->protected_mode()) {
+    seg_base = get_segment(cpuNo, seg_base, addr.ofs);
+    lin_ofs = laddr - seg_base;
+  } else {
+    lin_ofs = laddr - (seg_base << 4);
+  }
+  
   for (lineno = 0; lineno<ASM_ENTRY_LINES; lineno++) {
     
     char buffer[64] = {0};
@@ -746,21 +756,77 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
     
     buffer_len = strlen(buffer) + 1;
     memcpy(text_ptr, buffer, buffer_len);
-        
+    
     // setup asm_lines
-    this->asm_lines[lineno].addr.seg = seg_base;
-    this->asm_lines[lineno].addr.ofs = laddr;
+    if (seg) {
+      this->asm_lines[lineno].addr.seg = seg_base;
+      this->asm_lines[lineno].addr.ofs = lin_ofs;
+    } else {
+      this->asm_lines[lineno].addr.seg = 0;
+      this->asm_lines[lineno].addr.ofs = laddr;
+    }
     this->asm_lines[lineno].len = i.ilen();
     this->asm_lines[lineno].data = &this->asm_buffer[data_ofs];
     this->asm_lines[lineno].text = text_ptr;
-    
+  
     text_ptr += buffer_len;
     laddr += this->asm_lines[lineno].len;
-    
+    if (seg) {
+      lin_ofs += this->asm_lines[lineno].len;
+      if (!BX_CPU(dbg_cpu)->protected_mode()) {
+        if (lin_ofs > 0xFFFF) {
+          seg_base++;
+          lin_ofs -= 0x10000;
+        }
+      }
+    }
   }
   
 }
 
+/**
+ * get_segment
+ */
+bx_address bx_dbg_gui_c::get_segment(unsigned cpuNo, Bit16u sel, bx_address ofs) {
+  
+  bx_address laddr;
+
+  dbg_cpu = cpuNo;
+  
+  if (BX_CPU(dbg_cpu)->protected_mode()) {
+
+    bx_descriptor_t descriptor;
+    if (! bx_dbg_read_pmode_descriptor(sel, &descriptor))
+      return 0;
+
+    if (BX_CPU(dbg_cpu)->get_cpu_mode() != BX_MODE_LONG_64) {
+      Bit32u lowaddr, highaddr;
+
+      // expand-down
+      if (IS_DATA_SEGMENT(descriptor.type) && IS_DATA_SEGMENT_EXPAND_DOWN(descriptor.type)) {
+        lowaddr = descriptor.u.segment.limit_scaled;
+        highaddr = descriptor.u.segment.d_b ? 0xffffffff : 0xffff;
+      }
+       else {
+        lowaddr = 0;
+        highaddr = descriptor.u.segment.limit_scaled;
+      }
+
+      if (ofs < lowaddr || ofs > highaddr) {
+        dbg_printf("WARNING: Offset %08X is out of selector %04x limit (%08x...%08x)!\n", ofs, sel, lowaddr, highaddr);
+      }
+    }
+
+    laddr = descriptor.u.segment.base;
+  }
+  else {
+    laddr = (sel << 4);
+  }
+
+  return laddr;
+  
+}
+  
 /**
  * memorydump
  */

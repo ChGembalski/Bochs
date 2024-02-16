@@ -346,7 +346,7 @@ private:
   
   void init_register_refs(void);
   void update_register(unsigned cpuNo);
-
+  bx_address get_segment(unsigned cpuNo, Bit16u sel, bx_address ofs);
   
   
   

@@ -120,6 +120,7 @@
     
     unsigned char             stack_bytes;
     unsigned long             cpu_step_count;
+    bool                      addr_displ_seg_ofs;
     
     unsigned char             mem_displ_size;
     unsigned long             mem_displ_addr;
