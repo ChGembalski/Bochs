@@ -256,6 +256,7 @@ extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor
   // internal setup
   void InitDebugDialog() {
     printf("-->InitDebugDialog\n");
+    bx_debugger.auto_disassemble = false;
     new_dbg_handler_custom(true);
 
     // setup new callback
@@ -295,8 +296,8 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
   this->cmd_chain->pred = this->cmd_chain;
   this->cmd_chain->succ = NULL;
   this->cmd_chain->cmd = NULL;
-  atomic_flag_test_and_set(&this->cmd_chain_lock);
-  
+  atomic_flag_clear(&this->cmd_chain_lock);
+    
   // setup asm buffer
   this->asm_buffer = (unsigned char *)malloc(ASM_BUFFER_SIZE * sizeof(unsigned char));
   this->asm_text_buffer = (unsigned char *)malloc(ASM_TEXT_BUFFER_SIZE * sizeof(unsigned char));
@@ -537,6 +538,9 @@ bx_dbg_cmd_t * bx_dbg_gui_c::dequeue_cmd(void) {
   this->cmd_chain->succ = next->succ;
   if (next->succ != NULL) {
     next->succ->pred = this->cmd_chain;
+    this->cmd_chain->pred = next->succ;
+  } else {
+    this->cmd_chain->pred = this->cmd_chain;
   }
   cmd = next->cmd;
   free(next);
@@ -583,6 +587,24 @@ void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
       // ignore
     }
   }
+  
+}
+
+
+/**
+ * cmd_step_n
+ */
+void bx_dbg_gui_c::cmd_step_n(int cpuNo, unsigned step_cnt) {
+  
+  bx_dbg_cmd_t * cmd;
+  
+  cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
+  
+  cmd->cmd = DBG_STEP_CPU;
+  cmd->data.ctrl.cpu = cpuNo;
+  cmd->data.ctrl.count = step_cnt;
+  
+  this->enqueue_cmd(cmd);
   
 }
 

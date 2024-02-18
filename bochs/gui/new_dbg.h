@@ -329,6 +329,8 @@ public:
   void disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas);
   void memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size);
   
+  void cmd_step_n(int cpuNo, unsigned step_cnt);
+  
 protected:
   virtual void init_os_depended(void) {};
   virtual bool parse_os_setting(const char * param, const char * value) { return false; };

@@ -1533,6 +1533,8 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.cnt_value.preferredMaxLayoutWidth = 80;
     self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.cpu_step_count];
     [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
+    [self.cnt_value setAction:@selector(cntValueChanged:)];
+    [self.cnt_value setTarget:self];
     [wrapper addSubview:self.cnt_value];
     [self.ctrl_view addArrangedSubview:wrapper];
     
@@ -1545,7 +1547,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.adr_select.objectValue = [NSNumber numberWithInt:0];
     [self.adr_select setAction:@selector(adrValueChanged:)];
     [self.adr_select setTarget:self];
-    
     [self.ctrl_view addArrangedSubview:self.adr_select];
     
     self.asm_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
@@ -1668,6 +1669,19 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  * stepButtonClick
  */
 - (void)stepButtonClick:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.cpu_step_count = self.cnt_value.intValue;
+  bx_dbg_new->cmd_step_n(self.cpuNo, debugger_ctrl_options.cpu_step_count);
+  
+}
+
+/**
+ * cntValueChanged
+ */
+- (void)cntValueChanged:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.cpu_step_count = self.cnt_value.intValue;
+  bx_dbg_new->cmd_step_n(self.cpuNo, debugger_ctrl_options.cpu_step_count);
   
 }
 

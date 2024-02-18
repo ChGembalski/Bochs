@@ -312,7 +312,7 @@
     - (void)breakButtonClick:(id _Nonnull)sender;
     - (void)stepoverButtonClick:(id _Nonnull)sender;
     - (void)stepButtonClick:(id _Nonnull)sender;
-
+    - (void)cntValueChanged:(id _Nonnull)sender;
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
