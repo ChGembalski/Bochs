@@ -23,7 +23,7 @@
 #ifndef BX_IODEV_VGACORE_H
 #define BX_IODEV_VGACORE_H
 
-//#define VGA_MEM_FIX
+#define VGA_MEM_FIX
 
 // Make colour
 #define MAKE_COLOUR(red, red_shiftfrom, red_shiftto, red_mask, \
@@ -242,6 +242,11 @@ protected:
     bool  *vga_tile_updated;
     Bit8u *memory;
     Bit32u memsize;
+    Bit32u memsize_mask;
+#ifdef VGA_MEM_FIX
+    bool  text_buffer_update;
+    Bit8u *text_buffer; // active text memory in legacy format
+#endif
     Bit8u *text_snapshot; // current text snapshot
     Bit8u tile[X_TILESIZE * Y_TILESIZE * 4]; /**< Currently allocates the tile as large as needed. */
     Bit16u charmap_address1;
@@ -264,6 +269,7 @@ protected:
 #endif
     Bit8u  dac_shift;
     Bit32u ext_offset;
+    Bit32u ext_start_addr;
     bool   ext_y_dblsize;
     // last active resolution and bpp
     Bit16u last_xres;
