@@ -992,6 +992,19 @@ void bx_dbg_gui_c::memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, s
 }
 
 /**
+ * memoryset
+ */
+void bx_dbg_gui_c::memoryset(unsigned cpuNo, bx_dbg_address_t addr, Bit8u val) {
+  
+  bx_address laddr;
+  
+  laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
+  bx_dbg_write_linear(cpuNo, laddr, 1, &val);
+  
+}
+
+
+/**
  * prepare_stack_data
  */
 void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {

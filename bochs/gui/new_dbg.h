@@ -369,6 +369,7 @@ public:
   void disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas);
   bool must_disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr);
   void memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size);
+  void memoryset(unsigned cpuNo, bx_dbg_address_t addr, Bit8u val);
   void update_register(unsigned cpuNo);
   void prepare_stack_data(unsigned cpuNo);
   

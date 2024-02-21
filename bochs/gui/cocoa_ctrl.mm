@@ -2263,7 +2263,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_0.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_0.title = @"00";
     self.byteCol_0.width = 25;
-    self.byteCol_0.editable = NO;
+    self.byteCol_0.editable = YES;
     self.byteCol_0.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_0];
 
@@ -2271,7 +2271,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_1.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_1.title = @"01";
     self.byteCol_1.width = 25;
-    self.byteCol_1.editable = NO;
+    self.byteCol_1.editable = YES;
     self.byteCol_1.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_1];
 
@@ -2279,7 +2279,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_2.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_2.title = @"02";
     self.byteCol_2.width = 25;
-    self.byteCol_2.editable = NO;
+    self.byteCol_2.editable = YES;
     self.byteCol_2.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_2];
 
@@ -2287,7 +2287,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_3.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_3.title = @"03";
     self.byteCol_3.width = 25;
-    self.byteCol_3.editable = NO;
+    self.byteCol_3.editable = YES;
     self.byteCol_3.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_3];
 
@@ -2295,7 +2295,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_4.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_4.title = @"04";
     self.byteCol_4.width = 25;
-    self.byteCol_4.editable = NO;
+    self.byteCol_4.editable = YES;
     self.byteCol_4.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_4];
 
@@ -2303,7 +2303,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_5.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_5.title = @"05";
     self.byteCol_5.width = 25;
-    self.byteCol_5.editable = NO;
+    self.byteCol_5.editable = YES;
     self.byteCol_5.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_5];
 
@@ -2311,7 +2311,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_6.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_6.title = @"06";
     self.byteCol_6.width = 25;
-    self.byteCol_6.editable = NO;
+    self.byteCol_6.editable = YES;
     self.byteCol_6.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_6];
 
@@ -2319,7 +2319,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_7.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_7.title = @"07";
     self.byteCol_7.width = 25;
-    self.byteCol_7.editable = NO;
+    self.byteCol_7.editable = YES;
     self.byteCol_7.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_7];
     
@@ -2327,7 +2327,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_8.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_8.title = @"08";
     self.byteCol_8.width = 25;
-    self.byteCol_8.editable = NO;
+    self.byteCol_8.editable = YES;
     self.byteCol_8.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_8];
 
@@ -2335,7 +2335,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_9.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_9.title = @"09";
     self.byteCol_9.width = 25;
-    self.byteCol_9.editable = NO;
+    self.byteCol_9.editable = YES;
     self.byteCol_9.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_9];
 
@@ -2343,7 +2343,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_A.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_A.title = @"0A";
     self.byteCol_A.width = 25;
-    self.byteCol_A.editable = NO;
+    self.byteCol_A.editable = YES;
     self.byteCol_A.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_A];
 
@@ -2351,7 +2351,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_B.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_B.title = @"0B";
     self.byteCol_B.width = 25;
-    self.byteCol_B.editable = NO;
+    self.byteCol_B.editable = YES;
     self.byteCol_B.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_B];
 
@@ -2359,7 +2359,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_C.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_C.title = @"0C";
     self.byteCol_C.width = 25;
-    self.byteCol_C.editable = NO;
+    self.byteCol_C.editable = YES;
     self.byteCol_C.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_C];
 
@@ -2367,7 +2367,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_D.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_D.title = @"0D";
     self.byteCol_D.width = 25;
-    self.byteCol_D.editable = NO;
+    self.byteCol_D.editable = YES;
     self.byteCol_D.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_D];
 
@@ -2375,7 +2375,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_E.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_E.title = @"0E";
     self.byteCol_E.width = 25;
-    self.byteCol_E.editable = NO;
+    self.byteCol_E.editable = YES;
     self.byteCol_E.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_E];
 
@@ -2383,7 +2383,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.byteCol_F.headerCell = [[NSTableHeaderCell alloc] init];
     self.byteCol_F.title = @"0F";
     self.byteCol_F.width = 25;
-    self.byteCol_F.editable = NO;
+    self.byteCol_F.editable = YES;
     self.byteCol_F.resizingMask = NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
     [self.bytes_view addTableColumn:self.byteCol_F];
 
@@ -2554,6 +2554,36 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  * tableView setObjectValue
  */
 - (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+  
+  if ([tableColumn.identifier hasPrefix:@"col.byte"]) {
+    
+    UInt8 bofs;
+    UInt8 val;
+    NSString * subStr;
+    unsigned value;
+    NSScanner * scanner;
+    bx_dbg_address_t addr;
+    
+    subStr = [tableColumn.identifier substringFromIndex:9];
+    bofs = subStr.UTF8String[0] - '0';
+    if (bofs > 9) {
+      bofs -= 7;
+    }
+    
+    value = 0;
+    scanner = [NSScanner scannerWithString:object];
+    [scanner scanHexInt:&value];
+    
+    val = value & 0xFF;
+    
+    bx_dbg_new->mem_buffer[(row * 16) + bofs] = val;
+    
+    addr.seg = 0;
+    addr.ofs = debugger_ctrl_options.mem_displ_addr + ((row * 16) + bofs);
+    
+    bx_dbg_new->memoryset(self.cpuNo, addr, val);
+    
+  }
   
 }
 
