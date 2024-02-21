@@ -1233,6 +1233,51 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
+/**
+ * stringDecValue64
+ */
++ (NSAttributedString * _Nonnull)stringDecValue64:(UInt64) val Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%lld", val] attributes: attribute];
+  
+}
+
+/**
+ * stringDecValue32
+ */
++ (NSAttributedString * _Nonnull)stringDecValue32:(UInt32) val Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%d", val] attributes: attribute];
+  
+}
+
+/**
+ * stringDecValue16
+ */
++ (NSAttributedString * _Nonnull)stringDecValue16:(UInt16) val Att:(NSDictionary * _Nonnull) attribute {
+ 
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%d", val] attributes: attribute];
+  
+}
+
+/**
+ * stringDecValue8
+ */
++ (NSAttributedString * _Nonnull)stringDecValue8:(UInt8) val Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%d", val] attributes: attribute];
+  
+}
+
+/**
+ * stringWithUTF8String
+ */
++ (NSAttributedString * _Nonnull)stringWithUTF8String:(const char * _Nonnull) nullTerminatedCString Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithUTF8String:nullTerminatedCString] attributes: attribute];
+  
+}
+
 @end
 
 
@@ -1298,6 +1343,11 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
     [self setDocumentView:self.table];
     
+    self.attributeMonospace = @{
+      NSForegroundColorAttributeName:NSColor.textColor,
+      NSFontAttributeName:[NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightRegular]
+    };
+    
     // now prepare the register
     [self createRegisterMapping];
     
@@ -1340,7 +1390,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   }
   
   if (debugger_ctrl_options.show_segment_regs) {
-    self.register_count += 5;
+    self.register_count += 6;
   }
   
   if (debugger_ctrl_options.show_control_regs) {
@@ -1491,13 +1541,14 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
-  NSString * cellValue;
   unsigned int rowRef;
   
   rowRef = self.register_mapping[row].reg_id;
   
   if ([tableColumn.identifier compare:@"col.name"] == NSOrderedSame) {
-    cellValue = [NSString stringWithUTF8String:bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].name];
+    
+    return [BXNSAdressFormat stringWithUTF8String:bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].name Att:self.attributeMonospace];
+    
   } else {
     UInt8 size;
     BOOL isHex;
@@ -1507,42 +1558,37 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     switch (size) {
       case 8: {
         if (isHex) {
-          cellValue = [NSString stringWithFormat:@"0x%02X", (UInt8) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+          return [BXNSAdressFormat stringHexValue8:(UInt8) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         } else {
-          cellValue = [NSString stringWithFormat:@"%d", (UInt8) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+          return [BXNSAdressFormat stringDecValue8:(UInt8) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         }
-        break;
       }
       case 16: {
         if (isHex) {
-          cellValue = [NSString stringWithFormat:@"0x%04X", (UInt16) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+          return [BXNSAdressFormat stringHexValue16:(UInt16) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         } else {
-          cellValue = [NSString stringWithFormat:@"%d", (UInt16) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+          return [BXNSAdressFormat stringDecValue16:(UInt16) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         }
-        break;
       }
       case 32: {
         if (isHex) {
-          cellValue = [NSString stringWithFormat:@"0x%08X", (UInt32) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+          return [BXNSAdressFormat stringHexValue32:(UInt32) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         } else {
-          cellValue = [NSString stringWithFormat:@"%d", (UInt32) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+          return [BXNSAdressFormat stringDecValue32:(UInt32) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         }
-        break;
       }
       default: {
         if (isHex) {
-          cellValue = [NSString stringWithFormat:@"0x%016llX", (UInt64) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value];
+          return [BXNSAdressFormat stringHexValue64:(UInt64) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         } else {
-          cellValue = [NSString stringWithFormat:@"%lld", (UInt64) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value ];
+          return [BXNSAdressFormat stringDecValue64:(UInt64) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value Att:self.attributeMonospace];
         }
-        break;
       }
     }
     
-    
   }
     
-  return cellValue;
+  return @"";
   
 }
 
@@ -2101,7 +2147,86 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   }
   
 }
+
+/**
+ * setObjectValue
+ */
+- (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
+  if ([tableColumn.identifier compare:@"col.data"] == NSOrderedSame) {
+    
+    bx_dbg_address_t addr_lin;
+    NSScanner * scanner;
+    
+    addr_lin.seg = 0;
+    switch (debugger_ctrl_options.stack_bytes) {
+      case 2: {
+        UInt32 value;
+        UInt8 b8val[2];
+        
+        value = 0;
+        scanner = [NSScanner scannerWithString:object];
+        [scanner scanHexInt:&value];
+        b8val[0] = value & 0xFF;
+        b8val[1] = (value >> 8) & 0xFF;
+        
+        addr_lin.ofs = bx_dbg_new->stack_data.data_16[row].addr_lin;
+        bx_dbg_new->stack_data.data_16[row].addr_on_stack = (UInt16)value;
+        bx_dbg_new->memoryset(self.cpuNo, addr_lin, b8val[0]);
+        addr_lin.ofs += 2;
+        bx_dbg_new->memoryset(self.cpuNo, addr_lin, b8val[1]);
+        return;
+      }
+      case 4: {
+        UInt32 value;
+        UInt8 b8val[4];
+        
+        value = 0;
+        scanner = [NSScanner scannerWithString:object];
+        [scanner scanHexInt:&value];
+        b8val[0] = value & 0xFF;
+        b8val[1] = (value >> 8) & 0xFF;
+        b8val[2] = (value >> 16) & 0xFF;
+        b8val[3] = (value >> 24) & 0xFF;
+        
+        addr_lin.ofs = bx_dbg_new->stack_data.data_32[row].addr_lin;
+        bx_dbg_new->stack_data.data_32[row].addr_on_stack = (UInt32)value;
+        for (int i=0; i<4; i++) {
+          bx_dbg_new->memoryset(self.cpuNo, addr_lin, b8val[i]);
+          addr_lin.ofs += 4;
+        }
+      }
+#if BX_SUPPORT_X86_64
+      case 8: {
+        UInt64 value;
+        UInt8 b8val[8];
+        
+        value = 0;
+        scanner = [NSScanner scannerWithString:object];
+        [scanner scanHexLongLong:&value];
+        b8val[0] = value & 0xFF;
+        b8val[1] = (value >> 8) & 0xFF;
+        b8val[2] = (value >> 16) & 0xFF;
+        b8val[3] = (value >> 24) & 0xFF;
+        b8val[4] = (value >> 32) & 0xFF;
+        b8val[5] = (value >> 40) & 0xFF;
+        b8val[6] = (value >> 48) & 0xFF;
+        b8val[7] = (value >> 56) & 0xFF;
+        
+        addr_lin.ofs = bx_dbg_new->stack_data.data_64[row].addr_lin;
+        bx_dbg_new->stack_data.data_64[row].addr_on_stack = (UInt64)value;
+        for (int i=0; i<8; i++) {
+          bx_dbg_new->memoryset(self.cpuNo, addr_lin, b8val[i]);
+          addr_lin.ofs += 8;
+        }
+      }
+#endif
+    }
+    
+  }
+  
+}
+
 @end
 
 

@@ -268,6 +268,11 @@
     + (NSAttributedString * _Nonnull)stringHexValue32:(UInt32) val Att:(NSDictionary * _Nonnull) attribute;
     + (NSAttributedString * _Nonnull)stringHexValue16:(UInt16) val Att:(NSDictionary * _Nonnull) attribute;
     + (NSAttributedString * _Nonnull)stringHexValue8:(UInt8) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringDecValue64:(UInt64) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringDecValue32:(UInt32) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringDecValue16:(UInt16) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringDecValue8:(UInt8) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringWithUTF8String:(const char * _Nonnull) nullTerminatedCString Att:(NSDictionary * _Nonnull) attribute;
 
   @end
 
@@ -281,6 +286,7 @@
     @property (nonatomic, readwrite) unsigned cpuNo;
     @property (nonatomic, readwrite) debugger_register_mapping_t * _Nullable register_mapping;
     @property (nonatomic, readwrite) NSInteger register_count;
+    @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect) frameRect;
     - (void)dealloc;
@@ -383,6 +389,7 @@
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+    - (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
   @end
 
