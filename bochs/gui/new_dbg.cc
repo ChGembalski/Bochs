@@ -53,7 +53,7 @@
     "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15",
 #endif
     "EFLAGS",
-    "CS.selector", "DS.selector", "ES.selector", "FS.selector", "GS.selector",
+    "CS.selector", "DS.selector", "ES.selector", "FS.selector", "GS.selector", "SS.selector",
 
     "GDTR.base", "GDTR.limit", "IDTR.base", "IDTR.limit",
     "LDTR.base", "TR.base",
@@ -117,7 +117,7 @@
     "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15",
 
     "EFLAGS",
-    "CS", "DS", "ES", "FS", "GS",
+    "CS", "DS", "ES", "FS", "GS", "SS",
 
     "GDTR", "", "IDTR", "",
     "LDTR", "TR",

@@ -1408,7 +1408,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   }
   
   if (debugger_ctrl_options.show_segment_regs) {
-    for (reg_id=CS; reg_id<=GS; reg_id++) {
+    for (reg_id=CS; reg_id<=SS; reg_id++) {
       self.register_mapping[curRow].reg_id = reg_id;
       curRow++;
     }

@@ -102,6 +102,7 @@ typedef enum {
   ES,
   FS,
   GS,
+  SS,
 
   GDTR_BASE,
   GDTR_LIMIT,
