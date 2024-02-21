@@ -334,6 +334,8 @@
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller SmpInfo:(bx_smp_info_t *) smp;
 
+    - (void)reload:(int) cpu;
+
     - (BOOL)onMenuEvent:(NSString * _Nonnull) path;
 
   @end

@@ -117,7 +117,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSNumberFormatter : NSNumberFormatter
 
-  - (BOOL)isPartialStringValid:(NSString * _Nonnull)partialString newEditingString:(NSString * _Nullable * _Nullable)newString errorDescription:(NSString * _Nullable * _Nullable)error;
+    - (BOOL)isPartialStringValid:(NSString * _Nonnull)partialString newEditingString:(NSString * _Nullable * _Nullable)newString errorDescription:(NSString * _Nullable * _Nullable)error;
 
   @end
 
@@ -127,11 +127,11 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSHexNumberFormatter : NSNumberFormatter
 
-  - (instancetype _Nonnull)init;
+    - (instancetype _Nonnull)init;
 
-  - (BOOL)isPartialStringValid:(NSString * _Nonnull)partialString newEditingString:(NSString * _Nullable * _Nullable)newString errorDescription:(NSString * _Nullable * _Nullable)error;
-  - (BOOL)getObjectValue:(id _Nullable * _Nullable)obj forString:(NSString * _Nonnull)string errorDescription:(NSString * _Nullable * _Nullable)error;
-  - (NSString * _Nullable)stringForObjectValue:(id _Nullable) obj;
+    - (BOOL)isPartialStringValid:(NSString * _Nonnull)partialString newEditingString:(NSString * _Nullable * _Nullable)newString errorDescription:(NSString * _Nullable * _Nullable)error;
+    - (BOOL)getObjectValue:(id _Nullable * _Nullable)obj forString:(NSString * _Nonnull)string errorDescription:(NSString * _Nullable * _Nullable)error;
+    - (NSString * _Nullable)stringForObjectValue:(id _Nullable) obj;
 
   @end
 
@@ -259,6 +259,20 @@
 
 
   ////////////////////////////////////////////////////////////////////////////////
+  // BXNSAdressFormat
+  ////////////////////////////////////////////////////////////////////////////////
+  @interface BXNSAdressFormat : NSObject
+
+    + (NSAttributedString * _Nonnull)stringAddress:(bx_dbg_address_t) addr UseSegMode:(BOOL) modeSeg Mode64:(BOOL) mode64 Mode32:(BOOL) mode32 Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringHexValue64:(UInt64) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringHexValue32:(UInt32) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringHexValue16:(UInt16) val Att:(NSDictionary * _Nonnull) attribute;
+    + (NSAttributedString * _Nonnull)stringHexValue8:(UInt8) val Att:(NSDictionary * _Nonnull) attribute;
+
+  @end
+
+
+  ////////////////////////////////////////////////////////////////////////////////
   // BXNSRegisterView
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSRegisterView : NSScrollView <NSTableViewDataSource>
@@ -275,6 +289,8 @@
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
+    - (void)reload:(int) cpu;
+
   @end
 
 
@@ -283,7 +299,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSInstructionView : NSView <NSTableViewDataSource>
 
-    @property (nonatomic, readwrite, strong) NSStackView * _Nonnull ctrl_view;
+    @property (nonatomic, readwrite, strong) NSView * _Nonnull ctrl_view;
     @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_continue;
     @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_break;
     @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_step_over;
@@ -301,7 +317,7 @@
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull bytesCol;
     @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
     @property (nonatomic, readwrite) unsigned cpuNo;
-    @property (nonatomic, readwrite) bx_address cs_rip_addr_lin;
+    @property (nonatomic, readwrite) NSInteger lastRowNo;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
@@ -316,6 +332,9 @@
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
+
+    - (void)reload:(int) cpu;
+    - (NSInteger)getActiveTableRow;
 
   @end
 
@@ -350,16 +369,17 @@
     @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull size_stack;
     @property (nonatomic, readwrite, strong) NSScrollView * _Nonnull stack_scroll;
     @property (nonatomic, readwrite, strong) NSTableView * _Nonnull table;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull addrCol;
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull dataCol;
     @property (nonatomic, readwrite) unsigned cpuNo;
-    @property (nonatomic, readwrite) unsigned char * _Nullable stack_buf;
     @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-    - (void)dealloc;
 
     - (void)updateFromMemory;
     - (void)valueChanged:(id _Nonnull)sender;
+
+    - (void)reload:(int) cpu;
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
@@ -465,6 +485,7 @@
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect SmpInfo:(bx_smp_info_t *) smp;
 
+    - (void)reload:(int) cpu;
     - (void)moveToView:(debugger_view_location_t) dest View:(debugger_views_t) view;
 
   @end
@@ -475,7 +496,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSDebugView : NSView 
 
-    @property (nonatomic, readwrite, strong) NSStackView * _Nonnull ctrl_view;
+    @property (nonatomic, readwrite, strong) NSView * _Nonnull ctrl_view;
     @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull cpu_select;
     @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_continue;
     @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_break;
@@ -492,6 +513,9 @@
     - (void)breakButtonClick:(id _Nonnull)sender;
     - (void)stepoverButtonClick:(id _Nonnull)sender;
     - (void)stepButtonClick:(id _Nonnull)sender;
+    - (void)cntValueChanged:(id _Nonnull)sender;
+
+    - (void)reload:(int) cpu;
 
   @end
 

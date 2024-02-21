@@ -50,6 +50,7 @@ void new_dbg_handler_custom(bool init) { \
 #define DECLARE_GUI_DEBUGGER_VIRTUAL_METHODS()                                 \
 protected:                                                                     \
   virtual void init_os_depended(void);                                         \
+virtual bool gui_command_finished(int cpu);                                    \
 
 
 
@@ -57,6 +58,10 @@ protected:                                                                     \
   virtual bool parse_os_setting(const char * param, const char * value)        \
   virtual void write_os_setting(FILE * fd)
 //virtual size_t sync_evt_get_debug_command(char * buffer, size_t buffer_size)
+
+
+#define BX_JUMP_TARGET_NOT_REQ ((bx_address)(-1))
+
 
 typedef enum {
 
@@ -289,7 +294,8 @@ struct bx_dbg_cmd_chain_t {
 };
 
 typedef struct {
-  bx_dbg_address_t        addr;
+  bx_address              addr_lin;
+  bx_dbg_address_t        addr_seg;
   Bit8u                   len;
   unsigned char *         data;
   unsigned char *         text;
@@ -298,6 +304,37 @@ typedef struct {
 #define ASM_ENTRY_LINES       256
 #define ASM_BUFFER_SIZE       4096
 #define ASM_TEXT_BUFFER_SIZE  (40 * ASM_ENTRY_LINES)
+
+typedef struct {
+  bx_address              addr_lin;
+  bx_dbg_address_t        addr_seg;
+  Bit64u                  addr_on_stack;
+} bx_dbg_stack_entry_64_t;
+
+typedef struct {
+  bx_address              addr_lin;
+  bx_dbg_address_t        addr_seg;
+  Bit32u                  addr_on_stack;
+} bx_dbg_stack_entry_32_t;
+
+typedef struct {
+  bx_address              addr_lin;
+  bx_dbg_address_t        addr_seg;
+  Bit16u                  addr_on_stack;
+} bx_dbg_stack_entry_16_t;
+
+typedef struct {
+#if BX_SUPPORT_X86_64
+  bx_dbg_stack_entry_64_t * data_64;
+#endif
+  bx_dbg_stack_entry_32_t * data_32;
+  bx_dbg_stack_entry_16_t * data_16;
+  unsigned                cnt;
+} bx_dbg_stack_data_t;
+
+#define STACK_ENTRY_LINES   128
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // bx_dbg_gui_c
@@ -308,34 +345,43 @@ public:
   bx_smp_info_t smp_info;
   bx_dbg_asm_entry_t asm_lines[ASM_ENTRY_LINES];
   unsigned char * mem_buffer;
+  bx_dbg_stack_data_t stack_data;
 
 private:
   struct bx_dbg_cmd_chain_t * cmd_chain;
   volatile atomic_flag cmd_chain_lock;
   unsigned char * asm_buffer;
   unsigned char * asm_text_buffer;
+  bool in_run_loop;
   
 public:
   bx_dbg_gui_c(void);
   virtual ~bx_dbg_gui_c(void);
 
   void init_internal(void);
-
+  bool command_finished(int cpu);
+  
   /// async call : fetch next debug command
   /// buffer is allocated, buffer_size size of allocated buffer
   /// fill the buffer and return no of bytes filled
   virtual size_t sync_evt_get_debug_command(char * buffer, size_t buffer_size);
 
   void disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas);
+  bool must_disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr);
   void memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size);
+  void update_register(unsigned cpuNo);
+  void prepare_stack_data(unsigned cpuNo);
   
   void cmd_step_n(int cpuNo, unsigned step_cnt);
+  void cmd_continue(void);
+  void cmd_break(void);
+  void cmd_step_over(void);
   
 protected:
   virtual void init_os_depended(void) {};
   virtual bool parse_os_setting(const char * param, const char * value) { return false; };
   virtual void write_os_setting(FILE * fd) {};
-
+  virtual bool gui_command_finished(int cpu) { return true; };
   
 private:
   void read_dbg_gui_config(void);
@@ -347,7 +393,7 @@ private:
   void process_cmd(bx_dbg_cmd_t * cmd);
   
   void init_register_refs(void);
-  void update_register(unsigned cpuNo);
+  
   bx_address get_segment(unsigned cpuNo, Bit16u sel, bx_address ofs);
   
   

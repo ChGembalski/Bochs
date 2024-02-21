@@ -98,6 +98,10 @@ void BX_CPU_C::cpu_loop(void)
   }
 #endif
 
+#if BX_NEW_DEBUGGER_GUI
+  int loop_cnt = 5000;
+#endif /* BX_NEW_DEBUGGER_GUI */
+  
   while (1) {
 
     // check on events which occurred for previous instructions (traps)
@@ -130,8 +134,8 @@ void BX_CPU_C::cpu_loop(void)
 
     bxInstruction_c *last = i + (entry->tlen);
 
-    for(;;) {
 
+    for(;;) {
 #if BX_DEBUGGER
       if (BX_CPU_THIS_PTR trace)
         debug_disasm_instruction(BX_CPU_THIS_PTR prev_rip);
@@ -152,6 +156,12 @@ void BX_CPU_C::cpu_loop(void)
       if (dbg_instruction_epilog()) return;
 #endif
 
+#if BX_NEW_DEBUGGER_GUI
+      if (--loop_cnt <= 0) {
+        BX_CPU_THIS_PTR stop_reason = STOP_DEBUGGER_MAX_STEP;
+        return;
+      }
+#endif /* BX_NEW_DEBUGGER_GUI */
       if (BX_CPU_THIS_PTR async_event) break;
 
       if (++i == last) {

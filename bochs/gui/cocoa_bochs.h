@@ -195,7 +195,8 @@
 #if BX_DEBUGGER && BX_NEW_DEBUGGER_GUI
 
     void createDebuggerUI(void);
-    
+    void updateDebugger(int cpu);
+
     void dbg_addOutputText(char * txt);
 
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */

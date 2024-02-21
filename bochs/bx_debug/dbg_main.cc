@@ -133,6 +133,15 @@ bx_watchpoint read_watchpoint[BX_DBG_MAX_WATCHPONTS];
 
 #define DBG_PRINTF_BUFFER_LEN 1024
 
+#if BX_NEW_DEBUGGER_GUI
+typedef bool (* dbg_gui_callback) (int cpu);
+dbg_gui_callback ui_debugger = NULL;
+
+void register_dbg_gui_callback(dbg_gui_callback callback) {
+  ui_debugger = callback;
+}
+#endif /* BX_NEW_DEBUGGER_GUI */
+
 void dbg_printf(const char *fmt, ...)
 {
   va_list ap;
@@ -2266,17 +2275,34 @@ one_more:
   sim_running->set(0);
   SIM->refresh_ci();
 
+#if !BX_NEW_DEBUGGER_GUI
   // (mch) hack
   if (!bx_user_quit) {
     SIM->refresh_vga();
   }
-
+#endif /* !BX_NEW_DEBUGGER_GUI */
+  
   BX_INSTR_DEBUG_PROMPT();
-  bx_dbg_print_guard_results();
+  
+#if BX_NEW_DEBUGGER_GUI
+  if (ui_debugger != NULL) {
+    if (!ui_debugger(0)) {
+      return;
+    }
+  } else {
+#endif /* BX_NEW_DEBUGGER_GUI */
+    bx_dbg_print_guard_results();
+#if BX_NEW_DEBUGGER_GUI
+  }
+#endif /* BX_NEW_DEBUGGER_GUI */
 
-  if (watchpoint_continue && (BX_CPU(which)->stop_reason == STOP_READ_WATCH_POINT ||
-            BX_CPU(which)->stop_reason == STOP_WRITE_WATCH_POINT))
-  goto one_more;
+  if ((watchpoint_continue && 
+      (BX_CPU(which)->stop_reason == STOP_READ_WATCH_POINT ||
+       BX_CPU(which)->stop_reason == STOP_WRITE_WATCH_POINT)) ||
+       BX_CPU(which)->stop_reason == STOP_DEBUGGER_MAX_STEP
+  ) {
+    goto one_more;
+  }
 }
 
 void bx_dbg_stepN_command(int cpu, Bit32u count)
@@ -2325,7 +2351,17 @@ void bx_dbg_stepN_command(int cpu, Bit32u count)
 #endif
 
   BX_INSTR_DEBUG_PROMPT();
-  bx_dbg_print_guard_results();
+  
+#if BX_NEW_DEBUGGER_GUI
+  if (ui_debugger != NULL) {
+    ui_debugger(cpu);
+  } else {
+#endif /* BX_NEW_DEBUGGER_GUI */
+    bx_dbg_print_guard_results();
+#if BX_NEW_DEBUGGER_GUI
+  }
+#endif /* BX_NEW_DEBUGGER_GUI */
+  
 }
 
 void bx_dbg_disassemble_current(int which_cpu, int print_time)

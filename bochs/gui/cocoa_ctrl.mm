@@ -1164,7 +1164,76 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 @end
 
 
+////////////////////////////////////////////////////////////////////////////////
+// BXNSAdressFormat
+////////////////////////////////////////////////////////////////////////////////
+@implementation BXNSAdressFormat
 
+/**
+ * stringAddress
+ */
++ (NSAttributedString * _Nonnull)stringAddress:(bx_dbg_address_t) addr UseSegMode:(BOOL) modeSeg Mode64:(BOOL) mode64 Mode32:(BOOL) mode32 Att:(NSDictionary * _Nonnull) attribute {
+  
+  // ignore modeSeg
+  if (mode64) {
+    
+    return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016llX", (UInt64)addr.ofs] attributes: attribute];
+    
+  } else {
+    if (modeSeg) {
+      if (mode32) {
+        return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X:%08X", (UInt16)addr.seg, (UInt32)addr.ofs] attributes: attribute];
+      } else {
+        return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X:%04X", (UInt16)addr.seg, (UInt16)addr.ofs] attributes: attribute];
+      }
+    } else {
+      if (mode32) {
+        return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)addr.ofs] attributes: attribute];
+      } else {
+        return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%06X", (UInt32)addr.ofs] attributes: attribute];
+      }
+    }
+  }
+  
+}
+
+/**
+ * stringHexValue64
+ */
++ (NSAttributedString * _Nonnull)stringHexValue64:(UInt64) val Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016llX", val] attributes: attribute];
+  
+}
+
+/**
+ * stringHexValue32
+ */
++ (NSAttributedString * _Nonnull)stringHexValue32:(UInt32) val Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", val] attributes: attribute];
+  
+}
+
+/**
+ * stringHexValue16
+ */
++ (NSAttributedString * _Nonnull)stringHexValue16:(UInt16) val Att:(NSDictionary * _Nonnull) attribute {
+ 
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X", val] attributes: attribute];
+  
+}
+
+/**
+ * stringHexValue8
+ */
++ (NSAttributedString * _Nonnull)stringHexValue8:(UInt8) val Att:(NSDictionary * _Nonnull) attribute {
+  
+  return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%02X", val] attributes: attribute];
+  
+}
+
+@end
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1208,7 +1277,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     nameCol.title = @"Name";
     nameCol.editable = NO;
     nameCol.width = 100;
-//    nameCol.sortDescriptorPrototype = [[NSSortDescriptor alloc] initWithKey:@"col.name" ascending:YES];
     [self.table addTableColumn:nameCol];
     
     hexCol = [[NSTableColumn alloc] initWithIdentifier:@"col.hex"];
@@ -1409,9 +1477,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
 }
 
-
-
-
 /**
  * numberOfRowsInTableView
  */
@@ -1481,6 +1546,15 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
+/**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  bx_dbg_new->update_register(cpu);
+  [self.table reloadData];
+  
+}
 
 @end
 
@@ -1499,55 +1573,56 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   if (self) {
 
     self.cpuNo = 0;
+    self.lastRowNo = 0;
     
     self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     
-    self.ctrl_view = [[NSStackView alloc] initWithFrame:NSMakeRect(10, frameRect.size.height - 30, frameRect.size.width - 20, 20)];
+    self.ctrl_view = [[NSView alloc] initWithFrame:NSMakeRect(0, frameRect.size.height - 30, frameRect.size.width, 30)];
     self.ctrl_view.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
     [self addSubview:self.ctrl_view];
-    
-//    // CPU select - only 1 at the beginning
-//    self.cpu_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
-//    [self.cpu_select addItemWithTitle:@"CPU 0"];
-//    [self.ctrl_view addArrangedSubview:self.cpu_select];
-    
+
     self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:@selector(continueButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_continue];
-    
+    self.btn_continue.frame = NSMakeRect(10, 0, 130, 20);
+    [self.ctrl_view addSubview:self.btn_continue];
+
     self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:@selector(breakButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_break];
+    self.btn_break.frame = NSMakeRect(135, 0, 100, 20);
+    [self.ctrl_view addSubview:self.btn_break];
     
     self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:@selector(stepoverButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_step_over];
-
+    self.btn_step_over.frame = NSMakeRect(235, 0, 130, 20);
+    [self.ctrl_view addSubview:self.btn_step_over];
+    
     self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:@selector(stepButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_step];
+    self.btn_step.frame = NSMakeRect(365, 0, 100, 20);
+    [self.ctrl_view addSubview:self.btn_step];
     
     self.cnt_title = [NSTextField labelWithString:@"count:"];
-    [self.ctrl_view addArrangedSubview:self.cnt_title];
+    self.cnt_title.frame = NSMakeRect(470, 0, 40, 20);
+    [self.ctrl_view addSubview:self.cnt_title];
     
-    NSView * wrapper = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 80, 20)];
-//    wrapper.autoresizingMask = NSViewHeightSizable;
     self.cnt_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
     self.cnt_value.autoresizingMask = NSViewHeightSizable;
     self.cnt_value.preferredMaxLayoutWidth = 80;
+    self.cnt_value.frame = NSMakeRect(520, 2, 80, 20);
     self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.cpu_step_count];
     [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
     [self.cnt_value setAction:@selector(cntValueChanged:)];
     [self.cnt_value setTarget:self];
-    [wrapper addSubview:self.cnt_value];
-    [self.ctrl_view addArrangedSubview:wrapper];
+    [self.ctrl_view addSubview:self.cnt_value];
     
     self.adr_title = [NSTextField labelWithString:@"Type:"];
-    [self.ctrl_view addArrangedSubview:self.adr_title];
+    self.adr_title.frame = NSMakeRect(610, 0, 40, 20);
+    [self.ctrl_view addSubview:self.adr_title];
     
-    self.adr_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+    self.adr_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(500, 0, 80, 20) pullsDown:NO];
     [self.adr_select addItemWithTitle:@"linear"];
     [self.adr_select addItemWithTitle:@"seg:ofs"];
+    self.adr_select.frame = NSMakeRect(650, 0, 80, 20);
     self.adr_select.objectValue = [NSNumber numberWithInt:0];
     [self.adr_select setAction:@selector(adrValueChanged:)];
     [self.adr_select setTarget:self];
-    [self.ctrl_view addArrangedSubview:self.adr_select];
+    [self.ctrl_view addSubview:self.adr_select];
     
     self.asm_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
     self.asm_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -1559,6 +1634,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.table = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
     self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.table.usesAlternatingRowBackgroundColors = YES;
+    self.table.allowsMultipleSelection = NO;
     self.table.headerView = [[NSTableHeaderView alloc] init];
     self.table.columnAutoresizingStyle = NSTableViewFirstColumnOnlyAutoresizingStyle;
     self.table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
@@ -1570,6 +1646,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.markerCol.title = @"";
     self.markerCol.editable = NO;
     self.markerCol.width = 30;
+    self.markerCol.resizingMask = NSTableColumnNoResizing;
     [self.table addTableColumn:self.markerCol];
     
     self.addrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.addr"];
@@ -1616,9 +1693,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  * updateFromMemory
  */
 - (void)updateFromMemory {
-  
-  self.cs_rip_addr_lin = bx_dbg_get_laddr((UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value, bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value);
-  
+   
   bx_dbg_new->disassemble(
     self.cpuNo,
     true,
@@ -1649,6 +1724,8 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)continueButtonClick:(id _Nonnull)sender {
   
+  bx_dbg_new->cmd_continue();
+  
 }
 
 /**
@@ -1656,12 +1733,16 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)breakButtonClick:(id _Nonnull)sender {
   
+  bx_dbg_new->cmd_break();
+  
 }
 
 /**
  * stepoverButtonClick
  */
 - (void)stepoverButtonClick:(id _Nonnull)sender {
+  
+  bx_dbg_new->cmd_step_over();
   
 }
 
@@ -1681,7 +1762,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 - (void)cntValueChanged:(id _Nonnull)sender {
   
   debugger_ctrl_options.cpu_step_count = self.cnt_value.intValue;
-  bx_dbg_new->cmd_step_n(self.cpuNo, debugger_ctrl_options.cpu_step_count);
   
 }
 
@@ -1698,11 +1778,13 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  * tableView objectValueForTableColumn
  */
 - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
-  
+    
   if ([tableColumn.identifier compare:@"col.marker"] == NSOrderedSame) {
     
-    if (self.cs_rip_addr_lin == bx_dbg_new->asm_lines[row].addr.ofs) {
-      // if cs:ip == address put image ->
+    if ((bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value == bx_dbg_new->asm_lines[row].addr_seg.ofs) && ((UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value == bx_dbg_new->asm_lines[row].addr_seg.seg)) {
+
+      self.lastRowNo = row;
+      
       return @"->";
     }
     
@@ -1710,25 +1792,21 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
   } else if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
     
-    if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
-      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016lX", bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
-    } else {
-      if (!bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode32 && !bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
-        if (debugger_ctrl_options.addr_displ_seg_ofs) {
-          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%02X:%04X", (UInt8)bx_dbg_new->asm_lines[row].addr.seg, (UInt16)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
-        } else {
-          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%06X", (UInt32)(((UInt8)bx_dbg_new->asm_lines[row].addr.seg >> 4) + (UInt16)bx_dbg_new->asm_lines[row].addr.ofs)] attributes:self.attributeMonospace];
-        }
-      } else if (bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode32 && !bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64) {
-        if (debugger_ctrl_options.addr_displ_seg_ofs) {
-          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X:%08X", (UInt16)bx_dbg_new->asm_lines[row].addr.seg, (UInt32)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
-        } else {
-          return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt64)((UInt16)bx_dbg_new->asm_lines[row].addr.seg + (UInt32)bx_dbg_new->asm_lines[row].addr.ofs)] attributes:self.attributeMonospace];
-        }
-      } else {
-        return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", (UInt32)bx_dbg_new->asm_lines[row].addr.ofs] attributes:self.attributeMonospace];
-      }
-    }
+    bx_dbg_address_t lin;
+    
+    lin.seg = 0;
+    lin.ofs = bx_dbg_new->asm_lines[row].addr_lin;
+    
+    return [BXNSAdressFormat
+            stringAddress:
+              debugger_ctrl_options.addr_displ_seg_ofs ? bx_dbg_new->asm_lines[row].addr_seg : lin
+              UseSegMode:debugger_ctrl_options.addr_displ_seg_ofs
+              Mode64:bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode64
+              Mode32:bx_dbg_new->smp_info.cpu_info[self.cpuNo].cpu_mode32
+              Att:self.attributeMonospace
+            ];
+    
+
     
   } else if ([tableColumn.identifier compare:@"col.instr"] == NSOrderedSame) {
 
@@ -1747,6 +1825,55 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
   
+/**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  NSInteger nextRow;
+  NSRect rowRect;
+  
+  if (bx_dbg_new->must_disassemble( self.cpuNo, true, { bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value, (UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value } )) {
+                                     
+    bx_dbg_new->disassemble( self.cpuNo, true, { bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value, (UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value }, debugger_ctrl_options.use_gas_syntax );
+  
+    [self.table scrollRowToVisible:0];
+    [self.table reloadData];
+    
+    return;
+    
+  }
+  
+  nextRow = [self getActiveTableRow];
+  [self.table reloadDataForRowIndexes:[NSIndexSet indexSetWithIndex:self.lastRowNo] columnIndexes:[NSIndexSet indexSetWithIndex:0]];
+  rowRect = [self.table rectOfRow:nextRow];
+  [self.table scrollRectToVisible:rowRect];
+  self.lastRowNo = nextRow;
+  [self.table reloadDataForRowIndexes:[NSIndexSet indexSetWithIndex:self.lastRowNo] columnIndexes:[NSIndexSet indexSetWithIndex:0]];
+  
+}
+
+/**
+ * getActiveTableRow
+ */
+- (NSInteger)getActiveTableRow {
+  
+  NSInteger tblRow;
+  bx_address addr_lin;
+  
+  addr_lin = bx_dbg_get_laddr((UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value, bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value);
+  
+  for (tblRow = 0; tblRow < ASM_ENTRY_LINES; tblRow++) {
+    if (bx_dbg_new->asm_lines[tblRow].addr_lin == addr_lin) {
+      return (tblRow);
+    }
+  }
+  
+  return 0;
+  
+}
+
+
 @end
 
 
@@ -1812,7 +1939,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   if (self) {
     
     self.cpuNo = 0;
-    self.stack_buf = nil;
     
     self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.orientation = NSUserInterfaceLayoutOrientationVertical;
@@ -1827,7 +1953,9 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.size_stack = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
     [self.size_stack addItemWithTitle:@"2"];
     [self.size_stack addItemWithTitle:@"4"];
+#if BX_SUPPORT_X86_64
     [self.size_stack addItemWithTitle:@"8"];
+#endif
     self.size_stack.objectValue = [NSNumber numberWithInt:0];
     [self.size_stack setAction:@selector(valueChanged:)];
     [self.size_stack setTarget:self];
@@ -1849,6 +1977,13 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.table.rowHeight = 18;
     self.table.intercellSpacing = NSMakeSize(6, 6);
     
+    self.addrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.addr"];
+    self.addrCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.addrCol.title = @"Address";
+    self.addrCol.editable = NO;
+    self.addrCol.width = 180;
+    [self.table addTableColumn:self.addrCol];
+    
     self.dataCol = [[NSTableColumn alloc] initWithIdentifier:@"col.data"];
     self.dataCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.dataCol.title = @"";
@@ -1860,8 +1995,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.stack_scroll setDocumentView:self.table];
     
     [self addArrangedSubview:self.stack_scroll];
-    
-    self.stack_buf = (unsigned char *)malloc(8 * 64 * sizeof(unsigned char));
     
     self.attributeMonospace = @{
       NSForegroundColorAttributeName:NSColor.textColor,
@@ -1875,30 +2008,13 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   return self;
 
 }
-
-/**
- * dealloc
- */
-- (void)dealloc {
-  
-  if (self.stack_buf != nil) {
-    free(self.stack_buf);
-  }
-  
-}
   
 /**
  * updateFromMemory
  */
 - (void)updateFromMemory {
   
-  bx_address laddr;
-  
-  laddr = BX_CPU(self.cpuNo)->get_laddr(BX_SEG_REG_SS, (bx_address) bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RSP].value);
-  
-  if (bx_dbg_read_linear(self.cpuNo, laddr, 8 * 64, self.stack_buf)) {
-    [self.table reloadData];
-  }
+  bx_dbg_new->prepare_stack_data(self.cpuNo);
   
 }
   
@@ -1913,11 +2029,21 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 }
   
 /**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  [self updateFromMemory];
+  [self.table reloadData];
+  
+}
+
+/**
  * numberOfRowsInTableView
  */
 - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
   
-  return 64;
+  return bx_dbg_new->stack_data.cnt;
   
 }
   
@@ -1926,28 +2052,52 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
   
-  switch (debugger_ctrl_options.stack_bytes) {
-    case 2: {
-      UInt16 * wRef;
-      
-      wRef = (UInt16 *)self.stack_buf;
-      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%04X", wRef[row]] attributes:self.attributeMonospace];
+  if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+    
+    bx_dbg_address_t addr_lin;
+    
+    addr_lin.seg = 0;
+    switch (debugger_ctrl_options.stack_bytes) {
+      case 2: {
+        addr_lin.ofs = bx_dbg_new->stack_data.data_16[row].addr_lin;
+        break;
+      }
+      case 4: {
+        addr_lin.ofs = bx_dbg_new->stack_data.data_32[row].addr_lin;
+        break;
+      }
+#if BX_SUPPORT_X86_64
+      case 8: {
+        addr_lin.ofs = bx_dbg_new->stack_data.data_64[row].addr_lin;
+        break;
+      }
+#endif
+      default: {
+        return @"";
+      }
     }
-    case 4: {
-      UInt32 * dwRef;
-      
-      dwRef = (UInt32 *)self.stack_buf;
-      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%08X", dwRef[row]] attributes:self.attributeMonospace];
+    
+    return [BXNSAdressFormat stringAddress:addr_lin UseSegMode:NO Mode64:debugger_ctrl_options.stack_bytes == 8 Mode32:debugger_ctrl_options.stack_bytes == 4 Att:self.attributeMonospace];
+    
+  } else {
+    
+    switch (debugger_ctrl_options.stack_bytes) {
+      case 2: {
+        return [BXNSAdressFormat stringHexValue16:bx_dbg_new->stack_data.data_16[row].addr_on_stack Att:self.attributeMonospace];
+      }
+      case 4: {
+        return [BXNSAdressFormat stringHexValue32:bx_dbg_new->stack_data.data_32[row].addr_on_stack Att:self.attributeMonospace];
+      }
+#if BX_SUPPORT_X86_64
+      case 8: {
+        return [BXNSAdressFormat stringHexValue64:bx_dbg_new->stack_data.data_64[row].addr_on_stack Att:self.attributeMonospace];
+      }
+#endif
+      default: {
+        return @"";
+      }
     }
-    case 8: {
-      UInt64 * qwRef;
-      
-      qwRef = (UInt64 *)self.stack_buf;
-      return [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"0x%016llX", qwRef[row]] attributes:self.attributeMonospace];
-    }
-    default: {
-      return @"";
-    }
+    
   }
   
 }
@@ -2029,7 +2179,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.ctrl_view addSubview:self.addr_label];
     
     self.addr_value = [BXNSTextField textFieldWithString:@"09090909:09090909" TypeNotif:NO];
-//    self.cnt_value.autoresizingMask = NSViewHeightSizable;
     self.addr_value.preferredMaxLayoutWidth = 160;
     self.addr_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.mem_displ_addr];
     [self.addr_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
@@ -2096,12 +2245,10 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.bytes_view.gridStyleMask = NSTableViewSolidVerticalGridLineMask;
     self.bytes_view.usesStaticContents = NO;
     self.bytes_view.usesAlternatingRowBackgroundColors = YES;
-//    self.bytes_view.style = NSTableViewStyleFullWidth;
     self.bytes_view.enabled = YES;
     self.bytes_view.rowSizeStyle = NSTableViewRowSizeStyleCustom;
     self.bytes_view.rowHeight = 18;
     self.bytes_view.intercellSpacing = NSMakeSize(6, 6);
-    // gridStyleMask
     
     [self.bytes_scroll setDocumentView:self.bytes_view];
     
@@ -2280,7 +2427,6 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
   bx_dbg_new->memorydump(self.cpuNo, false, {debugger_ctrl_options.mem_displ_addr, 0}, buffer_size);
   
-  //bx_dbg_new->mem_buffer
   [self.bytes_view reloadData];
   
 }
@@ -2530,6 +2676,18 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 }
 
 /**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  // send to all or only shown ?
+  [self.registerView reload:cpu];
+  [self.instructionView reload:cpu];
+  [self.stackView reload:cpu];
+  
+}
+
+/**
  * moveToView
  */
 - (void)moveToView:(debugger_view_location_t) dest View:(debugger_views_t) view {
@@ -2559,45 +2717,48 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.autoresizesSubviews = YES;
     
-    self.ctrl_view = [[NSStackView alloc] initWithFrame:NSMakeRect(10, frameRect.size.height - 30, frameRect.size.width - 20, 20)];
+    self.ctrl_view = [[NSView alloc] initWithFrame:NSMakeRect(0, frameRect.size.height - 30, frameRect.size.width, 20)];
     self.ctrl_view.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
     [self addSubview:self.ctrl_view];
     
-    // CPU select - only 1 at the beginning
-    self.cpu_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 20) pullsDown:NO];
+    self.cpu_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(10, 0, 90, 20) pullsDown:NO];
     for (UInt16 i=0; i<bx_dbg_new->smp_info.cpu_count; i++) {
       [self.cpu_select addItemWithTitle:[NSString stringWithFormat:@"CPU %d",i]];
     }
     self.cpu_select.objectValue = [NSNumber numberWithInt:debugger_ctrl_options.selected_cpu];
     [self.cpu_select setAction:@selector(cpuValueChanged:)];
     [self.cpu_select setTarget:self];
-    [self.ctrl_view addArrangedSubview:self.cpu_select];
+    [self.ctrl_view addSubview:self.cpu_select];
     
     self.btn_continue = [NSButton buttonWithTitle:@"Continue (⌃c)" target:self action:@selector(continueButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_continue];
+    self.btn_continue.frame = NSMakeRect(95, 0, 130, 20);
+    [self.ctrl_view addSubview:self.btn_continue];
     
     self.btn_break = [NSButton buttonWithTitle:@"Break (⌃x)" target:self action:@selector(breakButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_break];
+    self.btn_break.frame = NSMakeRect(220, 0, 100, 20);
+    [self.ctrl_view addSubview:self.btn_break];
     
     self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:@selector(stepoverButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_step_over];
+    self.btn_step_over.frame = NSMakeRect(315, 0, 130, 20);
+    [self.ctrl_view addSubview:self.btn_step_over];
 
     self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:@selector(stepButtonClick:)];
-    [self.ctrl_view addArrangedSubview:self.btn_step];
+    self.btn_step.frame = NSMakeRect(440, 0, 100, 20);
+    [self.ctrl_view addSubview:self.btn_step];
     
     self.cnt_title = [NSTextField labelWithString:@"count:"];
-    [self.ctrl_view addArrangedSubview:self.cnt_title];
+    self.cnt_title.frame = NSMakeRect(545, 0, 40, 20);
+    [self.ctrl_view addSubview:self.cnt_title];
     
-    NSView * wrapper = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 80, 20)];
-//    wrapper.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.cnt_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
     self.cnt_value.autoresizingMask = NSViewHeightSizable;
     self.cnt_value.preferredMaxLayoutWidth = 80;
+    self.cnt_value.frame = NSMakeRect(590, 2, 80, 20);
     self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.global_step_count];
     [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
-    [wrapper addSubview:self.cnt_value];
-    [self.ctrl_view addArrangedSubview:wrapper];
- 
+    [self.cnt_value setAction:@selector(cntValueChanged:)];
+    [self.cnt_value setTarget:self];
+    [self.ctrl_view addSubview:self.cnt_value];
     
     self.cpu_view = [[BXNSCpuTabContentView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40) SmpInfo:nil];
     [self addSubview:self.cpu_view];
@@ -2622,12 +2783,16 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)continueButtonClick:(id _Nonnull)sender {
   
+  bx_dbg_new->cmd_continue();
+  
 }
 
 /**
  * breakButtonClick
  */
 - (void)breakButtonClick:(id _Nonnull)sender {
+  
+  bx_dbg_new->cmd_break();
   
 }
 
@@ -2636,12 +2801,36 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)stepoverButtonClick:(id _Nonnull)sender {
   
+  bx_dbg_new->cmd_step_over();
+  
 }
 
 /**
  * stepButtonClick
  */
 - (void)stepButtonClick:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.global_step_count = self.cnt_value.intValue;
+  bx_dbg_new->cmd_step_n(debugger_ctrl_options.selected_cpu, debugger_ctrl_options.global_step_count);
+  
+}
+
+/**
+ * cntValueChanged
+ */
+- (void)cntValueChanged:(id _Nonnull)sender {
+  
+  debugger_ctrl_options.global_step_count = self.cnt_value.intValue;
+  
+}
+
+/**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  // cpu should be same we display ?
+  [self.cpu_view reload:cpu];
   
 }
 

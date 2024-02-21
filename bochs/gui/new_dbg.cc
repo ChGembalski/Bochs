@@ -33,9 +33,12 @@
 //#include "cpu/decoder/instr.h"
 
   extern void new_dbg_handler_custom(bool init);
-extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor);
+  extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor);
   extern bx_dbg_gui_c * bx_dbg_new;
   extern bx_list_c * root_param;
+  extern Bit64u conv_8xBit8u_to_Bit64u(const Bit8u* buf);
+  extern Bit32u conv_4xBit8u_to_Bit32u(const Bit8u* buf);
+  extern Bit16u conv_2xBit8u_to_Bit16u(const Bit8u* buf);
 
   static bxevent_handler old_callback = NULL;
   static void * old_callback_arg = NULL;
@@ -229,6 +232,7 @@ extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor
       case BX_SYNC_EVT_GET_DBG_COMMAND: {
         // simulator -> CI, wait for response.
         printf("new_dbg_notify_callback BX_SYNC_EVT_GET_DBG_COMMAND\n");
+        // i hope this is only called once ... else we'll stuck here ...
         // continue if we have a filled buffer
         while ((event->retcode = bx_dbg_new->sync_evt_get_debug_command(event->u.debugcmd.command, 512)) == -1) {
           // no valid buffer .. nap ...
@@ -256,7 +260,7 @@ extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor
   // internal setup
   void InitDebugDialog() {
     printf("-->InitDebugDialog\n");
-    bx_debugger.auto_disassemble = false;
+//    bx_debugger.auto_disassemble = false;
     new_dbg_handler_custom(true);
 
     // setup new callback
@@ -282,6 +286,16 @@ extern bool bx_dbg_read_pmode_descriptor(Bit16u sel, bx_descriptor_t *descriptor
 
   }
 
+  /**
+    * command_finished_callback
+   */
+  bool command_finished_callback(int cpu) {
+    
+    return bx_dbg_new->command_finished(cpu);
+    
+  }
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // bx_dbg_gui_c
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,6 +318,16 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
   
   // mem dump buffer
   this->mem_buffer = (unsigned char *)realloc(NULL, 64 * sizeof(unsigned char));
+  
+  // setup debugger callback
+  register_dbg_gui_callback(command_finished_callback);
+  
+  this->in_run_loop = false;
+  
+  // stack buffer
+  this->stack_data.data_64 = (bx_dbg_stack_entry_64_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_64_t));
+  this->stack_data.data_32 = (bx_dbg_stack_entry_32_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_32_t));
+  this->stack_data.data_16 = (bx_dbg_stack_entry_16_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_16_t));
   
   this->init_register_refs();
   
@@ -335,6 +359,10 @@ bx_dbg_gui_c::~bx_dbg_gui_c(void) {
     free(this->mem_buffer);
   }
   
+  free(this->stack_data.data_64);
+  free(this->stack_data.data_32);
+  free(this->stack_data.data_16);
+  
   if (this->smp_info.cpu_info != NULL) {
     free(this->smp_info.cpu_info);
   }
@@ -353,6 +381,30 @@ void bx_dbg_gui_c::init_internal(void) {
   this->init_os_depended();
   
 }
+
+/**
+ * command_finished
+ */
+bool bx_dbg_gui_c::command_finished(int cpu) {
+  if (this->in_run_loop) {
+    bx_dbg_cmd_t * cmd;
+    
+    cmd = dequeue_cmd();
+    if (cmd != NULL) {
+      if (cmd->cmd == DBG_BREAK) {
+        this->in_run_loop = false;
+        free(cmd);
+        this->gui_command_finished(cpu);
+        return false;
+      }
+      // ignore other ?
+      free(cmd);
+    }
+    return true;
+  }
+  return this->gui_command_finished(cpu);
+}
+
 
 /**
  * sync_evt_get_debug_command
@@ -557,7 +609,11 @@ bx_dbg_cmd_t * bx_dbg_gui_c::dequeue_cmd(void) {
 void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
   
   switch (cmd->cmd) {
-    case DBG_CONTINUE:
+    case DBG_CONTINUE: {
+      this->in_run_loop = true;
+      bx_dbg_continue_command(true);
+      break;
+    }
     case DBG_STEP: {
       bx_dbg_step_over_command();
       break;
@@ -608,8 +664,50 @@ void bx_dbg_gui_c::cmd_step_n(int cpuNo, unsigned step_cnt) {
   
 }
 
+/**
+ * cmd_continue
+ */
+void bx_dbg_gui_c::cmd_continue(void) {
+  
+  bx_dbg_cmd_t * cmd;
+  
+  cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
+  
+  cmd->cmd = DBG_CONTINUE;
+  
+  this->enqueue_cmd(cmd);
+  
+}
 
+/**
+ * cmd_break
+ */
+void bx_dbg_gui_c::cmd_break(void) {
+  
+  bx_dbg_cmd_t * cmd;
+  
+  cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
+  
+  cmd->cmd = DBG_BREAK;
+  
+  this->enqueue_cmd(cmd);
+  
+}
 
+/**
+ * cmd_step_over
+ */
+void bx_dbg_gui_c::cmd_step_over(void) {
+  
+  bx_dbg_cmd_t * cmd;
+  
+  cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
+  
+  cmd->cmd = DBG_STEP;
+  
+  this->enqueue_cmd(cmd);
+  
+}
 
 
 /**
@@ -695,6 +793,9 @@ void bx_dbg_gui_c::update_register(unsigned cpuNo) {
         this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 16;
 #if BX_CPU_LEVEL >= 5
         if (cpuregno >= CR0 & cpuregno <= CR4) {
+#if 0 /* without ide has parsing probs */
+        }
+#endif
 #else
         if (cpuregno >= CR0 & cpuregno <= CR3) {
 #endif /* BX_CPU_LEVEL >= 5 */
@@ -733,10 +834,15 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   
   if (seg) {
     laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
-    seg_base = addr.seg;
+    seg_base = get_segment(cpuNo, addr.seg, addr.ofs);
   } else {
     laddr = addr.ofs;
     seg_base = 0;
+  }
+  if (BX_CPU(dbg_cpu)->protected_mode()) {
+    lin_ofs = laddr - seg_base;
+  } else {
+    lin_ofs = laddr - (seg_base << 4);
   }
 
   // clear buffers
@@ -753,13 +859,6 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   data_ofs = 0;
   text_ptr = this->asm_text_buffer;
   
-  if (BX_CPU(dbg_cpu)->protected_mode()) {
-    seg_base = get_segment(cpuNo, seg_base, addr.ofs);
-    lin_ofs = laddr - seg_base;
-  } else {
-    lin_ofs = laddr - (seg_base << 4);
-  }
-  
   for (lineno = 0; lineno<ASM_ENTRY_LINES; lineno++) {
     
     char buffer[64] = {0};
@@ -771,7 +870,7 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
       this->smp_info.cpu_info[cpuNo].cpu_mode64,
       buffer,
       &i, 
-      seg_base,
+      BX_JUMP_TARGET_NOT_REQ,
       laddr,
       gas ? BX_DISASM_GAS : BX_DISASM_INTEL
     );
@@ -780,19 +879,16 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
     memcpy(text_ptr, buffer, buffer_len);
     
     // setup asm_lines
-    if (seg) {
-      this->asm_lines[lineno].addr.seg = seg_base;
-      this->asm_lines[lineno].addr.ofs = lin_ofs;
-    } else {
-      this->asm_lines[lineno].addr.seg = 0;
-      this->asm_lines[lineno].addr.ofs = laddr;
-    }
+    this->asm_lines[lineno].addr_seg.seg = seg_base;
+    this->asm_lines[lineno].addr_seg.ofs = lin_ofs;
+    this->asm_lines[lineno].addr_lin = laddr;
     this->asm_lines[lineno].len = i.ilen();
     this->asm_lines[lineno].data = &this->asm_buffer[data_ofs];
     this->asm_lines[lineno].text = text_ptr;
   
     text_ptr += buffer_len;
     laddr += this->asm_lines[lineno].len;
+    data_ofs += this->asm_lines[lineno].len;
     if (seg) {
       lin_ofs += this->asm_lines[lineno].len;
       if (!BX_CPU(dbg_cpu)->protected_mode()) {
@@ -806,6 +902,30 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   
 }
 
+/**
+ * must_disassemble
+ */
+bool bx_dbg_gui_c::must_disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr) {
+  
+  bx_address laddr;
+  bx_address laddr_from;
+  bx_address laddr_to;
+  
+  if (seg) {
+    laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
+    laddr_from = bx_dbg_get_laddr(this->asm_lines[0].addr_seg.seg, this->asm_lines[0].addr_seg.ofs);
+    laddr_to = bx_dbg_get_laddr(this->asm_lines[ASM_ENTRY_LINES - 1].addr_seg.seg, this->asm_lines[ASM_ENTRY_LINES - 1].addr_seg.ofs);
+  } else {
+    laddr = addr.ofs;
+    laddr_from = this->asm_lines[0].addr_lin;
+    laddr_to = this->asm_lines[ASM_ENTRY_LINES - 1].addr_lin;
+  }
+  
+  return !((laddr >= laddr_from) && (laddr <= laddr_to));
+  
+}
+  
+  
 /**
  * get_segment
  */
@@ -840,9 +960,11 @@ bx_address bx_dbg_gui_c::get_segment(unsigned cpuNo, Bit16u sel, bx_address ofs)
     }
 
     laddr = descriptor.u.segment.base;
-  }
-  else {
-    laddr = (sel << 4);
+    
+  } else {
+    
+    laddr = sel;
+    
   }
 
   return laddr;
@@ -868,6 +990,74 @@ void bx_dbg_gui_c::memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, s
   bx_dbg_read_linear(cpuNo, laddr, buffer_size, this->mem_buffer);
   
 }
+
+/**
+ * prepare_stack_data
+ */
+void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {
+  
+  BX_CPU_C * cpu;
+#if BX_SUPPORT_X86_64
+  bx_address linear_sp64;
+#endif
+  bx_address linear_sp32;
+  bx_address linear_sp16;
+  Bit8u buf64[8];
+  Bit8u buf32[4];
+  Bit8u buf16[2];
+  
+  this->stack_data.cnt = 0;
+  
+  cpu = BX_CPU(cpuNo);
+#if BX_SUPPORT_X86_64
+    linear_sp64 = cpu->get_reg64(BX_64BIT_REG_RSP);
+#endif
+  linear_sp32 = cpu->get_reg32(BX_32BIT_REG_ESP);
+  linear_sp32 = cpu->get_laddr(BX_SEG_REG_SS, linear_sp32);
+  linear_sp16 = cpu->get_reg16(BX_16BIT_REG_SP);
+  linear_sp16 = cpu->get_laddr(BX_SEG_REG_SS, linear_sp16);
+  
+  for (unsigned i = 0; i < STACK_ENTRY_LINES; i++) {
+
+#if BX_SUPPORT_X86_64
+    if (! bx_dbg_read_linear(cpuNo, linear_sp64, 8, buf64)) break;
+#endif
+    if (! bx_dbg_read_linear(cpuNo, linear_sp32, 4, buf32)) break;
+    if (! bx_dbg_read_linear(cpuNo, linear_sp16, 2, buf16)) break;
+    
+#if BX_SUPPORT_X86_64
+    this->stack_data.data_64[i].addr_lin = linear_sp64;
+    this->stack_data.data_64[i].addr_seg.seg = 0;
+    this->stack_data.data_64[i].addr_seg.ofs = linear_sp64;
+    this->stack_data.data_64[i].addr_on_stack = conv_8xBit8u_to_Bit64u(buf64);
+#endif
+    
+    this->stack_data.data_32[i].addr_lin = linear_sp32;
+    this->stack_data.data_32[i].addr_seg.seg = 0;
+    this->stack_data.data_32[i].addr_seg.ofs = linear_sp32;
+    this->stack_data.data_32[i].addr_on_stack = conv_4xBit8u_to_Bit32u(buf32);
+    
+    this->stack_data.data_16[i].addr_lin = linear_sp16;
+    this->stack_data.data_16[i].addr_seg.seg = 0;
+    this->stack_data.data_16[i].addr_seg.ofs = linear_sp16;
+    this->stack_data.data_16[i].addr_on_stack = conv_2xBit8u_to_Bit16u(buf16);
+    
+#if BX_SUPPORT_X86_64
+    linear_sp64 += 8;
+#endif
+    linear_sp32 += 4;
+    linear_sp16 += 2;
+    this->stack_data.cnt ++;
+    
+  }
+  
+}
+
+
+
+
+
+
 
 
 #endif

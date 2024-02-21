@@ -60,10 +60,20 @@ IMPLEMENT_GUI_DEBUGGER(bx_cocoa_dbg_gui_c);
 //
 // }
 
+/**
+ * init_os_depended
+ */
 void bx_cocoa_dbg_gui_c::init_os_depended(void) {
   bxcocoagui->createDebuggerUI();
   bxcocoagui->showWindow(BX_GUI_WINDOW_DEBUGGER, true);
 }
 
+/**
+ * gui_command_finished
+ */
+bool bx_cocoa_dbg_gui_c::gui_command_finished(int cpu) {
+  bxcocoagui->updateDebugger(cpu);
+  return true;
+}
 
 #endif /* BX_DEBUGGER && BX_NEW_DEBUGGER_GUI */

@@ -608,6 +608,12 @@ void BXGuiCocoaApplication::createDebuggerUI(void) {
   });
 }
 
+void BXGuiCocoaApplication::updateDebugger(int cpu) {
+  dispatch_sync(dispatch_get_main_queue(), ^(void){
+    [[BXCocoaApplication->BXNSApp.bx_window_controller getWindow:BX_GUI_WINDOW_DEBUGGER] reload:cpu];
+  });
+}
+
 
 
 /**

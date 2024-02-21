@@ -2221,25 +2221,6 @@ NSDictionary * outputAttributesText;
 
 @implementation BXNSDebuggerWindow
 
-BXNSVerticalSplitView * verticalSplitView;
-BXNSHorizontalSplitView * horizontalSplitViewTop;
-BXNSHorizontalSplitView * horizontalSplitViewBottom;
-BXNSTabView * tabViewTopLeft;
-BXNSTabView * tabViewTopRight;
-BXNSTabView * tabViewBottom;
-
-BXNSMemoryView * memoryView;
-BXNSGDTView * gdtView;
-BXNSIDTView * idtView;
-BXNSLDTView * ldtView;
-BXNSPagingView * pagingView;
-BXNStackView * stackView;
-BXNSInstructionView * instructionView;
-BXNSBreakpointView * breakpointView;
-BXNSRegisterView * registerView;
-
-
-
 /**
  * init
  */
@@ -2263,73 +2244,21 @@ BXNSRegisterView * registerView;
     self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
     self.debug_view = [[BXNSDebugView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
-//    self.debug_view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [self.contentView addSubview:self.debug_view];
-    
-    
-//    // prepare cpu tabs
-//    self.cpu_tabs = [[BXNSCpuTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768) SmpInfo:nil];
-//    self.cpu_tabs.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-//    [self.contentView addSubview:self.cpu_tabs];
-//    
-    
-    
-    
-    
-/*    verticalSplitView = [[BXNSVerticalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
-    verticalSplitView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    [self.contentView addSubview:verticalSplitView];
-
-    horizontalSplitViewTop = [[BXNSHorizontalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 640)];
-    horizontalSplitViewBottom = [[BXNSHorizontalSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 128)];
-    [verticalSplitView addSubview:horizontalSplitViewTop];
-    [verticalSplitView addSubview:horizontalSplitViewBottom];
-
-    tabViewTopLeft = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 512, 640)];
-    tabViewTopRight = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 512, 640)];
-    [horizontalSplitViewTop addSubview:tabViewTopLeft];
-    [horizontalSplitViewTop addSubview:tabViewTopRight];
-    tabViewBottom = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 128)];
-    [horizontalSplitViewBottom addSubview:tabViewBottom];
-
-    registerView = [[BXNSRegisterView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
-    NSTabViewItem * registerViewItem = [[NSTabViewItem alloc] init];
-    registerViewItem.label = @"Register";
-    registerViewItem.view = registerView;
-    [tabViewTopLeft addTabViewItem:registerViewItem];
-
-    memoryView = [[BXNSMemoryView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
-    NSTabViewItem * memoryViewItem = [[NSTabViewItem alloc] init];
-    memoryViewItem.label = @"Memory";
-    memoryViewItem.view = memoryView;
-    [tabViewTopLeft addTabViewItem:memoryViewItem];
-
-
-
-    instructionView = [[BXNSInstructionView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
-    NSTabViewItem * instructionViewItem = [[NSTabViewItem alloc] init];
-    instructionViewItem.label = @"Instruction";
-    instructionViewItem.view = instructionView;
-    [tabViewTopRight addTabViewItem:instructionViewItem];
-
-    breakpointView = [[BXNSBreakpointView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
-    NSTabViewItem * breakpointViewItem = [[NSTabViewItem alloc] init];
-    breakpointViewItem.label = @"Breakpoint";
-    breakpointViewItem.view = breakpointView;
-    [tabViewTopRight addTabViewItem:breakpointViewItem];
-
-
-
-    self.outputView = [[BXNSOutputView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 128)];
-    NSTabViewItem * outputViewItem = [[NSTabViewItem alloc] init];
-    outputViewItem.label = @"Output";
-    outputViewItem.view = self.outputView;
-    [tabViewBottom addTabViewItem:outputViewItem];
-*/
+  
   }
 
   return self;
 
+}
+
+/**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  [self.debug_view reload:cpu];
+  
 }
 
 /**

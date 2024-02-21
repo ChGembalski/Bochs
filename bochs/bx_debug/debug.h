@@ -68,6 +68,11 @@ extern "C" {
   extern void bxerror(const char *s);
 };
 
+#if BX_NEW_DEBUGGER_GUI
+typedef bool (* dbg_gui_callback) (int cpu);
+void register_dbg_gui_callback(dbg_gui_callback callback);
+#endif /* BX_NEW_DEBUGGER_GUI */
+
 // register function for 'info device' command
 bool bx_dbg_register_debug_info(const char *devname, void *dev);
 
@@ -219,6 +224,9 @@ typedef enum {
   STOP_MODE_BREAK_POINT,
   STOP_VMEXIT_BREAK_POINT,
   STOP_CPU_HALTED,
+#if BX_NEW_DEBUGGER_GUI
+  STOP_DEBUGGER_MAX_STEP,
+#endif
 } stop_reason_t;
 
 typedef enum {
