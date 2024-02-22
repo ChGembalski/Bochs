@@ -273,6 +273,7 @@
     + (NSAttributedString * _Nonnull)stringDecValue16:(UInt16) val Att:(NSDictionary * _Nonnull) attribute;
     + (NSAttributedString * _Nonnull)stringDecValue8:(UInt8) val Att:(NSDictionary * _Nonnull) attribute;
     + (NSAttributedString * _Nonnull)stringWithUTF8String:(const char * _Nonnull) nullTerminatedCString Att:(NSDictionary * _Nonnull) attribute;
+    + (UInt64)scanValue:(id _Nonnull) object Hex:(BOOL) hex Size:(UInt8) size;
 
   @end
 
@@ -294,7 +295,7 @@
     - (void)createRegisterMapping;
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
-
+    - (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
     - (void)reload:(int) cpu;
 
   @end

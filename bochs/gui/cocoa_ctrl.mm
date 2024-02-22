@@ -1278,6 +1278,41 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
 }
 
+/**
+ * scanValue
+ */
++ (UInt64)scanValue:(id _Nonnull) object Hex:(BOOL) hex Size:(UInt8) size {
+  
+  NSScanner * scanner;
+  UInt64 result;
+  // size 8 16 32 64
+  
+  scanner = [NSScanner scannerWithString:object];
+  if (hex) {
+    [scanner scanHexLongLong:&result];
+  } else {
+    [scanner scanUnsignedLongLong:&result];
+  }
+  
+  switch (size) {
+    case 8: {
+      result = result & 0xFF;
+      break;
+    }
+    case 16: {
+      result = result & 0xFFFF;
+      break;
+    }
+    case 32: {
+      result = result & 0xFFFFFFFF;
+      break;
+    }
+  }
+  
+  return result;
+  
+}
+
 @end
 
 
@@ -1589,6 +1624,43 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   }
     
   return @"";
+  
+}
+
+/**
+ * setObjectValue
+ */
+- (void)tableView:(NSTableView * _Nonnull)tableView setObjectValue:(id _Nullable) object forTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+  
+  unsigned int rowRef;
+  UInt8 size;
+  BOOL isHex;
+  
+
+  rowRef = self.register_mapping[row].reg_id;
+  size = bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].size;
+  isHex = ([tableColumn.identifier compare:@"col.hex"] == NSOrderedSame);
+  
+  switch (size) {
+    case 8: {
+      bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value = (UInt8) [BXNSAdressFormat scanValue:object Hex:isHex Size:8];
+      break;
+    }
+    case 16: {
+      bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value = (UInt16) [BXNSAdressFormat scanValue:object Hex:isHex Size:16];
+      break;
+    }
+    case 32: {
+      bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value = (UInt32) [BXNSAdressFormat scanValue:object Hex:isHex Size:32];
+      break;
+    }
+    default: {
+      bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[rowRef].value = (UInt64) [BXNSAdressFormat scanValue:object Hex:isHex Size:64];
+      break;
+    }
+  }
+  
+  bx_dbg_new->write_register(self.cpuNo, rowRef);
   
 }
 
@@ -2156,17 +2228,14 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   if ([tableColumn.identifier compare:@"col.data"] == NSOrderedSame) {
     
     bx_dbg_address_t addr_lin;
-    NSScanner * scanner;
     
     addr_lin.seg = 0;
     switch (debugger_ctrl_options.stack_bytes) {
       case 2: {
-        UInt32 value;
+        UInt16 value;
         UInt8 b8val[2];
         
-        value = 0;
-        scanner = [NSScanner scannerWithString:object];
-        [scanner scanHexInt:&value];
+        value = (UInt16)[BXNSAdressFormat scanValue:object Hex:YES Size:16];
         b8val[0] = value & 0xFF;
         b8val[1] = (value >> 8) & 0xFF;
         
@@ -2181,9 +2250,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
         UInt32 value;
         UInt8 b8val[4];
         
-        value = 0;
-        scanner = [NSScanner scannerWithString:object];
-        [scanner scanHexInt:&value];
+        value = (UInt32)[BXNSAdressFormat scanValue:object Hex:YES Size:32];
         b8val[0] = value & 0xFF;
         b8val[1] = (value >> 8) & 0xFF;
         b8val[2] = (value >> 16) & 0xFF;
@@ -2201,9 +2268,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
         UInt64 value;
         UInt8 b8val[8];
         
-        value = 0;
-        scanner = [NSScanner scannerWithString:object];
-        [scanner scanHexLongLong:&value];
+        value = (UInt64)[BXNSAdressFormat scanValue:object Hex:YES Size:64];
         b8val[0] = value & 0xFF;
         b8val[1] = (value >> 8) & 0xFF;
         b8val[2] = (value >> 16) & 0xFF;

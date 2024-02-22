@@ -817,6 +817,41 @@ void bx_dbg_gui_c::update_register(unsigned cpuNo) {
 }
 
 /**
+ * write_register
+ */
+void bx_dbg_gui_c::write_register(unsigned cpuNo, unsigned regno) {
+  
+  Bit64u val;
+  
+  val = this->smp_info.cpu_info[cpuNo].reg_value[regno].value;
+  
+  switch (this->smp_info.cpu_info[cpuNo].reg_value[regno].size) {
+    case 16: {
+      Bit64u old;
+      
+      old = (this->smp_info.cpu_info[cpuNo].regs[regno]->get64() & ~0xFFFF);
+      old |= (val & 0xFFFF);
+      this->smp_info.cpu_info[cpuNo].regs[regno]->set(old);
+      break;
+    }
+    case 32: {
+      Bit64u old;
+      
+      old = (this->smp_info.cpu_info[cpuNo].regs[regno]->get64() & ~0xFFFFFFFF);
+      old |= (val & 0xFFFFFFFF);
+      this->smp_info.cpu_info[cpuNo].regs[regno]->set(old);
+      break;
+    }
+    default: {
+      this->smp_info.cpu_info[cpuNo].regs[regno]->set(val);
+      break;
+    }
+  }
+  
+}
+
+
+/**
  * disassemble
  */
 void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas) {

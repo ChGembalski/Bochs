@@ -372,6 +372,7 @@ public:
   void memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size);
   void memoryset(unsigned cpuNo, bx_dbg_address_t addr, Bit8u val);
   void update_register(unsigned cpuNo);
+  void write_register(unsigned cpuNo, unsigned regno);
   void prepare_stack_data(unsigned cpuNo);
   
   void cmd_step_n(int cpuNo, unsigned step_cnt);
