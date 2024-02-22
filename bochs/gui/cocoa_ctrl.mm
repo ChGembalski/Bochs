@@ -1737,10 +1737,46 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.adr_select addItemWithTitle:@"linear"];
     [self.adr_select addItemWithTitle:@"seg:ofs"];
     self.adr_select.frame = NSMakeRect(650, 0, 80, 20);
-    self.adr_select.objectValue = [NSNumber numberWithInt:0];
+    self.adr_select.objectValue = [NSNumber numberWithInt:debugger_ctrl_options.addr_displ_seg_ofs ? 1 : 0];
     [self.adr_select setAction:@selector(adrValueChanged:)];
     [self.adr_select setTarget:self];
     [self.ctrl_view addSubview:self.adr_select];
+    
+    self.disadr_title = [NSTextField labelWithString:@"Address"];
+    self.disadr_title.frame = NSMakeRect(735, 0, 60, 20);
+    [self.ctrl_view addSubview:self.disadr_title];
+    
+    self.disadr_value = [BXNSTextField textFieldWithString:@"000000000000000000" TypeNotif:NO];
+    self.disadr_value.autoresizingMask = NSViewHeightSizable;
+    self.disadr_value.preferredMaxLayoutWidth = 160;
+    self.disadr_value.frame = NSMakeRect(800, 2, 160, 20);
+    self.disadr_value.stringValue = [NSString stringWithFormat:@"%0X", 0];
+    [self.disadr_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
+    [self.ctrl_view addSubview:self.disadr_value];
+    
+    self.disadrseg_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
+    self.disadrseg_value.autoresizingMask = NSViewHeightSizable;
+    self.disadrseg_value.preferredMaxLayoutWidth = 80;
+    self.disadrseg_value.frame = NSMakeRect(800, 2, 80, 20);
+    self.disadrseg_value.stringValue = [NSString stringWithFormat:@"%0X", 0];
+    [self.disadrseg_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
+    [self.ctrl_view addSubview:self.disadrseg_value];
+    
+    self.disadrofs_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
+    self.disadrofs_value.autoresizingMask = NSViewHeightSizable;
+    self.disadrofs_value.preferredMaxLayoutWidth = 80;
+    self.disadrofs_value.frame = NSMakeRect(880, 2, 80, 20);
+    self.disadrofs_value.stringValue = [NSString stringWithFormat:@"%0X", 0];
+    [self.disadrofs_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
+    [self.ctrl_view addSubview:self.disadrofs_value];
+    
+    [self.disadr_value setHidden:debugger_ctrl_options.addr_displ_seg_ofs];
+    [self.disadrseg_value setHidden:!debugger_ctrl_options.addr_displ_seg_ofs];
+    [self.disadrofs_value setHidden:!debugger_ctrl_options.addr_displ_seg_ofs];
+    
+    self.btn_disadr = [NSButton buttonWithTitle:@"Disassemble" target:self action:@selector(disadrButtonClick:)];
+    self.btn_disadr.frame = NSMakeRect(965, 0, 100, 20);
+    [self.ctrl_view addSubview:self.btn_disadr];
     
     self.asm_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
     self.asm_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -1833,6 +1869,11 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 - (void)adrValueChanged:(id _Nonnull)sender {
   
   debugger_ctrl_options.addr_displ_seg_ofs = ([sender indexOfSelectedItem] == 1);
+  
+  [self.disadr_value setHidden:debugger_ctrl_options.addr_displ_seg_ofs];
+  [self.disadrseg_value setHidden:!debugger_ctrl_options.addr_displ_seg_ofs];
+  [self.disadrofs_value setHidden:!debugger_ctrl_options.addr_displ_seg_ofs];
+  
   [self.table reloadData];
   
 }
@@ -1884,6 +1925,38 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 }
 
 /**
+ * disadrButtonClick
+ */
+- (void)disadrButtonClick:(id _Nonnull)sender {
+  
+  bx_dbg_address_t addr;
+  UInt32 ofs;
+  UInt32 seg;
+  UInt64 lin;
+  
+  if (debugger_ctrl_options.addr_displ_seg_ofs) {
+    ofs = (UInt32)[BXNSAdressFormat scanValue:self.disadrofs_value.stringValue Hex:YES Size:32];
+    seg = (UInt32)[BXNSAdressFormat scanValue:self.disadrseg_value.stringValue Hex:YES Size:32];
+  } else {
+    lin = [BXNSAdressFormat scanValue:self.disadr_value.stringValue Hex:YES Size:64];
+  }
+  
+  addr.seg = debugger_ctrl_options.addr_displ_seg_ofs ? seg : 0;
+  addr.ofs = debugger_ctrl_options.addr_displ_seg_ofs ? ofs : lin;
+  
+  bx_dbg_new->disassemble(
+    self.cpuNo,
+    debugger_ctrl_options.addr_displ_seg_ofs,
+    addr,
+    debugger_ctrl_options.use_gas_syntax
+  );
+  
+  [self.table scrollRowToVisible:0];
+  [self.table reloadData];
+  
+}
+
+/**
  * numberOfRowsInTableView
  */
 - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
@@ -1899,8 +1972,16 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
   if ([tableColumn.identifier compare:@"col.marker"] == NSOrderedSame) {
     
-    if ((bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value == bx_dbg_new->asm_lines[row].addr_seg.ofs) && ((UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value == bx_dbg_new->asm_lines[row].addr_seg.seg)) {
-
+    bx_dbg_address_t adrCmpA;
+    bx_dbg_address_t adrCmpB;
+    
+    adrCmpA.seg = (UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value;
+    adrCmpA.ofs = bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value;
+    adrCmpB.seg = 0;
+    adrCmpB.ofs = bx_dbg_new->asm_lines[row].addr_lin;
+    
+    if (bx_dbg_new->is_addr_equal(self.cpuNo, true, adrCmpA, false, adrCmpB)) {
+    
       self.lastRowNo = row;
       
       return @"->";
@@ -2308,8 +2389,33 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   self = [super initWithFrame:frameRect];
   if (self) {
 
+    
+    // void bx_dbg_timebp_command(bool absolute, Bit64u time)
+    // void bx_dbg_watch(int type, bx_phy_address address, Bit32u len)
+    // void bx_dbg_unwatch_all()
+    // void bx_dbg_unwatch(bx_phy_address address)
+    // void bx_dbg_set_magic_bp_mask(Bit8u new_mask)
+    // void bx_dbg_clr_magic_bp_mask(Bit8u mask)
+    
+    // void bx_dbg_check_memory_watchpoints(unsigned cpu, bx_phy_address phy, unsigned len, unsigned rw)
+    
+    // ?? void bx_dbg_info_control_regs_command(unsigned cpu)
+    // ?? void bx_dbg_info_debug_regs_command(unsigned cpu)
+    // ?? void bx_dbg_info_flags(unsigned cpu)
+    // ?? void bx_dbg_exception(unsigned cpu, Bit8u vector, Bit16u error_code)
 
-
+    // read write memory from to disk
+    
+    // void bx_dbg_print_descriptor(Bit32u lo, Bit32u hi)
+    // void bx_dbg_print_descriptor64(Bit32u lo1, Bit32u hi1, Bit32u lo2, Bit32u hi2)
+    // void bx_dbg_info_idt_command(unsigned from, unsigned to)
+    // void bx_dbg_info_lgdt_command(unsigned from, unsigned to, bool gdt)
+    // static const char* bx_dbg_ivt_desc(int intnum)
+    // void bx_dbg_info_ivt_command(unsigned from, unsigned to)
+    // static void bx_dbg_print_tss(Bit8u *tss, int len)
+    // void bx_dbg_info_tss_command(void)
+    // void bx_dbg_info_device(const char *dev, const char *args)
+    
   }
 
   return self;
@@ -2795,7 +2901,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 /**
  * initWithFrame
  */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect SmpInfo:(bx_smp_info_t *) smp {
+- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
   
   self = [super initWithFrame:frameRect];
   if (self) {
@@ -2980,7 +3086,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.cnt_value setTarget:self];
     [self.ctrl_view addSubview:self.cnt_value];
     
-    self.cpu_view = [[BXNSCpuTabContentView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40) SmpInfo:nil];
+    self.cpu_view = [[BXNSCpuTabContentView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
     [self addSubview:self.cpu_view];
     
   }

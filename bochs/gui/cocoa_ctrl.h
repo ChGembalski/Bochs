@@ -315,6 +315,11 @@
     @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull cnt_value;
     @property (nonatomic, readwrite, strong) NSTextField * _Nonnull adr_title;
     @property (nonatomic, readwrite, strong) NSPopUpButton * _Nonnull adr_select;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull disadr_title;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull disadr_value;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull disadrseg_value;
+    @property (nonatomic, readwrite, strong) BXNSTextField * _Nonnull disadrofs_value;
+    @property (nonatomic, readwrite, strong) NSButton * _Nonnull btn_disadr;
 
     @property (nonatomic, readwrite, strong) NSScrollView * _Nonnull asm_scroll;
     @property (nonatomic, readwrite, strong) NSTableView * _Nonnull table;
@@ -336,6 +341,7 @@
     - (void)stepoverButtonClick:(id _Nonnull)sender;
     - (void)stepButtonClick:(id _Nonnull)sender;
     - (void)cntValueChanged:(id _Nonnull)sender;
+    - (void)disadrButtonClick:(id _Nonnull)sender;
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
@@ -401,6 +407,11 @@
   @interface BXNSBreakpointView : NSView
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+
+
+
+
 
   @end
 
@@ -491,7 +502,7 @@
     @property (nonatomic, readwrite, strong) BXNSPagingView * _Nonnull pagingView;
     @property (nonatomic, readwrite, strong) BXNSMemoryView * _Nonnull memoryView;
 
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect SmpInfo:(bx_smp_info_t *) smp;
+    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
     - (void)reload:(int) cpu;
     - (void)moveToView:(debugger_view_location_t) dest View:(debugger_views_t) view;

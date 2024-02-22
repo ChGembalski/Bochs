@@ -312,27 +312,12 @@
 
   @end
 
-  
-
-  @interface BXNSOutputView : NSView
-
-    - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
-
-    - (void)appendText:(NSString * _Nonnull) msg;
-
-  @end
-
 
   @interface BXNSDebuggerWindow : BXNSGenericWindow <NSApplicationDelegate>
 
     @property (nonatomic, readwrite, strong) BXNSDebugView * _Nonnull debug_view;
 
-
-
-
-//    @property (nonatomic, readwrite, strong) BXNSOutputView * _Nonnull outputView;
-
-    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller SmpInfo:(bx_smp_info_t *) smp;
+    - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
 
     - (void)reload:(int) cpu;
 

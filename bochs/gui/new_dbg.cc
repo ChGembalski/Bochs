@@ -329,6 +329,13 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
   this->stack_data.data_32 = (bx_dbg_stack_entry_32_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_32_t));
   this->stack_data.data_16 = (bx_dbg_stack_entry_16_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_16_t));
   
+  // setup breakpoint chain
+  this->breakpoint_chain = (struct bx_dbg_breakpoint_chain_t *)malloc(sizeof(struct bx_dbg_breakpoint_chain_t));
+  this->breakpoint_chain->pred = this->breakpoint_chain;
+  this->breakpoint_chain->succ = NULL;
+  this->breakpoint_chain->breakpoint = NULL;
+    
+  
   this->init_register_refs();
   
 }
@@ -339,6 +346,7 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
 bx_dbg_gui_c::~bx_dbg_gui_c(void) {
 
   struct bx_dbg_cmd_chain_t * next;
+  struct bx_dbg_breakpoint_chain_t * breakpoint_next;
   
   next = this->cmd_chain;
   while (next != NULL) {
@@ -349,6 +357,21 @@ bx_dbg_gui_c::~bx_dbg_gui_c(void) {
       free(next->cmd);
     }
     next = next->succ;
+    free(node);
+  };
+  
+  breakpoint_next = this->breakpoint_chain;
+  while (breakpoint_next != NULL) {
+    struct bx_dbg_breakpoint_chain_t * node;
+    
+    node = breakpoint_next;
+    if (breakpoint_next->breakpoint != NULL) {
+      if (breakpoint_next->breakpoint->condition != NULL) {
+        free(breakpoint_next->breakpoint->condition);
+      }
+      free(breakpoint_next->breakpoint);
+    }
+    breakpoint_next = breakpoint_next->succ;
     free(node);
   };
   
@@ -631,7 +654,8 @@ void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
     case DBG_VIRT_BREAK_POINT_COND:
     case DBG_LIN_BREAK_POINT:
     case DBG_LIN_BREAK_POINT_COND:
-    case DBG_TIME_BREAK_POINT:
+    case DBG_PHY_BREAK_POINT:
+    case DBG_PHY_BREAK_POINT_COND:
     case DBG_CPU_BREAK_POINT:
     case DBG_INT_BREAK_POINT:
     case DBG_CALL_BREAK_POINT:
@@ -708,6 +732,429 @@ void bx_dbg_gui_c::cmd_step_over(void) {
   this->enqueue_cmd(cmd);
   
 }
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * add_breakpoint_lin
+ */
+bool bx_dbg_gui_c::add_breakpoint_lin(bx_address addr, bool enabled, const char * condition) {
+  
+  bx_dbg_breakpoint_t * breakpoint;
+  struct bx_dbg_breakpoint_chain_t * next;
+  struct bx_dbg_breakpoint_chain_t * next_breakpoint;
+  
+  breakpoint = (bx_dbg_breakpoint_t *)malloc(sizeof(bx_dbg_breakpoint_t));
+  breakpoint->type = DBG_LIN_BREAK_POINT;
+  breakpoint->enabled = enabled;
+  breakpoint->addr.lin = addr;
+  
+  if (condition != NULL) {
+    size_t len;
+    
+    len = strlen(condition);
+    breakpoint->condition = (char *)malloc((len + 1) * sizeof(char));
+    memcpy(breakpoint->condition, condition, len);
+    breakpoint->condition[len] = 0;
+    breakpoint->type = DBG_LIN_BREAK_POINT_COND;
+  }
+  
+  breakpoint->handle = bx_dbg_lbreakpoint_command(bkAtIP, addr, condition);
+  if (breakpoint->handle == -1) {
+    if (breakpoint->condition != NULL) {
+      free(breakpoint->condition);
+    }
+    free(breakpoint);
+    return (false);
+  }
+  
+  next_breakpoint = (bx_dbg_breakpoint_chain_t *)malloc(sizeof(bx_dbg_breakpoint_chain_t));
+  next_breakpoint->breakpoint = breakpoint;
+  
+  next = this->breakpoint_chain->pred;
+  next_breakpoint->pred = next;
+  next->succ = next_breakpoint;
+  this->breakpoint_chain->pred = next_breakpoint;
+  
+  return true;
+  
+}
+
+/**
+ * add_breakpoint_virt
+ */
+bool bx_dbg_gui_c::add_breakpoint_virt(bx_dbg_address_t addr, bool enabled, const char * condition) {
+  
+  bx_dbg_breakpoint_t * breakpoint;
+  struct bx_dbg_breakpoint_chain_t * next;
+  struct bx_dbg_breakpoint_chain_t * next_breakpoint;
+  
+  breakpoint = (bx_dbg_breakpoint_t *)malloc(sizeof(bx_dbg_breakpoint_t));
+  breakpoint->type = DBG_VIRT_BREAK_POINT;
+  breakpoint->enabled = enabled;
+  breakpoint->addr.seg.seg = addr.seg;
+  breakpoint->addr.seg.ofs = addr.ofs;
+  
+  if (condition != NULL) {
+    size_t len;
+    
+    len = strlen(condition);
+    breakpoint->condition = (char *)malloc((len + 1) * sizeof(char));
+    memcpy(breakpoint->condition, condition, len);
+    breakpoint->condition[len] = 0;
+    breakpoint->type = DBG_VIRT_BREAK_POINT_COND;
+  }
+  
+  breakpoint->handle = bx_dbg_vbreakpoint_command(bkRegular, addr.seg, addr.ofs, condition);
+  if (breakpoint->handle == -1) {
+    if (breakpoint->condition != NULL) {
+      free(breakpoint->condition);
+    }
+    free(breakpoint);
+    return (false);
+  }
+  
+  next_breakpoint = (bx_dbg_breakpoint_chain_t *)malloc(sizeof(bx_dbg_breakpoint_chain_t));
+  next_breakpoint->breakpoint = breakpoint;
+  
+  next = this->breakpoint_chain->pred;
+  next_breakpoint->pred = next;
+  next->succ = next_breakpoint;
+  this->breakpoint_chain->pred = next_breakpoint;
+  
+  return true;
+  
+}
+
+/**
+ * add_breakpoint_phy
+ */
+bool bx_dbg_gui_c::add_breakpoint_phy(bx_address addr, bool enabled, const char * condition) {
+  
+  bx_dbg_breakpoint_t * breakpoint;
+  struct bx_dbg_breakpoint_chain_t * next;
+  struct bx_dbg_breakpoint_chain_t * next_breakpoint;
+  
+  breakpoint = (bx_dbg_breakpoint_t *)malloc(sizeof(bx_dbg_breakpoint_t));
+  breakpoint->type = DBG_PHY_BREAK_POINT;
+  breakpoint->enabled = enabled;
+  breakpoint->addr.lin = addr;
+  
+  if (condition != NULL) {
+    size_t len;
+    
+    len = strlen(condition);
+    breakpoint->condition = (char *)malloc((len + 1) * sizeof(char));
+    memcpy(breakpoint->condition, condition, len);
+    breakpoint->condition[len] = 0;
+    breakpoint->type = DBG_PHY_BREAK_POINT_COND;
+  }
+  
+  breakpoint->handle = bx_dbg_pbreakpoint_command(bkRegular, addr, condition);
+  if (breakpoint->handle == -1) {
+    if (breakpoint->condition != NULL) {
+      free(breakpoint->condition);
+    }
+    free(breakpoint);
+    return (false);
+  }
+  
+  next_breakpoint = (bx_dbg_breakpoint_chain_t *)malloc(sizeof(bx_dbg_breakpoint_chain_t));
+  next_breakpoint->breakpoint = breakpoint;
+  
+  next = this->breakpoint_chain->pred;
+  next_breakpoint->pred = next;
+  next->succ = next_breakpoint;
+  this->breakpoint_chain->pred = next_breakpoint;
+  
+  return true;
+  
+}
+
+/**
+ * get_breakpoint_lin_count
+ */
+int bx_dbg_gui_c::get_breakpoint_lin_count(void) {
+  int result;
+  struct bx_dbg_breakpoint_chain_t * next;
+  
+  result = 0;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
+        result++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * get_breakpoint_virt_count
+ */
+int bx_dbg_gui_c::get_breakpoint_virt_count(void) {
+  int result;
+  struct bx_dbg_breakpoint_chain_t * next;
+  
+  result = 0;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_VIRT_BREAK_POINT) || (next->breakpoint->type == DBG_VIRT_BREAK_POINT_COND)) {
+        result++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * get_breakpoint_phy_count
+ */
+int bx_dbg_gui_c::get_breakpoint_phy_count(void) {
+  int result;
+  struct bx_dbg_breakpoint_chain_t * next;
+  
+  result = 0;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_PHY_BREAK_POINT) || (next->breakpoint->type == DBG_PHY_BREAK_POINT_COND)) {
+        result++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * get_breakpoint_lin
+ */
+bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(int no) {
+  int pos;
+  struct bx_dbg_breakpoint_chain_t * next;
+  bx_dbg_breakpoint_t * result;
+  
+  pos = 0;
+  result = NULL;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
+        if (pos == no) {
+          result = next->breakpoint;
+          break;
+        }
+        pos++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * get_breakpoint_virt
+ */
+bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_virt(int no) {
+  int pos;
+  struct bx_dbg_breakpoint_chain_t * next;
+  bx_dbg_breakpoint_t * result;
+  
+  pos = 0;
+  result = NULL;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_VIRT_BREAK_POINT) || (next->breakpoint->type == DBG_VIRT_BREAK_POINT_COND)) {
+        if (pos == no) {
+          result = next->breakpoint;
+          break;
+        }
+        pos++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * get_breakpoint_phy
+ */
+bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_phy(int no) {
+  int pos;
+  struct bx_dbg_breakpoint_chain_t * next;
+  bx_dbg_breakpoint_t * result;
+  
+  pos = 0;
+  result = NULL;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_PHY_BREAK_POINT) || (next->breakpoint->type == DBG_PHY_BREAK_POINT_COND)) {
+        if (pos == no) {
+          result = next->breakpoint;
+          break;
+        }
+        pos++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * del_breakpoint
+ */
+void bx_dbg_gui_c::del_breakpoint(unsigned handle) {
+  struct bx_dbg_breakpoint_chain_t * next;
+  struct bx_dbg_breakpoint_chain_t * node;
+  
+  node = NULL;
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+    
+    if (next->breakpoint != NULL) {
+      if (next->breakpoint->handle == handle) {
+        node = next;
+        break;
+      }
+    }
+    
+  }
+
+  if (node == NULL) {
+    return;
+  }
+
+  switch (node->breakpoint->type) {
+    case DBG_VIRT_BREAK_POINT:
+    case DBG_VIRT_BREAK_POINT_COND:
+    case DBG_LIN_BREAK_POINT:
+    case DBG_LIN_BREAK_POINT_COND:
+    case DBG_PHY_BREAK_POINT:
+    case DBG_PHY_BREAK_POINT_COND: {
+      bx_dbg_del_breakpoint_command(handle);
+      break;
+    }
+    default: {
+      return;
+    }
+  }
+        
+  if (node->breakpoint->condition != NULL) {
+    free(node->breakpoint->condition);
+  }
+  free(node->breakpoint);
+  node->pred->succ = node->succ;
+  if (node->succ != NULL) {
+    node->succ->pred = node->pred;
+  } else {
+    this->breakpoint_chain->pred = node->pred;
+  }
+  
+}
+
+/**
+ * del_all_breakpoints
+ */
+void bx_dbg_gui_c::del_all_breakpoints(void) {
+  struct bx_dbg_breakpoint_chain_t * next;
+  
+  next = this->breakpoint_chain->succ;
+  while (next != NULL) {
+    
+    struct bx_dbg_breakpoint_chain_t * node;
+    
+    switch (next->breakpoint->type) {
+      case DBG_VIRT_BREAK_POINT:
+      case DBG_VIRT_BREAK_POINT_COND:
+      case DBG_LIN_BREAK_POINT:
+      case DBG_LIN_BREAK_POINT_COND:
+      case DBG_PHY_BREAK_POINT:
+      case DBG_PHY_BREAK_POINT_COND: {
+        bx_dbg_del_breakpoint_command(next->breakpoint->handle);
+        break;
+      }
+      default: {
+        return;
+      }
+    }
+    
+    if (next->breakpoint->condition != NULL) {
+      free(next->breakpoint->condition);
+    }
+    free(next->breakpoint);
+    
+    node = next;
+    next = next->succ;
+    
+    node->pred->succ = node->succ;
+    if (node->succ != NULL) {
+      node->succ->pred = node->pred;
+    } else {
+      this->breakpoint_chain->pred = node->pred;
+    }
+    
+  }
+  
+}
+
+/**
+ * enable_breakpoint
+ */
+void bx_dbg_gui_c::enable_breakpoint(unsigned handle, bool enable) {
+  struct bx_dbg_breakpoint_chain_t * next;
+  
+  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+    
+    if (next->breakpoint != NULL) {
+      if (next->breakpoint->handle == handle) {
+        bx_dbg_en_dis_breakpoint_command(handle, enable);
+        break;
+      }
+    }
+    
+  }
+  
+}
+
+
+
+
+
+
 
 
 /**
@@ -950,6 +1397,10 @@ bool bx_dbg_gui_c::must_disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t a
     laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
     laddr_from = bx_dbg_get_laddr(this->asm_lines[0].addr_seg.seg, this->asm_lines[0].addr_seg.ofs);
     laddr_to = bx_dbg_get_laddr(this->asm_lines[ASM_ENTRY_LINES - 1].addr_seg.seg, this->asm_lines[ASM_ENTRY_LINES - 1].addr_seg.ofs);
+    if ((laddr_from == 0) && (laddr_to == 0)) {
+      laddr_from = this->asm_lines[0].addr_lin;
+      laddr_to = this->asm_lines[ASM_ENTRY_LINES - 1].addr_lin;
+    }
   } else {
     laddr = addr.ofs;
     laddr_from = this->asm_lines[0].addr_lin;
@@ -1101,7 +1552,29 @@ void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {
   
 }
 
-
+/**
+ * is_addr_equal
+ */
+bool bx_dbg_gui_c::is_addr_equal(unsigned cpuNo, bool segA, bx_dbg_address_t addrA, bool segB, bx_dbg_address_t addrB) {
+  
+  bx_address linA;
+  bx_address linB;
+  
+  if (segA) {
+    linA = bx_dbg_get_laddr(addrA.seg, addrA.ofs);
+  } else {
+    linA = addrA.ofs;
+  }
+  
+  if (segB) {
+    linB = bx_dbg_get_laddr(addrB.seg, addrB.ofs);
+  } else {
+    linB = addrB.ofs;
+  }
+  
+  return (linA == linB);
+  
+}
 
 
 

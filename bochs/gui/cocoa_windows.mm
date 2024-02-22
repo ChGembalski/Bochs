@@ -565,7 +565,7 @@ gui_window_t window_list[] = {
  */
 - (void)createDebuggerUI {
     
-  window_list[3].window = [[BXNSDebuggerWindow alloc] init:self SmpInfo:nil];
+  window_list[3].window = [[BXNSDebuggerWindow alloc] init:self];
     [((NSWindow *)window_list[3].window) center];
     [window_list[3].window setIsVisible:NO];
   
@@ -2112,15 +2112,6 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 
 
 
-
-
-
-
-
-
-
-
-
 @implementation BXNSLDTView
 
 /**
@@ -2144,87 +2135,12 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-@implementation BXNSOutputView
-
-NSScrollView * outputScrollView;
-NSTextView * outputText;
-NSDictionary * outputAttributesText;
-
-/**
- * initWithFrame
- */
-- (instancetype _Nonnull)initWithFrame:(NSRect)frameRect {
-
-  self = [super initWithFrame:frameRect];
-  if (self) {
-
-    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-
-    outputScrollView = [[NSScrollView alloc] initWithFrame:frameRect];
-    outputScrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    // [outputScrollView setBorderType:NSNoBorder];
-    [outputScrollView setHasVerticalScroller:YES];
-
-    outputText = [[NSTextView alloc] initWithFrame:frameRect];
-    outputText.autoresizingMask = NSViewWidthSizable;
-    [outputText setMinSize:frameRect.size];
-    [outputText setMaxSize:NSMakeSize(FLT_MAX, FLT_MAX)];
-    [outputText setVerticallyResizable:YES];
-    [outputText setHorizontallyResizable:NO];
-    [outputText setTextColor:NSColor.textColor];
-    [outputText setEditable:NO];
-    [[outputText textContainer] setContainerSize:NSMakeSize(frameRect.size.width, FLT_MAX)];
-    [[outputText textContainer] setWidthTracksTextView:YES];
-    [[outputText textContainer] setHeightTracksTextView:NO];
-
-    outputAttributesText = @{NSForegroundColorAttributeName:NSColor.textColor,
-    NSFontAttributeName:[NSFont monospacedSystemFontOfSize:12 weight:NSFontWeightRegular]};
-
-    [outputScrollView setDocumentView:outputText];
-    [self addSubview:outputScrollView];
-
-  }
-
-  return self;
-
-}
-
-/**
- * appendText
- */
-- (void)appendText:(NSString * _Nonnull) msg {
-
-  NSAttributedString * amsg;
-
-  amsg = [[NSAttributedString alloc] initWithString:msg attributes:outputAttributesText];
-
-  [[outputText textStorage] appendAttributedString:amsg];
-  [outputText scrollRangeToVisible:NSMakeRange([[outputText string] length], 0)];
-
-}
-
-@end
-
-
 @implementation BXNSDebuggerWindow
 
 /**
  * init
  */
-- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller SmpInfo:(bx_smp_info_t *) smp {
+- (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
 
   self = [super initWithBXController:controller
        contentRect: NSMakeRect(0, 0, 1024, 768)

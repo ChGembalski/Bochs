@@ -236,7 +236,8 @@ typedef enum {
   DBG_VIRT_BREAK_POINT_COND,
   DBG_LIN_BREAK_POINT,
   DBG_LIN_BREAK_POINT_COND,
-  DBG_TIME_BREAK_POINT,
+  DBG_PHY_BREAK_POINT,
+  DBG_PHY_BREAK_POINT_COND,
   DBG_CPU_BREAK_POINT,
   DBG_INT_BREAK_POINT,
   DBG_CALL_BREAK_POINT,
@@ -259,11 +260,18 @@ typedef struct {
   union {
     bx_address            lin;
     bx_dbg_address_t      seg;
-    Bit64u                time;
   } addr;
   char *                  condition;
   bool                    enabled;
+  int                     handle;
+  bx_cmd_t                type;
 } bx_dbg_breakpoint_t;
+
+struct bx_dbg_breakpoint_chain_t {
+  bx_dbg_breakpoint_chain_t *    pred;
+  bx_dbg_breakpoint_chain_t *    succ;
+  bx_dbg_breakpoint_t *          breakpoint;
+};
 
 typedef struct {
   bx_phy_address          phy;
@@ -336,7 +344,6 @@ typedef struct {
 #define STACK_ENTRY_LINES   128
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // bx_dbg_gui_c
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,6 +361,7 @@ private:
   unsigned char * asm_buffer;
   unsigned char * asm_text_buffer;
   bool in_run_loop;
+  struct bx_dbg_breakpoint_chain_t * breakpoint_chain;
   
 public:
   bx_dbg_gui_c(void);
@@ -374,11 +382,25 @@ public:
   void update_register(unsigned cpuNo);
   void write_register(unsigned cpuNo, unsigned regno);
   void prepare_stack_data(unsigned cpuNo);
+  bool is_addr_equal(unsigned cpuNo, bool segA, bx_dbg_address_t addrA, bool segB, bx_dbg_address_t addrB);
   
   void cmd_step_n(int cpuNo, unsigned step_cnt);
   void cmd_continue(void);
   void cmd_break(void);
   void cmd_step_over(void);
+  
+  bool add_breakpoint_lin(bx_address addr, bool enabled, const char * condition);
+  bool add_breakpoint_virt(bx_dbg_address_t addr, bool enabled, const char * condition);
+  bool add_breakpoint_phy(bx_address addr, bool enabled, const char * condition);
+  int get_breakpoint_lin_count(void);
+  int get_breakpoint_virt_count(void);
+  int get_breakpoint_phy_count(void);
+  bx_dbg_breakpoint_t * get_breakpoint_lin(int no);
+  bx_dbg_breakpoint_t * get_breakpoint_virt(int no);
+  bx_dbg_breakpoint_t * get_breakpoint_phy(int no);
+  void del_breakpoint(unsigned handle);
+  void del_all_breakpoints(void);
+  void enable_breakpoint(unsigned handle, bool enable);
   
 protected:
   virtual void init_os_depended(void) {};
