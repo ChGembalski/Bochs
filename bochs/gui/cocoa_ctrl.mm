@@ -1669,6 +1669,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)reload:(int) cpu {
   
+  self.cpuNo = cpu;
   bx_dbg_new->update_register(cpu);
   [self.table reloadData];
   
@@ -1692,10 +1693,11 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 
     self.cpuNo = 0;
     self.lastRowNo = 0;
+    self.breakpointView = nil;
     
     self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     
-    self.ctrl_view = [[NSView alloc] initWithFrame:NSMakeRect(0, frameRect.size.height - 30, frameRect.size.width, 30)];
+    self.ctrl_view = [[NSView alloc] initWithFrame:NSMakeRect(0, frameRect.size.height - 60, frameRect.size.width, 60)];
     self.ctrl_view.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
     [self addSubview:self.ctrl_view];
 
@@ -1708,48 +1710,48 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.ctrl_view addSubview:self.btn_break];
     
     self.btn_step_over = [NSButton buttonWithTitle:@"Step Over (⌥s)" target:self action:@selector(stepoverButtonClick:)];
-    self.btn_step_over.frame = NSMakeRect(235, 0, 130, 20);
+    self.btn_step_over.frame = NSMakeRect(230, 0, 130, 20);
     [self.ctrl_view addSubview:self.btn_step_over];
     
     self.btn_step = [NSButton buttonWithTitle:@"Step (⌃s)" target:self action:@selector(stepButtonClick:)];
-    self.btn_step.frame = NSMakeRect(365, 0, 100, 20);
+    self.btn_step.frame = NSMakeRect(355, 0, 100, 20);
     [self.ctrl_view addSubview:self.btn_step];
     
-    self.cnt_title = [NSTextField labelWithString:@"count:"];
-    self.cnt_title.frame = NSMakeRect(470, 0, 40, 20);
+    self.cnt_title = [NSTextField labelWithString:@"count"];
+    self.cnt_title.frame = NSMakeRect(455, 0, 40, 20);
     [self.ctrl_view addSubview:self.cnt_title];
     
     self.cnt_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
     self.cnt_value.autoresizingMask = NSViewHeightSizable;
     self.cnt_value.preferredMaxLayoutWidth = 80;
-    self.cnt_value.frame = NSMakeRect(520, 2, 80, 20);
+    self.cnt_value.frame = NSMakeRect(500, 2, 80, 20);
     self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.cpu_step_count];
     [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
     [self.cnt_value setAction:@selector(cntValueChanged:)];
     [self.cnt_value setTarget:self];
     [self.ctrl_view addSubview:self.cnt_value];
     
-    self.adr_title = [NSTextField labelWithString:@"Type:"];
-    self.adr_title.frame = NSMakeRect(610, 0, 40, 20);
+    self.adr_title = [NSTextField labelWithString:@"Type"];
+    self.adr_title.frame = NSMakeRect(10, 30, 40, 20);
     [self.ctrl_view addSubview:self.adr_title];
     
-    self.adr_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(500, 0, 80, 20) pullsDown:NO];
+    self.adr_select = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(50, 30, 80, 20) pullsDown:NO];
     [self.adr_select addItemWithTitle:@"linear"];
     [self.adr_select addItemWithTitle:@"seg:ofs"];
-    self.adr_select.frame = NSMakeRect(650, 0, 80, 20);
+    self.adr_select.frame = NSMakeRect(50, 30, 80, 20);
     self.adr_select.objectValue = [NSNumber numberWithInt:debugger_ctrl_options.addr_displ_seg_ofs ? 1 : 0];
     [self.adr_select setAction:@selector(adrValueChanged:)];
     [self.adr_select setTarget:self];
     [self.ctrl_view addSubview:self.adr_select];
     
     self.disadr_title = [NSTextField labelWithString:@"Address"];
-    self.disadr_title.frame = NSMakeRect(735, 0, 60, 20);
+    self.disadr_title.frame = NSMakeRect(135, 30, 60, 20);
     [self.ctrl_view addSubview:self.disadr_title];
     
     self.disadr_value = [BXNSTextField textFieldWithString:@"000000000000000000" TypeNotif:NO];
     self.disadr_value.autoresizingMask = NSViewHeightSizable;
     self.disadr_value.preferredMaxLayoutWidth = 160;
-    self.disadr_value.frame = NSMakeRect(800, 2, 160, 20);
+    self.disadr_value.frame = NSMakeRect(195, 32, 160, 20);
     self.disadr_value.stringValue = [NSString stringWithFormat:@"%0X", 0];
     [self.disadr_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
     [self.ctrl_view addSubview:self.disadr_value];
@@ -1757,7 +1759,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.disadrseg_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
     self.disadrseg_value.autoresizingMask = NSViewHeightSizable;
     self.disadrseg_value.preferredMaxLayoutWidth = 80;
-    self.disadrseg_value.frame = NSMakeRect(800, 2, 80, 20);
+    self.disadrseg_value.frame = NSMakeRect(195, 32, 80, 20);
     self.disadrseg_value.stringValue = [NSString stringWithFormat:@"%0X", 0];
     [self.disadrseg_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
     [self.ctrl_view addSubview:self.disadrseg_value];
@@ -1765,7 +1767,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.disadrofs_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
     self.disadrofs_value.autoresizingMask = NSViewHeightSizable;
     self.disadrofs_value.preferredMaxLayoutWidth = 80;
-    self.disadrofs_value.frame = NSMakeRect(880, 2, 80, 20);
+    self.disadrofs_value.frame = NSMakeRect(275, 32, 80, 20);
     self.disadrofs_value.stringValue = [NSString stringWithFormat:@"%0X", 0];
     [self.disadrofs_value setFormatter:[[BXNSHexNumberFormatter alloc] init]];
     [self.ctrl_view addSubview:self.disadrofs_value];
@@ -1775,17 +1777,17 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     [self.disadrofs_value setHidden:!debugger_ctrl_options.addr_displ_seg_ofs];
     
     self.btn_disadr = [NSButton buttonWithTitle:@"Disassemble" target:self action:@selector(disadrButtonClick:)];
-    self.btn_disadr.frame = NSMakeRect(965, 0, 100, 20);
+    self.btn_disadr.frame = NSMakeRect(355, 30, 100, 20);
     [self.ctrl_view addSubview:self.btn_disadr];
     
-    self.asm_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
+    self.asm_scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 70)];
     self.asm_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.asm_scroll.hasVerticalScroller = YES;
     self.asm_scroll.hasHorizontalScroller = YES;
     self.asm_scroll.autohidesScrollers = YES;
     self.asm_scroll.borderType = NSNoBorder;
     
-    self.table = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 40)];
+    self.table = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width, frameRect.size.height - 70)];
     self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.table.usesAlternatingRowBackgroundColors = YES;
     self.table.allowsMultipleSelection = NO;
@@ -1824,6 +1826,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.bytesCol.width = 200;
     [self.table addTableColumn:self.bytesCol];
     
+    self.table.doubleAction = @selector(breakpointClick:);
     self.table.dataSource = (id)self;
     
     [self.asm_scroll setDocumentView:self.table];
@@ -1957,6 +1960,29 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
 }
 
 /**
+ * breakpointClick
+ */
+- (void)breakpointClick:(id _Nonnull)sender {
+  
+  bx_address addr_brk;
+  
+  if (self.table.clickedColumn != 0) {
+    return;
+  }
+  
+  if (self.table.clickedRow < 0) {
+    return;
+  }
+  
+  if (self.breakpointView != nil) {
+    addr_brk = bx_dbg_new->asm_lines[self.table.clickedRow].addr_lin;
+    [self.breakpointView toggleLinBreakpoint:addr_brk];
+    [self.table reloadDataForRowIndexes:[NSIndexSet indexSetWithIndex:self.table.clickedRow] columnIndexes:[NSIndexSet indexSetWithIndex:0]];
+  }
+  
+}
+
+/**
  * numberOfRowsInTableView
  */
 - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
@@ -1974,6 +2000,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
     bx_dbg_address_t adrCmpA;
     bx_dbg_address_t adrCmpB;
+    BOOL brk_enabled;
     
     adrCmpA.seg = (UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value;
     adrCmpA.ofs = bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value;
@@ -1984,7 +2011,26 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
       self.lastRowNo = row;
       
+      if (self.breakpointView != nil) {
+        if ([self.breakpointView isLinBreakpoint:bx_dbg_new->asm_lines[row].addr_lin Enabled:&brk_enabled]) {
+          if (brk_enabled) {
+            return @"x>";
+          } else {
+            return @"o>";
+          }
+        }
+      }
+      
       return @"->";
+    }
+    if (self.breakpointView != nil) {
+      if ([self.breakpointView isLinBreakpoint:bx_dbg_new->asm_lines[row].addr_lin Enabled:&brk_enabled]) {
+        if (brk_enabled) {
+          return @"-x";
+        } else {
+          return @"-o";
+        }
+      }
     }
     
     return @"";
@@ -2031,6 +2077,8 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   
   NSInteger nextRow;
   NSRect rowRect;
+  
+  self.cpuNo = cpu;
   
   if (bx_dbg_new->must_disassemble( self.cpuNo, true, { bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[RIP].value, (UInt32)bx_dbg_new->smp_info.cpu_info[self.cpuNo].reg_value[CS].value } )) {
                                      
@@ -2232,6 +2280,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)reload:(int) cpu {
   
+  self.cpuNo = cpu;
   [self updateFromMemory];
   [self.table reloadData];
   
@@ -2389,37 +2438,189 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   self = [super initWithFrame:frameRect];
   if (self) {
 
+    self.cpuNo = 0;
+    self.linTitleRow = 0;
+    self.virtTitleRow = 1;
+    self.phyTitleRow = 2;
     
-    // void bx_dbg_timebp_command(bool absolute, Bit64u time)
-    // void bx_dbg_watch(int type, bx_phy_address address, Bit32u len)
-    // void bx_dbg_unwatch_all()
-    // void bx_dbg_unwatch(bx_phy_address address)
-    // void bx_dbg_set_magic_bp_mask(Bit8u new_mask)
-    // void bx_dbg_clr_magic_bp_mask(Bit8u mask)
+    self.brk_scroll = [[NSScrollView alloc] initWithFrame:frameRect];
+    self.brk_scroll.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.brk_scroll.hasVerticalScroller = YES;
+    self.brk_scroll.hasHorizontalScroller = YES;
+    self.brk_scroll.autohidesScrollers = YES;
+    self.brk_scroll.borderType = NSNoBorder;
     
-    // void bx_dbg_check_memory_watchpoints(unsigned cpu, bx_phy_address phy, unsigned len, unsigned rw)
+    self.table = [[NSTableView alloc] initWithFrame:frameRect];
+    self.table.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.table.usesAlternatingRowBackgroundColors = YES;
+    self.table.headerView = [[NSTableHeaderView alloc] init];
+    self.table.columnAutoresizingStyle = NSTableViewFirstColumnOnlyAutoresizingStyle;
+    self.table.rowSizeStyle = NSTableViewRowSizeStyleCustom;
+    self.table.rowHeight = 18;
+    self.table.intercellSpacing = NSMakeSize(6, 6);
     
-    // ?? void bx_dbg_info_control_regs_command(unsigned cpu)
-    // ?? void bx_dbg_info_debug_regs_command(unsigned cpu)
-    // ?? void bx_dbg_info_flags(unsigned cpu)
-    // ?? void bx_dbg_exception(unsigned cpu, Bit8u vector, Bit16u error_code)
-
-    // read write memory from to disk
+    self.typeCol = [[NSTableColumn alloc] initWithIdentifier:@"col.type"];
+    self.typeCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.typeCol.title = @"Type";
+    self.typeCol.editable = NO;
+    self.typeCol.width = 180;
+    [self.table addTableColumn:self.typeCol];
     
-    // void bx_dbg_print_descriptor(Bit32u lo, Bit32u hi)
-    // void bx_dbg_print_descriptor64(Bit32u lo1, Bit32u hi1, Bit32u lo2, Bit32u hi2)
-    // void bx_dbg_info_idt_command(unsigned from, unsigned to)
-    // void bx_dbg_info_lgdt_command(unsigned from, unsigned to, bool gdt)
-    // static const char* bx_dbg_ivt_desc(int intnum)
-    // void bx_dbg_info_ivt_command(unsigned from, unsigned to)
-    // static void bx_dbg_print_tss(Bit8u *tss, int len)
-    // void bx_dbg_info_tss_command(void)
-    // void bx_dbg_info_device(const char *dev, const char *args)
+    self.addrCol = [[NSTableColumn alloc] initWithIdentifier:@"col.addr"];
+    self.addrCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.addrCol.title = @"Address";
+    self.addrCol.editable = NO;
+    self.addrCol.width = 180;
+    [self.table addTableColumn:self.addrCol];
+    
+    self.enCol = [[NSTableColumn alloc] initWithIdentifier:@"col.en"];
+    self.enCol.headerCell = [[NSTableHeaderCell alloc] init];
+    self.enCol.title = @"Enabled";
+    self.enCol.editable = YES;
+    self.enCol.width = 100;
+    [self.table addTableColumn:self.enCol];
+    self.table.dataSource = (id)self;
+   
+    [self.brk_scroll setDocumentView:self.table];
+    
+    [self addSubview:self.brk_scroll];
+    
+    self.attributeMonospace = @{
+      NSForegroundColorAttributeName:NSColor.textColor,
+      NSFontAttributeName:[NSFont monospacedSystemFontOfSize:14 weight:NSFontWeightRegular]
+    };
     
   }
 
   return self;
 
+}
+
+/**
+ * reload
+ */
+- (void)reload:(int) cpu {
+  
+  self.cpuNo = cpu;
+  [self.table reloadData];
+  
+}
+
+/**
+ * isLinBreakpoint
+ */
+- (BOOL)isLinBreakpoint:(bx_address) linaddr Enabled:(BOOL * _Nonnull) enabled {
+  
+  bx_dbg_breakpoint_t * brk_pnt;
+  
+  brk_pnt = bx_dbg_new->get_breakpoint_lin(linaddr);
+  if (!brk_pnt) {
+    return NO;
+  }
+  *enabled = brk_pnt->enabled;
+  
+  return YES;
+  
+}
+
+/**
+ * toggleLinBreakpoint
+ */
+- (void)toggleLinBreakpoint:(bx_address) linaddr {
+  
+  bx_dbg_breakpoint_t * brk_pnt;
+  
+  brk_pnt = bx_dbg_new->get_breakpoint_lin(linaddr);
+  if (brk_pnt == NULL) {
+    bx_dbg_new->add_breakpoint_lin(linaddr, true, NULL);
+  } else {
+    bx_dbg_new->del_breakpoint(brk_pnt->handle);
+  }
+  
+}
+
+/**
+ * numberOfRowsInTableView
+ */
+- (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView {
+  
+  unsigned linCnt;
+  unsigned virtCnt;
+  unsigned phyCnt;
+  
+  self.linTitleRow = 0;
+  linCnt = bx_dbg_new->get_breakpoint_lin_count();
+  
+  self.virtTitleRow = linCnt + 1;
+  virtCnt = bx_dbg_new->get_breakpoint_virt_count();
+  
+  self.phyTitleRow = self.virtTitleRow + virtCnt + 1;
+  phyCnt = bx_dbg_new->get_breakpoint_phy_count();
+  
+  return 3 + linCnt + virtCnt + phyCnt;
+  
+}
+
+/**
+ * tableView objectValueForTableColumn
+ */
+- (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row {
+  
+  if (row == self.linTitleRow) {
+    if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+      return @"linear breakpoints";
+    } else {
+      return @"";
+    }
+  }
+  if (row == self.virtTitleRow) {
+    if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+      return @"virtual breakpoints";
+    } else {
+      return @"";
+    }
+  }
+  if (row == self.phyTitleRow) {
+    if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+      return @"physical breakpoints";
+    } else {
+      return @"";
+    }
+  }
+    
+  if ([tableColumn.identifier compare:@"col.type"] == NSOrderedSame) {
+    if (row < self.virtTitleRow) {
+      return [BXNSAdressFormat stringWithUTF8String:"linear" Att:self.attributeMonospace];
+    } else if (row < self.phyTitleRow) {
+      return [BXNSAdressFormat stringWithUTF8String:"virtual" Att:self.attributeMonospace];
+    } else {
+      return [BXNSAdressFormat stringWithUTF8String:"physical" Att:self.attributeMonospace];
+    }
+  } else if ([tableColumn.identifier compare:@"col.addr"] == NSOrderedSame) {
+    bx_dbg_breakpoint_t * brk_pnt;
+    
+    if (row < self.virtTitleRow) {
+      brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - 1));
+    } else if (row < self.phyTitleRow) {
+      brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - self.virtTitleRow));
+    } else {
+      brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - self.phyTitleRow));
+    }
+    return [BXNSAdressFormat stringHexValue64:brk_pnt->addr.lin Att:self.attributeMonospace];
+  } else {
+    // en
+    bx_dbg_breakpoint_t * brk_pnt;
+    
+    if (row < self.virtTitleRow) {
+      brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - 1));
+    } else if (row < self.phyTitleRow) {
+      brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - self.virtTitleRow));
+    } else {
+      brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - self.phyTitleRow));
+    }
+    return [BXNSAdressFormat stringWithUTF8String:brk_pnt->enabled ? "YES" : "NO" Att:self.attributeMonospace];
+  }
+    
 }
 
 @end
@@ -2970,7 +3171,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
           self.breakpointView = [[BXNSBreakpointView alloc] initWithFrame:NSMakeRect(0, 0, frameRect.size.width/2, frameRect.size.height)];
           item = [[NSTabViewItem alloc] init];
           item.label = @"Breakpoints";
-          item.view = self.idtView;
+          item.view = self.breakpointView;
           break;
         }
         case DBG_V_MEMORY: {
@@ -2995,6 +3196,10 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
       
     }
     
+    // connect breakpoints with instruction
+    self.instructionView.breakpointView = self.breakpointView;
+    
+    
   }
   
   return self;
@@ -3010,6 +3215,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   [self.registerView reload:cpu];
   [self.instructionView reload:cpu];
   [self.stackView reload:cpu];
+  [self.breakpointView reload:cpu];
   
 }
 
@@ -3072,14 +3278,14 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.btn_step.frame = NSMakeRect(440, 0, 100, 20);
     [self.ctrl_view addSubview:self.btn_step];
     
-    self.cnt_title = [NSTextField labelWithString:@"count:"];
-    self.cnt_title.frame = NSMakeRect(545, 0, 40, 20);
+    self.cnt_title = [NSTextField labelWithString:@"count"];
+    self.cnt_title.frame = NSMakeRect(540, 0, 40, 20);
     [self.ctrl_view addSubview:self.cnt_title];
     
     self.cnt_value = [BXNSTextField textFieldWithString:@"0000000000" TypeNotif:NO];
     self.cnt_value.autoresizingMask = NSViewHeightSizable;
     self.cnt_value.preferredMaxLayoutWidth = 80;
-    self.cnt_value.frame = NSMakeRect(590, 2, 80, 20);
+    self.cnt_value.frame = NSMakeRect(585, 2, 80, 20);
     self.cnt_value.stringValue = [NSString stringWithFormat:@"%lu", debugger_ctrl_options.global_step_count];
     [self.cnt_value setFormatter:[[BXNSNumberFormatter alloc] init]];
     [self.cnt_value setAction:@selector(cntValueChanged:)];
@@ -3155,7 +3361,8 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
  */
 - (void)reload:(int) cpu {
   
-  // cpu should be same we display ?
+  // may be -1 ?
+  self.cpu_select.objectValue = [NSNumber numberWithInt:cpu];
   [self.cpu_view reload:cpu];
   
 }

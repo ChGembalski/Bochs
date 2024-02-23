@@ -328,6 +328,7 @@
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull instrCol;
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull bytesCol;
     @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
+    @property (nonatomic, readwrite, strong) id _Nullable breakpointView;
     @property (nonatomic, readwrite) unsigned cpuNo;
     @property (nonatomic, readwrite) NSInteger lastRowNo;
 
@@ -342,6 +343,7 @@
     - (void)stepButtonClick:(id _Nonnull)sender;
     - (void)cntValueChanged:(id _Nonnull)sender;
     - (void)disadrButtonClick:(id _Nonnull)sender;
+    - (void)breakpointClick:(id _Nonnull)sender;
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
@@ -404,14 +406,27 @@
   ////////////////////////////////////////////////////////////////////////////////
   // BXNSBreakpointView
   ////////////////////////////////////////////////////////////////////////////////
-  @interface BXNSBreakpointView : NSView
+  @interface BXNSBreakpointView : NSView <NSTableViewDataSource>
+
+    @property (nonatomic, readwrite, strong) NSScrollView * _Nonnull brk_scroll;
+    @property (nonatomic, readwrite, strong) NSTableView * _Nonnull table;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull typeCol;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull addrCol;
+    @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull enCol;
+    @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
+    @property (nonatomic, readwrite) unsigned cpuNo;
+    @property (nonatomic, readwrite) unsigned linTitleRow;
+    @property (nonatomic, readwrite) unsigned virtTitleRow;
+    @property (nonatomic, readwrite) unsigned phyTitleRow;
 
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
 
+    - (void)reload:(int) cpu;
+    - (BOOL)isLinBreakpoint:(bx_address) linaddr Enabled:(BOOL * _Nonnull) enabled;
+    - (void)toggleLinBreakpoint:(bx_address) linaddr;
 
-
-
-
+    - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
+    - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;
 
   @end
 

@@ -635,6 +635,8 @@ void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
     case DBG_CONTINUE: {
       this->in_run_loop = true;
       bx_dbg_continue_command(true);
+      this->in_run_loop = false;
+      this->command_finished(0);
       break;
     }
     case DBG_STEP: {
@@ -767,7 +769,7 @@ bool bx_dbg_gui_c::add_breakpoint_lin(bx_address addr, bool enabled, const char 
     breakpoint->type = DBG_LIN_BREAK_POINT_COND;
   }
   
-  breakpoint->handle = bx_dbg_lbreakpoint_command(bkAtIP, addr, condition);
+  breakpoint->handle = bx_dbg_lbreakpoint_command(bkRegular, addr, condition);
   if (breakpoint->handle == -1) {
     if (breakpoint->condition != NULL) {
       free(breakpoint->condition);
@@ -888,7 +890,7 @@ int bx_dbg_gui_c::get_breakpoint_lin_count(void) {
   
   result = 0;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
   
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
@@ -911,7 +913,7 @@ int bx_dbg_gui_c::get_breakpoint_virt_count(void) {
   
   result = 0;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
   
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_VIRT_BREAK_POINT) || (next->breakpoint->type == DBG_VIRT_BREAK_POINT_COND)) {
@@ -934,7 +936,7 @@ int bx_dbg_gui_c::get_breakpoint_phy_count(void) {
   
   result = 0;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
   
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_PHY_BREAK_POINT) || (next->breakpoint->type == DBG_PHY_BREAK_POINT_COND)) {
@@ -959,7 +961,7 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(int no) {
   pos = 0;
   result = NULL;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
   
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
@@ -968,6 +970,32 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(int no) {
           break;
         }
         pos++;
+      }
+    }
+    
+  }
+  
+  return (result);
+  
+}
+
+/**
+ * get_breakpoint_lin
+ */
+bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(bx_address addr) {
+  struct bx_dbg_breakpoint_chain_t * next;
+  bx_dbg_breakpoint_t * result;
+  
+  result = NULL;
+  
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
+  
+    if (next->breakpoint != NULL) {
+      if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
+        if (next->breakpoint->addr.lin == addr) {
+          result = next->breakpoint;
+          break;
+        }
       }
     }
     
@@ -988,7 +1016,7 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_virt(int no) {
   pos = 0;
   result = NULL;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
   
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_VIRT_BREAK_POINT) || (next->breakpoint->type == DBG_VIRT_BREAK_POINT_COND)) {
@@ -1017,7 +1045,7 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_phy(int no) {
   pos = 0;
   result = NULL;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
   
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_PHY_BREAK_POINT) || (next->breakpoint->type == DBG_PHY_BREAK_POINT_COND)) {
@@ -1043,7 +1071,7 @@ void bx_dbg_gui_c::del_breakpoint(unsigned handle) {
   struct bx_dbg_breakpoint_chain_t * node;
   
   node = NULL;
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
     
     if (next->breakpoint != NULL) {
       if (next->breakpoint->handle == handle) {

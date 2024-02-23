@@ -396,6 +396,7 @@ public:
   int get_breakpoint_virt_count(void);
   int get_breakpoint_phy_count(void);
   bx_dbg_breakpoint_t * get_breakpoint_lin(int no);
+  bx_dbg_breakpoint_t * get_breakpoint_lin(bx_address addr);
   bx_dbg_breakpoint_t * get_breakpoint_virt(int no);
   bx_dbg_breakpoint_t * get_breakpoint_phy(int no);
   void del_breakpoint(unsigned handle);
