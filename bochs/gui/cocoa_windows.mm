@@ -2155,8 +2155,10 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
 
   if (self) {
 
+    self.cpuNo = 0;
+    
     [self setTitle:BOCHS_WINDOW_DEBUGGER_NAME];
-
+  
     self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
     self.debug_view = [[BXNSDebugView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
@@ -2173,6 +2175,7 @@ extern unsigned char bochs_logo [128 * 128 * 4 + 1];
  */
 - (void)reload:(int) cpu {
   
+  self.cpuNo = cpu;
   [self.debug_view reload:cpu];
   
 }
@@ -2219,11 +2222,10 @@ NSLog(@"onMenuEvent path=%@ property=%d", path, p);
 - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller {
   
   self = [super initWithBXController:controller
-       contentRect: NSMakeRect(0, 0, 1024, 768)
+       contentRect: NSMakeRect(0, 0, 640, 480)
          styleMask: NSWindowStyleMaskTitled |
                     NSWindowStyleMaskClosable |
-                    NSWindowStyleMaskMiniaturizable |
-                    NSWindowStyleMaskResizable
+                    NSWindowStyleMaskMiniaturizable
            backing: NSBackingStoreBuffered
              defer: NO
             Custom: BX_GUI_WINDOW_DEBUGGER_CONFIG
@@ -2235,19 +2237,19 @@ NSLog(@"onMenuEvent path=%@ property=%d", path, p);
     [self setTitle:BOCHS_WINDOW_DEBUGGER_CONFIG_NAME];
     self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     
-    self.tabView = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    self.tabView = [[BXNSTabView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
     self.tabView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.tabView.autoresizesSubviews = YES;
     [self.contentView addSubview:self.tabView];
     
     item = [[NSTabViewItem alloc] init];
     item.label = @"Settings";
-    item.view = [[BXNSOptionCtrlView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    item.view = [[BXNSOptionCtrlView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
     [self.tabView addTabViewItem:item];
     
     item = [[NSTabViewItem alloc] init];
     item.label = @"Tabs";
-    item.view = [[BXNSOptionTabView alloc] initWithFrame:NSMakeRect(0, 0, 1024, 768)];
+    item.view = [[BXNSOptionTabView alloc] initWithFrame:NSMakeRect(0, 0, 640, 480)];
     [self.tabView addTabViewItem:item];
     
   }

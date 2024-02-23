@@ -3425,11 +3425,147 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     self.autoresizesSubviews = YES;
     
+    self.gp_regs_title = [NSTextField labelWithString:@"show general purpose register"];
+    self.gp_regs_title.frame = NSMakeRect(10, frameRect.size.height - 80, 230, 20);
+    [self addSubview:self.gp_regs_title];
+    
+    self.gp_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(250, frameRect.size.height - 80, 30, 20)];
+    self.gp_regs.state = debugger_ctrl_options.show_general_purpose_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.gp_regs.tag = 1;
+    [self.gp_regs setAction:@selector(boolValueChanged:)];
+    [self.gp_regs setTarget:self];
+    [self addSubview:self.gp_regs];
+    
+    self.segment_regs_title = [NSTextField labelWithString:@"show segment register"];
+    self.segment_regs_title.frame = NSMakeRect(310, frameRect.size.height - 80, 230, 20);
+    [self addSubview:self.segment_regs_title];
+    
+    self.segment_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(580, frameRect.size.height - 80, 30, 20)];
+    self.segment_regs.state = debugger_ctrl_options.show_segment_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.segment_regs.tag = 2;
+    [self.segment_regs setAction:@selector(boolValueChanged:)];
+    [self.segment_regs setTarget:self];
+    [self addSubview:self.segment_regs];
+    
+    self.control_regs_title = [NSTextField labelWithString:@"show control register"];
+    self.control_regs_title.frame = NSMakeRect(10, frameRect.size.height - 110, 230, 20);
+    [self addSubview:self.control_regs_title];
+    
+    self.control_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(250, frameRect.size.height - 110, 30, 20)];
+    self.control_regs.state = debugger_ctrl_options.show_control_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.control_regs.tag = 3;
+    [self.control_regs setAction:@selector(boolValueChanged:)];
+    [self.control_regs setTarget:self];
+    [self addSubview:self.control_regs];
+    
+    self.fpu_regs_title = [NSTextField labelWithString:@"show fpu register"];
+    self.fpu_regs_title.frame = NSMakeRect(310, frameRect.size.height - 110, 230, 20);
+    [self addSubview:self.fpu_regs_title];
+    
+    self.fpu_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(580, frameRect.size.height - 110, 30, 20)];
+    self.fpu_regs.state = debugger_ctrl_options.show_fpu_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.fpu_regs.tag = 4;
+    [self.fpu_regs setAction:@selector(boolValueChanged:)];
+    [self.fpu_regs setTarget:self];
+    [self addSubview:self.fpu_regs];
+    
+    self.test_regs_title = [NSTextField labelWithString:@"show test register"];
+    self.test_regs_title.frame = NSMakeRect(10, frameRect.size.height - 140, 230, 20);
+    [self addSubview:self.test_regs_title];
+    
+    self.test_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(250, frameRect.size.height - 140, 30, 20)];
+    self.test_regs.state = debugger_ctrl_options.show_test_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.test_regs.tag = 5;
+    [self.test_regs setAction:@selector(boolValueChanged:)];
+    [self.test_regs setTarget:self];
+    [self addSubview:self.test_regs];
+    
+    self.sse_regs_title = [NSTextField labelWithString:@"show sse register"];
+    self.sse_regs_title.frame = NSMakeRect(310, frameRect.size.height - 140, 230, 20);
+    [self addSubview:self.sse_regs_title];
+    
+    self.sse_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(580, frameRect.size.height - 140, 30, 20)];
+    self.sse_regs.state = debugger_ctrl_options.show_sse_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.sse_regs.tag = 6;
+    [self.sse_regs setAction:@selector(boolValueChanged:)];
+    [self.sse_regs setTarget:self];
+    [self addSubview:self.sse_regs];
+    
+    self.debug_regs_title = [NSTextField labelWithString:@"show debug register"];
+    self.debug_regs_title.frame = NSMakeRect(10, frameRect.size.height - 170, 230, 20);
+    [self addSubview:self.debug_regs_title];
+    
+    self.debug_regs = [[NSSwitch alloc] initWithFrame:NSMakeRect(250, frameRect.size.height - 170, 30, 20)];
+    self.debug_regs.state = debugger_ctrl_options.show_debug_regs ? NSControlStateValueOn : NSControlStateValueOff;
+    self.debug_regs.tag = 7;
+    [self.debug_regs setAction:@selector(boolValueChanged:)];
+    [self.debug_regs setTarget:self];
+    [self addSubview:self.debug_regs];
+    
+    self.gas_syntax_title = [NSTextField labelWithString:@"use gas syntax"];
+    self.gas_syntax_title.frame = NSMakeRect(10, frameRect.size.height - 230, 230, 20);
+    [self addSubview:self.gas_syntax_title];
+    
+    self.gas_syntax = [[NSSwitch alloc] initWithFrame:NSMakeRect(250, frameRect.size.height - 230, 30, 20)];
+    self.gas_syntax.state = debugger_ctrl_options.use_gas_syntax ? NSControlStateValueOn : NSControlStateValueOff;
+    self.gas_syntax.tag = 20;
+    [self.gas_syntax setAction:@selector(boolValueChanged:)];
+    [self.gas_syntax setTarget:self];
+    [self addSubview:self.gas_syntax];
+    
   }
   
   return self;
   
 }
+
+/**
+ * boolValueChanged
+ */
+- (void)boolValueChanged:(id _Nonnull)sender {
+  
+  switch ([sender tag]) {
+    case 1: {
+      debugger_ctrl_options.show_general_purpose_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 2: {
+      debugger_ctrl_options.show_segment_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 3: {
+      debugger_ctrl_options.show_control_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 4: {
+      debugger_ctrl_options.show_fpu_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 5: {
+      debugger_ctrl_options.show_test_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 6: {
+      debugger_ctrl_options.show_sse_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 7: {
+      debugger_ctrl_options.show_debug_regs = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    case 20: {
+      debugger_ctrl_options.use_gas_syntax = [sender state] == NSControlStateValueOn;
+      break;
+    }
+    default: {
+      return;
+    }
+  }
+  
+  // TODO : must call reload on debugger window (if exist)
+  
+}
+
 
 @end
 

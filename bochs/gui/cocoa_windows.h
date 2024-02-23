@@ -316,6 +316,7 @@
   @interface BXNSDebuggerWindow : BXNSGenericWindow <NSApplicationDelegate>
 
     @property (nonatomic, readwrite, strong) BXNSDebugView * _Nonnull debug_view;
+    @property (nonatomic, readwrite) unsigned cpuNo;
 
     - (instancetype _Nonnull)init:(BXNSWindowController * _Nonnull) controller;
 

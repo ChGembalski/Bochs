@@ -561,7 +561,27 @@
   ////////////////////////////////////////////////////////////////////////////////
   @interface BXNSOptionCtrlView : NSView
 
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull gp_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull gp_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull segment_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull segment_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull control_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull control_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull fpu_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull fpu_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull test_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull test_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull sse_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull sse_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull debug_regs_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull debug_regs;
+    @property (nonatomic, readwrite, strong) NSTextField * _Nonnull gas_syntax_title;
+    @property (nonatomic, readwrite, strong) NSSwitch * _Nonnull gas_syntax;
+
+
     - (instancetype _Nonnull)initWithFrame:(NSRect)frameRect;
+
+    - (void)boolValueChanged:(id _Nonnull)sender;
 
   @end
 
