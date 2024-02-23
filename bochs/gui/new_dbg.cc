@@ -1165,11 +1165,12 @@ void bx_dbg_gui_c::del_all_breakpoints(void) {
 void bx_dbg_gui_c::enable_breakpoint(unsigned handle, bool enable) {
   struct bx_dbg_breakpoint_chain_t * next;
   
-  for ( next = this->breakpoint_chain ; next->succ != NULL ; next = next->succ ) {
+  for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
     
     if (next->breakpoint != NULL) {
       if (next->breakpoint->handle == handle) {
         bx_dbg_en_dis_breakpoint_command(handle, enable);
+        next->breakpoint->enabled = enable;
         break;
       }
     }

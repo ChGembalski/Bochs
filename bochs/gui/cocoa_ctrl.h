@@ -414,6 +414,7 @@
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull addrCol;
     @property (nonatomic, readwrite, strong) NSTableColumn * _Nonnull enCol;
     @property (nonatomic, readwrite, strong) NSDictionary * _Nonnull attributeMonospace;
+    @property (nonatomic, readwrite, strong) id _Nullable instructionView;
     @property (nonatomic, readwrite) unsigned cpuNo;
     @property (nonatomic, readwrite) unsigned linTitleRow;
     @property (nonatomic, readwrite) unsigned virtTitleRow;
@@ -424,6 +425,7 @@
     - (void)reload:(int) cpu;
     - (BOOL)isLinBreakpoint:(bx_address) linaddr Enabled:(BOOL * _Nonnull) enabled;
     - (void)toggleLinBreakpoint:(bx_address) linaddr;
+    - (void)toggleLinBreakpointEnable:(id _Nonnull) sender;
 
     - (NSInteger)numberOfRowsInTableView:(NSTableView * _Nonnull) tableView;
     - (id _Nonnull)tableView:(NSTableView * _Nonnull)tableView objectValueForTableColumn:(NSTableColumn * _Nullable) tableColumn row:(NSInteger) row;

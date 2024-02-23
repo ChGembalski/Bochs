@@ -2439,6 +2439,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
   if (self) {
 
     self.cpuNo = 0;
+    self.instructionView = nil;
     self.linTitleRow = 0;
     self.virtTitleRow = 1;
     self.phyTitleRow = 2;
@@ -2476,10 +2477,11 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     self.enCol = [[NSTableColumn alloc] initWithIdentifier:@"col.en"];
     self.enCol.headerCell = [[NSTableHeaderCell alloc] init];
     self.enCol.title = @"Enabled";
-    self.enCol.editable = YES;
+    self.enCol.editable = NO;
     self.enCol.width = 100;
     [self.table addTableColumn:self.enCol];
     self.table.dataSource = (id)self;
+    self.table.doubleAction = @selector(toggleLinBreakpointEnable:);
    
     [self.brk_scroll setDocumentView:self.table];
     
@@ -2535,6 +2537,42 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     bx_dbg_new->add_breakpoint_lin(linaddr, true, NULL);
   } else {
     bx_dbg_new->del_breakpoint(brk_pnt->handle);
+  }
+  
+}
+
+/**
+ * toggleLinBreakpointEnable
+ */
+- (void)toggleLinBreakpointEnable:(id _Nonnull) sender {
+  
+  bx_dbg_breakpoint_t * brk_pnt;
+  NSInteger row;
+  
+  if (self.table.clickedColumn != 2) {
+    return;
+  }
+  
+  row = self.table.clickedRow;
+  
+  if ((row == self.linTitleRow) ||
+      (row == self.virtTitleRow) ||
+      (row == self.phyTitleRow)) {
+    return;
+  }
+  
+  if (row < self.virtTitleRow) {
+    brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - 1));
+  } else if (row < self.phyTitleRow) {
+    brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - self.virtTitleRow));
+  } else {
+    brk_pnt = bx_dbg_new->get_breakpoint_lin((int)(row - self.phyTitleRow));
+  }
+  
+  bx_dbg_new->enable_breakpoint(brk_pnt->handle, !brk_pnt->enabled);
+  [self.table reloadDataForRowIndexes:[NSIndexSet indexSetWithIndex:row] columnIndexes:[NSIndexSet indexSetWithIndex:2]];
+  if (self.instructionView != nil) {
+    [self.instructionView reload:self.cpuNo];
   }
   
 }
@@ -3198,7 +3236,7 @@ extern debugger_ctrl_config_t debugger_ctrl_options;
     
     // connect breakpoints with instruction
     self.instructionView.breakpointView = self.breakpointView;
-    
+    self.breakpointView.instructionView = self.instructionView;
     
   }
   
