@@ -33,6 +33,9 @@
 #include "gui/bitmaps/paste.h"
 #include "gui/bitmaps/configbutton.h"
 #include "gui/bitmaps/cdromd.h"
+#if BX_USE_WIN32USBDEBUG
+  #include "gui/bitmaps/usb.h"
+#endif
 #include "gui/bitmaps/userbutton.h"
 #include "gui/bitmaps/saverestore.h"
 
@@ -232,6 +235,15 @@ void bx_gui_c::init(int argc, char **argv, unsigned max_xres, unsigned max_yres,
   BX_GUI_THIS save_restore_bmap_id = create_bitmap(bx_save_restore_bmap,
                           BX_SAVE_RESTORE_BMAP_X, BX_SAVE_RESTORE_BMAP_Y);
 
+#if BX_USE_WIN32USBDEBUG
+  BX_GUI_THIS usb_bmap_id = create_bitmap(bx_usb_bmap,
+                          BX_USB_BMAP_X, BX_USB_BMAP_Y);
+  BX_GUI_THIS usb_eject_bmap_id = create_bitmap(bx_usb_eject_bmap,
+                          BX_USB_BMAP_X, BX_USB_BMAP_Y);
+  BX_GUI_THIS usb_trigger_bmap_id = create_bitmap(bx_usb_trigger_bmap,
+                          BX_USB_BMAP_X, BX_USB_BMAP_Y);
+#endif
+
   // Add the initial bitmaps to the headerbar, and enable callback routine, for use
   // when that bitmap is clicked on. The floppy and cdrom devices are not
   // initialized yet. so we just set the bitmaps to ejected for now.
@@ -259,6 +271,25 @@ void bx_gui_c::init(int argc, char **argv, unsigned max_xres, unsigned max_yres,
     BX_GUI_THIS mouse_hbar_id = headerbar_bitmap(BX_GUI_THIS nomouse_bmap_id,
                           BX_GRAVITY_LEFT, toggle_mouse_enable);
   BX_GUI_THIS set_tooltip(BX_GUI_THIS mouse_hbar_id, "Enable mouse capture");
+
+#if BX_USE_WIN32USBDEBUG
+  // USB button
+  if (BX_GUI_THIS dialog_caps & BX_GUI_DLG_USB) {
+    if ((SIM->get_param_enum(BXPN_USB_DEBUG_TYPE)->get() > 0) && (
+        SIM->get_param_bool(BXPN_UHCI_ENABLED)->get() ||
+        SIM->get_param_bool(BXPN_OHCI_ENABLED)->get() ||
+        SIM->get_param_bool(BXPN_EHCI_ENABLED)->get() ||
+        SIM->get_param_bool(BXPN_XHCI_ENABLED)->get())) {
+      BX_GUI_THIS usb_hbar_id = headerbar_bitmap(BX_GUI_THIS usb_bmap_id,
+                            BX_GRAVITY_LEFT, usb_handler);
+      BX_GUI_THIS set_tooltip(BX_GUI_THIS usb_hbar_id, "Trigger the USB Debugger");
+    } else {
+      BX_GUI_THIS usb_hbar_id = headerbar_bitmap(BX_GUI_THIS usb_eject_bmap_id,
+                            BX_GRAVITY_LEFT, usb_handler);
+      BX_GUI_THIS set_tooltip(BX_GUI_THIS usb_hbar_id, "USB support not enabled");
+    }
+  }
+#endif
 
   // These are the buttons on the right side.  They are created in order
   // of right to left.
@@ -682,6 +713,18 @@ void bx_gui_c::config_handler(void)
   }
 }
 
+#if BX_USE_WIN32USBDEBUG
+#include "win32usb.h"
+void bx_gui_c::usb_handler(void)
+{
+  if (BX_GUI_THIS dialog_caps & BX_GUI_DLG_USB) {
+    // Once we set the trigger, don't allow the user to press the button again
+    if (SIM->get_param_num(BXPN_USB_DEBUG_START_FRAME)->get() < BX_USB_DEBUG_SOF_TRIGGER)
+      SIM->usb_config_interface(USB_DEBUG_FRAME, 0, 0);
+  }
+}
+#endif
+
 void bx_gui_c::toggle_mouse_enable(void)
 {
   int old = SIM->get_param_bool(BXPN_MOUSE_ENABLED)->get();
@@ -1037,10 +1080,10 @@ Bit8u bx_gui_c::get_mouse_headerbar_id()
 }
 
 #if BX_DEBUGGER && (BX_DEBUGGER_GUI || BX_NEW_DEBUGGER_GUI)
-void bx_gui_c::init_debug_dialog()
+void bx_gui_c::init_debug_dialog(bool global_ini)
 {
-  extern void InitDebugDialog();
-  InitDebugDialog();
+  extern void InitDebugDialog(bool GlobalIni);
+  InitDebugDialog(global_ini);
 }
 
 void bx_gui_c::close_debug_dialog()
@@ -1594,4 +1637,48 @@ void bx_gui_c::set_command_mode(bool active)
   if (command_mode.present) {
     command_mode.active = active;
   }
+}
+
+bool bx_gui_c::parse_common_gui_options(const char *arg, Bit8u flags)
+{
+  if (!strcmp(arg, "nokeyrepeat") && (flags & BX_GUI_OPT_NOKEYREPEAT)) {
+    BX_INFO(("disabled host keyboard repeat"));
+    gui_nokeyrepeat = 1;
+    return true;
+  } else if (!strncmp(arg, "gui_debug", 9)) {
+#if BX_DEBUGGER && BX_DEBUGGER_GUI
+    enh_dbg_gui_enabled = 1;
+    enh_dbg_global_ini = 0;
+    if ((strlen(arg) > 9) && (arg[9] == ':')) {
+      if (!strcmp(&arg[10], "globalini")) {
+        enh_dbg_global_ini = 1;
+        BX_INFO(("Debugger gui using global config from BXSHARE path"));
+      } else {
+        BX_ERROR(("Ignoring unknown setting '%s' for gui debugger", &arg[10]));
+      }
+    } else if (strlen(arg) > 9) {
+      return false;
+    }
+#else
+    SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
+#endif
+    return true;
+#if BX_SHOW_IPS
+  } else if (!strcmp(arg, "hideIPS") && (flags & BX_GUI_OPT_HIDE_IPS)) {
+    BX_INFO(("hide IPS display in status bar"));
+    gui_hide_ips = 1;
+    return true;
+#endif
+  } else if (!strcmp(arg, "cmdmode") && (flags & BX_GUI_OPT_CMDMODE)) {
+    BX_INFO(("enabled command mode support"));
+    command_mode.present = 1;
+    return true;
+#if BX_USE_GUI_CONSOLE
+  } else if (!strcmp(arg, "no_gui_console") && (flags & BX_GUI_OPT_NO_GUI_CONSOLE)) {
+    BX_INFO(("use system console instead of gui console"));
+    console.present = 0;
+    return true;
+#endif
+  }
+  return false;
 }

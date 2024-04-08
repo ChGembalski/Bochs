@@ -53,8 +53,7 @@ static int do_fprem(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, int rounding
     q = 0;
 
     // handle unsupported extended double-precision floating encodings
-    if (floatx80_is_unsupported(a) || floatx80_is_unsupported(b))
-    {
+    if (extF80_isUnsupported(a) || extF80_isUnsupported(b)) {
         float_raise(status, float_flag_invalid);
         r = floatx80_default_nan;
         return -1;
@@ -83,8 +82,7 @@ static int do_fprem(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, int rounding
         if (aExp == 0 && aSig0) {
             float_raise(status, float_flag_denormal);
             normalizeFloatx80Subnormal(aSig0, &aExp, &aSig0);
-            r = (a.fraction & BX_CONST64(0x8000000000000000)) ?
-                    packFloatx80(aSign, aExp, aSig0) : a;
+            r = (a.fraction & BX_CONST64(0x8000000000000000)) ? packFloatx80(aSign, aExp, aSig0) : a;
             return 0;
         }
         r = a;
@@ -111,7 +109,7 @@ static int do_fprem(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, int rounding
     expDiff = aExp - bExp;
     aSig1 = 0;
 
-    Bit32u overflow = 0;
+    int overflow = 0;
 
     if (expDiff >= 64) {
         int n = (expDiff & 0x1f) | 0x20;
@@ -142,7 +140,7 @@ static int do_fprem(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, int rounding
             }
         }
 
-        if (rounding_mode == float_round_nearest_even)
+        if (rounding_mode == softfloat_round_near_even)
         {
             Bit64u term0, term1;
             shift128Right(bSig, 0, 1, &term0, &term1);
@@ -173,7 +171,7 @@ static int do_fprem(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, int rounding
 
 int floatx80_ieee754_remainder(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, float_status_t &status)
 {
-    return do_fprem(a, b, r, q, float_round_nearest_even, status);
+    return do_fprem(a, b, r, q, softfloat_round_near_even, status);
 }
 
 /*----------------------------------------------------------------------------
@@ -187,5 +185,5 @@ int floatx80_ieee754_remainder(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, f
 
 int floatx80_remainder(floatx80 a, floatx80 b, floatx80 &r, Bit64u &q, float_status_t &status)
 {
-    return do_fprem(a, b, r, q, float_round_to_zero, status);
+    return do_fprem(a, b, r, q, softfloat_round_to_zero, status);
 }

@@ -8,7 +8,7 @@
 //
 //  Modified by Bruce Ewing
 //
-//  Copyright (C) 2008-2021  The Bochs Project
+//  Copyright (C) 2008-2024  The Bochs Project
 
 #include "bochs.h"
 #include "bx_debug/debug.h"
@@ -16,6 +16,10 @@
 #include "enh_dbg.h"
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
+
+#if BX_HAVE_GTK_VERSION == 2
+#define GTK_DISABLE_DEPRECATED
+#endif
 
 #include <gtk/gtk.h>
 #include <glib.h>

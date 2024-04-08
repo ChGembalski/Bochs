@@ -130,9 +130,9 @@ The last version of Bochs that he released was 3/25/2000, three days after the
 Mandrake press release.
 -->
 In March 2001, Kevin helped a few developers to move all Bochs activities from
-bochs.com to a new site at <ulink url="http://bochs.sourceforge.net"></ulink>.  Since then the Bochs project
-has settled into its new home, and around release times has even hit #1 most
-active project of the week at SourceForge.
+bochs.com to a new site at <ulink url="http://bochs.sourceforge.net"></ulink>.
+Since then the Bochs project has settled into its new home, and around release
+times has even hit #1 most active project of the week at SourceForge.
 </para>
 </section><!-- end: What is Bochs? -->
 
@@ -141,7 +141,8 @@ active project of the week at SourceForge.
 regular basis, but a few statistics give an indication.  The &devlist;,
 which is the primary source of news on bugs and releases, has over 400
 subscribers. The latest version has been downloaded over 150,000 times
-from SourceForge, not counting any mirror website or SVN users.
+from SourceForge, not counting any mirror website or
+<ulink url="https://github.com/bochs-emu/Bochs/">GitHub</ulink> users.
 </para>
 
 <para>
@@ -894,13 +895,11 @@ code that displays the Bochs VGA screen and handles keyboard and mouse events.
 
 <para>
 The change log is stored in the Bochs source code in a file called
-CHANGES.  Click <ulink url="http://svn.code.sf.net/p/bochs/code/trunk/bochs/CHANGES">here</ulink>
+CHANGES.  Click <ulink url="https://github.com/bochs-emu/Bochs/blob/master/bochs/CHANGES">here</ulink>
 to see the latest version of the CHANGES file.
 </para>
 <para>
-The link above is provided by Source Forge and might change one day.  If it
-stops working, you can download the current source code with SVN and read
-the CHANGES file there.
+You can also download the current source code from GitHub and read the CHANGES file there.
 </para>
 
 </chapter>
@@ -918,8 +917,11 @@ You can download Bochs from our web site at &bochs-sf-net;.  First, you
 need to choose what version to get: a recent release or a development
 version.  If you trying to get things working for the first time, a release
 version is recommended since it has been tested the most.  The development
-versions (sometimes called SVN snapshots) may have some newer bug fixes and
-new features, but have not been tested as much as the releases.
+versions may have some newer bug fixes and new features, but have not been
+tested as much as the releases. A snapshot of the current state of the source
+tree in ZIP format is available on
+<ulink url="https://github.com/bochs-emu/Bochs/">GitHub</ulink> when you press
+the <command>Code</command> button.
 </para>
 
 <para>
@@ -938,8 +940,8 @@ linkend="install-binary">Installing a Binary</link> for more information.
 If you are going to compile Bochs yourself, you need the gzipped tarball
 containing the source code, called
 <filename>bochs-<replaceable>version</replaceable>.tar.gz</filename>.  For
-Windows and Mac, the prebuilt Makefiles are separate, so also get
-the Makefiles for your platform.  To unpack a compressed TAR file<footnote>
+Windows a ZIP package with sources and prebuilt Makefiles is available.
+To unpack a compressed TAR file<footnote>
 <para>
 A TAR file is a single file that contains many files packed inside.  Bochs
 TAR files are compressed with a program called gzip, and another program
@@ -962,71 +964,60 @@ Bochs are in the section, <link linkend="compiling">Compiling Bochs</link>.
 </para>
 
 <para>
-Alternatively, you can also obtain the sources for any Bochs version using SVN.
-See the <link linkend="get-src-svn">SVN instructions</link> for details.
+Alternatively, you can also obtain the sources for any Bochs version using GIT.
+See the <link linkend="get-src-git">GIT instructions</link> for details.
 </para>
 </section>  <!-- End of Installation:Downloading Bochs section -->
 
-<section id="get-src-svn"><title>Tracking the source code with SVN</title>
+<section id="get-src-git"><title>Tracking the source code with GIT</title>
 <para>
-SVN (Subversion) is a tool used by many software developers to manage changes
-within their source code tree. SVN provides the means to store not only the
-current version of a piece of source code, but a record of all changes (and who
-made those changes) that have occurred to that source code. Use of SVN is
-particularly common on projects with multiple developers, since SVN ensures
-changes made by one developer are not accidentally removed when another
-developer posts their changes to the source tree. The Bochs source code and
-documentation is available using SVN<footnote>
+GIT is a free and open source version control system designed to handle small
+to very large project efficiently. Git is used to tracking changes in the source
+code, enabling multiple developers to work together on non-linear development.
+The Bochs source code and documentation is available using GIT<footnote>
 <para>
-You can download SVN software and documentation from
-<ulink url="http://subversion.apache.org">subversion.apache.org</ulink>.
+You can download GIT software and documentation from
+<ulink url="https://git-scm.com/">git-scm.com</ulink>.
 </para>
-</footnote>.
+</footnote> hostet on <ulink url="https://github.com/bochs-emu/Bochs/">GitHub</ulink>.
 </para>
 
 <section><title>Checking out Bochs</title>
 <para>
-When you have SVN installed, the first step is to do a checkout. The initial
-checkout command is long and ugly, but usually you only have to do it
-once. The example below shows the SVN checkout process of the Bochs trunk in Unix.
-On the Windows platform, you can download a SVN client from
-<ulink url="http://subversion.apache.org/packages.html#windows">subversion.apache.org</ulink>,
-or use SVN within Cygwin<footnote>
+When you have a GIT client installed, the first step is to do a checkout.
+The initial checkout command is long and ugly, but usually you only have to do it
+once. The example below shows the GIT checkout process of the Bochs master branch in Unix.
+On the Windows platform, you can download a GIT client from
+<ulink url="https://git-scm.com/download/win">git-scm.com</ulink>,
+or use GIT within Cygwin<footnote>
 <para>
 Cygwin is an open source Unix-like environment for Windows platforms,
-available at <ulink url="http://www.cygwin.com">www.cygwin.com</ulink>.
+available at <ulink url="https://www.cygwin.com">www.cygwin.com</ulink>.
 </para>
 </footnote>.
 
-<figure><title>Checking out Bochs in SVN</title>
+<figure><title>Checking out Bochs in GIT</title>
 <screen>
-  user$ <command>svn co http://svn.code.sf.net/p/bochs/code/trunk/bochs bochs</command>
-  A    bochs/ltdl.c
-  A    bochs/Makefile.in
-  A    bochs/bochs.h
-  .
-  .   <lineannotation>(This might take a few minutes, depending on your network connection.)</lineannotation>
-  .
-  A    bochs/install.sh
-   U   bochs
-  Checkout, Revision 10754.
-  user$ <command>cd bochs</command>
+  user$ <command>git clone https://github.com/bochs-emu/Bochs.git</command>
+  Cloning into 'Bochs'...
+  remote: Enumerating objects: 107946, done.
+  remote: Counting objects: 100% (2708/2708), done.
+  remote: Compressing objects: 100% (869/869), done.
+  remote: Total 107946 (delta 2095), reused 2118 (delta 1817), pack-reused 105238
+  Receiving objects: 100% (107946/107946), 39.53 MiB | 2.86 MiB/s, done.
+  Resolving deltas: 100% (85554/85554), done.
+  <lineannotation>(This might take a few minutes, depending on your network connection.)</lineannotation>
+  user$ <command>cd Bochs/bochs</command>
   user$ <command>ls</command>
-  aclocal.m4       cpu                 logio.cc        pc_system.cc
-  bios             cpudb.h             ltdl.c          pc_system.h
-  bochs.h          crc.cc              ltdlconf.h.in   plugin.cc
-  build            disasm              ltdl.h          plugin.h
-  bx_debug         doc                 ltmain.sh       README
-  bxversion.h.in   docs-html           main.cc         README-plugins
-  bxversion.rc.in  extplugin.h         Makefile.in     README.rfb
-  CHANGES          fpu                 memory          README-wxWindows
-  config.cc        gdbstub.cc          misc            TESTFORM.txt
-  config.guess     gui                 msrs.def        TODO
-  config.h.in      host                osdep.cc        win32_enh_dbg.rc
-  config.sub       install-sh          osdep.h         win32res.rc
-  configure        instrument          param_names.h   wxbochs.rc
-  configure.in     iodev               PARAM_TREE.txt
-  COPYING          load32bitOShack.cc  patches
+  CHANGES           aclocal.m4      bxversion.rc.in  crc.cc       iodev      osdep.h           win32res.rc
+  COPYING           bios            config.cc        doc          logio.cc   param_names.h     win32usbres.rc
+  LICENSE           bochs.h         config.guess     docs-html    logio.h    patches           wxbochs.rc
+  Makefile.in       build           config.h.in      extplugin.h  ltmain.sh  pc_system.cc
+  PARAM_TREE.txt    bx_debug        config.sub       gdbstub.cc   main.cc    pc_system.h
+  README            bxdisasm.cc     configure        gui          memory     plugin.cc
+  README-wxWidgets  bxthread.cc     configure.ac     host         misc       plugin.h
+  TESTFORM.txt      bxthread.h      cpu              install-sh   msrs.def   qemu-queue.h
+  TODO              bxversion.h.in  cpudb.h          instrument   osdep.cc   win32_enh_dbg.rc
   user$ _
 </screen>
 </figure>
@@ -1040,114 +1031,47 @@ available at <ulink url="http://www.cygwin.com">www.cygwin.com</ulink>.
 
 <tip>
 <para>
-If you have write access to the Bochs SVN tree, see the Developers Guide
-<footnote>
-<para>
-See the <ulink url="../development/resources.html">Developers Guide</ulink>
-and/or look at
-<ulink url="http://sourceforge.net/apps/trac/sourceforge/wiki/Subversion#Access">SourceForge's Subversion documentation</ulink>,
+If you have write access to the Bochs GIT tree, see the
+<ulink url="../development/resources.html">Developers Guide</ulink>
 for instructions.
-</para>
-</footnote> for details.
 </para>
 </tip>
 
 <para>
-The SVN checkout process (above) gives you a directory called <filename>bochs</filename>
+The GIT checkout process (above) gives you a directory called <filename>Bochs</filename>
 that contains the very latest source code.  I will refer to this directory
-as &bochsdir;.  In this directory there's also a subdirectory called ".svn"
-which tells the SVN software where the code was checked out, what version
+as &bochsdir;.  In this directory there's also a subdirectory called ".git"
+which tells the GIT software where the code was checked out, what version
 you have, and where to go for future updates.
 </para>
 </section>
 
 <section><title>Getting the Latest Version</title>
 <para>
-Most developers use SVN to always give them the latest source code.  The minute
+Most developers use GIT to always give them the latest source code.  The minute
 that any developer checks in a change, they are available to everyone else
-through SVN. You just have to type <command>svn update</command> in the
-&bochsdir; directory, and SVN will retrieve any files and directories that have
+through GIT. You just have to type <command>git pull</command> in the
+&bochsdir; directory, and GIT will retrieve any files and directories that have
 been changed since you did a checkout.  If you update regularly, each update
 takes a short time because it downloads only the files that changed.
-See also <link linkend="svn-release-version">Getting a release version</link>.
+See also <link linkend="git-release-version">Getting a release version</link>.
 </para>
+
 
 <para>
-The <command>svn update</command> command tells you if any new files have
+The <command>git pull</command> command tells you if any new files have
 been downloaded from the server, and it also tells you if you have modified any
-of the SVN-controlled files.  As it checks through the source directories, it
-will list files that have changed, with a single letter before the name that
-tells the status of that file.  The most common status letters are listed
-below.
-
-<table frame="all">
-<title>Status letters in a SVN update</title>
-  <tgroup cols="3">
-    <thead>
-      <row>
-        <entry>Letter</entry>
-        <entry>Meaning</entry>
-        <entry>Description</entry>
-      </row>
-    </thead>
-    <tbody>
-      <row>
-        <entry>?</entry>
-        <entry>unknown</entry>
-        <entry>
-        This file is in your Bochs directory, but SVN does not know anything
-        about it.  For example, when you compile Bochs, any files created
-        during the build process appear as ?.
-        </entry>
-      </row>
-      <row>
-        <entry>U</entry>
-        <entry>update</entry>
-        <entry>
-        SVN downloaded a new version of this file because it changed on the
-        server, usually because someone else did a checkin.
-        </entry>
-      </row>
-      <row>
-        <entry>A</entry>
-        <entry>added</entry>
-        <entry>
-        SVN downloaded a newly added file from the server.
-        </entry>
-      </row>
-      <row>
-        <entry>D</entry>
-        <entry>deleted</entry>
-        <entry>
-        This file has been deleted on the server and SVN removed it from your
-        local copy.
-        </entry>
-      </row>
-      <row>
-        <entry>C</entry>
-        <entry>conflict</entry>
-        <entry>
-        You have changed this file on your disk, but this change conflicts with
-        a change that was checked in.  Conflicts occur when two people change
-        the same line of code in different ways.  You need to edit the
-        conflicting file(s) and clean it up by hand.  Or, sometimes it's
-        easiest to discard your own edits and download a fresh copy, by
-        deleting the conflicting file and running svn update again.
-        </entry>
-      </row>
-    </tbody>
-   </tgroup>
-</table>
+of the GIT-controlled files.  As it checks through the source directories, it
+will list files that have changed.
 </para>
-
 </section>
 
-<section id="svn-release-version"><title>Getting a Release Version</title>
+<section id="git-release-version"><title>Getting a Release Version</title>
 <para>
-You can also use the SVN checkout command to get the Bochs source code for
+You can also use the GIT checkout command to get the Bochs source code for
 any release since March 2000.  The command is
 <screen>
-  user$ <command>svn co http://svn.code.sf.net/p/bochs/code/tags/<replaceable>tagname</replaceable>/bochs bochs</command>
+  user$ <command>git clone</command> --branch <replaceable>tagname</replaceable> https://github.com/bochs-emu/Bochs.git
 </screen>
 The <replaceable>tagname</replaceable> tells which release you want, and it can be one of the following:
 
@@ -1157,210 +1081,215 @@ The <replaceable>tagname</replaceable> tells which release you want, and it can 
     <thead>
       <row>
         <entry>Bochs version</entry>
-        <entry>Release tag for SVN</entry>
-        <entry>SVN revision</entry>
+        <entry>Release tag for GIT</entry>
+        <entry>Release date</entry>
       </row>
     </thead>
     <tbody>
       <row>
+        <entry>2.8</entry>
+        <entry>REL_2_8_FINAL</entry>
+        <entry>March 10, 2024</entry>
+      </row>
+      <row>
         <entry>2.7</entry>
         <entry>REL_2_7_FINAL</entry>
-        <entry>14332</entry>
+        <entry>August 1, 2021</entry>
       </row>
       <row>
         <entry>2.6.11 (bugfix)</entry>
         <entry>REL_2_6_11_FINAL</entry>
-        <entry>13774</entry>
+        <entry>January 5, 2020</entry>
       </row>
       <row>
         <entry>2.6.10 (intermediate)</entry>
         <entry>REL_2_6_10_FINAL</entry>
-        <entry>13629</entry>
+        <entry>December 1, 2019</entry>
       </row>
       <row>
         <entry>2.6.9 (intermediate)</entry>
         <entry>REL_2_6_9_FINAL</entry>
-        <entry>13181</entry>
+        <entry>April 9, 2017</entry>
       </row>
       <row>
         <entry>2.6.8 (intermediate)</entry>
         <entry>REL_2_6_8_FINAL</entry>
-        <entry>12740</entry>
+        <entry>May 3, 2015</entry>
       </row>
       <row>
         <entry>2.6.7 (intermediate)</entry>
         <entry>REL_2_6_7_FINAL</entry>
-        <entry>12531</entry>
+        <entry>November 2, 2014</entry>
       </row>
       <row>
         <entry>2.6.6 (bugfix)</entry>
         <entry>REL_2_6_6_FINAL</entry>
-        <entry>12375</entry>
+        <entry>June 15, 2014</entry>
       </row>
       <row>
         <entry>2.6.5 (intermediate)</entry>
         <entry>REL_2_6_5_FINAL</entry>
-        <entry>12349</entry>
+        <entry>June 1, 2014</entry>
       </row>
       <row>
         <entry>2.6.2 (bugfix)</entry>
         <entry>REL_2_6_2_FINAL</entry>
-        <entry>11694</entry>
+        <entry>May 26, 2013</entry>
       </row>
       <row>
         <entry>2.6.1 (intermediate)</entry>
         <entry>REL_2_6_1_FINAL</entry>
-        <entry>11667</entry>
+        <entry>April 7, 2013</entry>
       </row>
       <row>
         <entry>2.6</entry>
         <entry>REL_2_6_FINAL</entry>
-        <entry>11395</entry>
+        <entry>September 2, 2012</entry>
       </row>
       <row>
         <entry>2.5.1 (bugfix)</entry>
         <entry>REL_2_5_1_FINAL</entry>
-        <entry>10946</entry>
+        <entry>January 6, 2012</entry>
       </row>
       <row>
         <entry>2.5</entry>
         <entry>REL_2_5_FINAL</entry>
-        <entry>10801</entry>
+        <entry>November 27, 2011</entry>
       </row>
       <row>
         <entry>2.4.6</entry>
         <entry>REL_2_4_6_FINAL</entry>
-        <entry>10202</entry>
+        <entry>February 22, 2011</entry>
       </row>
       <row>
         <entry>2.4.5</entry>
         <entry>REL_2_4_5_FINAL</entry>
-        <entry>9914</entry>
+        <entry>April 25, 2010</entry>
       </row>
       <row>
         <entry>2.4.2</entry>
         <entry>REL_2_4_2_FINAL</entry>
-        <entry>9568</entry>
+        <entry>November 12, 2009</entry>
       </row>
       <row>
         <entry>2.4.1</entry>
         <entry>REL_2_4_1_FINAL</entry>
-        <entry>9368</entry>
+        <entry>June 7, 2009</entry>
       </row>
       <row>
         <entry>2.4</entry>
         <entry>REL_2_4_FINAL</entry>
-        <entry>9289</entry>
+        <entry>May 3, 2009</entry>
       </row>
       <row>
         <entry>2.3.7</entry>
         <entry>REL_2_3_7_FINAL</entry>
-        <entry>8537</entry>
+        <entry>June 3, 2008</entry>
       </row>
       <row>
         <entry>2.3.6</entry>
         <entry>REL_2_3_6_FINAL</entry>
-        <entry>8111</entry>
+        <entry>December 24, 2007</entry>
       </row>
       <row>
         <entry>2.3.5</entry>
         <entry>REL_2_3_5_FINAL</entry>
-        <entry>7840</entry>
+        <entry>September 16, 2007</entry>
       </row>
       <row>
         <entry>2.3</entry>
         <entry>REL_2_3_FINAL</entry>
-        <entry>7538</entry>
+        <entry>August 27, 2006</entry>
       </row>
       <row>
         <entry>2.2.6 (intermediate2)</entry>
         <entry>REL_2_2_6_FINAL</entry>
-        <entry>7060</entry>
+        <entry>January 29, 2005</entry>
       </row>
       <row>
         <entry>2.2.5 (intermediate1)</entry>
         <entry>REL_2_2_5_FINAL</entry>
-        <entry>6942</entry>
+        <entry>December 30, 2005</entry>
       </row>
       <row>
         <entry>2.2.1 (bugfix1)</entry>
         <entry>REL_2_2_1_FINAL</entry>
-        <entry>6624</entry>
+        <entry>July 8, 2005</entry>
       </row>
       <row>
         <entry>2.2</entry>
         <entry>REL_2_2_FINAL</entry>
-        <entry>6476</entry>
+        <entry>May 28, 2005</entry>
       </row>
       <row>
         <entry>2.1.1 (bugfix1)</entry>
         <entry>REL_2_1_1_FINAL</entry>
-        <entry>5560</entry>
+        <entry>February 8, 2004</entry>
       </row>
       <row>
         <entry>2.1</entry>
         <entry>REL_2_1_FINAL</entry>
-        <entry>5441</entry>
+        <entry>January 9, 2004</entry>
       </row>
       <row>
         <entry>2.0.2 (bugfix2)</entry>
         <entry>REL_2_0_2_FINAL</entry>
-        <entry>4592</entry>
+        <entry>January 21, 2003</entry>
       </row>
       <row>
         <entry>2.0.1 (bugfix1)</entry>
         <entry>REL_2_0_1_FINAL</entry>
-        <entry>4491</entry>
+        <entry>January 4, 2003</entry>
       </row>
       <row>
         <entry>2.0</entry>
         <entry>REL_2_0_FINAL</entry>
-        <entry>4409</entry>
+        <entry>December 21, 2002</entry>
       </row>
       <row>
         <entry>1.4.1 (bugfix1)</entry>
         <entry>REL_1_4_1_FINAL</entry>
-        <entry>2513</entry>
+        <entry>June 22, 2002</entry>
       </row>
       <row>
         <entry>1.4</entry>
         <entry>REL_1_4_FINAL</entry>
-        <entry>2235</entry>
+        <entry>March 27, 2002</entry>
       </row>
       <row>
         <entry>1.3</entry>
         <entry>REL_1_3_FINAL</entry>
-        <entry>1705</entry>
+        <entry>December 10, 2001</entry>
       </row>
       <row>
         <entry>1.2.1 (bugfix1)</entry>
         <entry>REL_1_2_1_FINAL</entry>
-        <entry>912</entry>
+        <entry>June 12, 2001</entry>
       </row>
       <row>
         <entry>1.2</entry>
         <entry>REL_1_2_FINAL</entry>
-        <entry>797</entry>
+        <entry>June 3, 2001</entry>
       </row>
       <row>
         <entry>1.1.2 (bugfix3)</entry>
         <entry>REL_1_1_2_BASE</entry>
-        <entry>510</entry>
+        <entry>May 16, 2001</entry>
       </row>
       <row>
         <entry>1.1.1 (bugfix2)</entry>
         <entry>REL_1_1_1_BASE</entry>
-        <entry>57</entry>
+        <entry>April 9, 2001</entry>
       </row>
       <row>
         <entry>1.1 (bugfix1)</entry>
         <entry>REL_1_1_BASE</entry>
-        <entry>51</entry>
+        <entry>April 6, 2001</entry>
       </row>
       <row>
         <entry>1.0 (bochs-2000_0325a)</entry>
         <entry>REL-bochs-2000-03-25</entry>
-        <entry>7</entry>
+        <entry>March 25, 2000</entry>
       </row>
     </tbody>
    </tgroup>
@@ -1370,25 +1299,16 @@ The <replaceable>tagname</replaceable> tells which release you want, and it can 
 
 </section>
 
-<section><title>More about SVN</title>
+<section><title>More about GIT and GitHub</title>
 <para>
-Entire books have been written on SVN, so there's no sense in duplicating
-it all here in the Bochs documentation.  Some sources of additional
-information is listed below.
+The official GIT documentation can be found at <ulink url="https://git-scm.com/doc"></ulink>
+and the official GitHub docs are located at <ulink url="https://docs.github.com/en"></ulink>.
 </para>
-<itemizedlist>
-<listitem><para>The <ulink url="http://subversion.apache.org">subversion.apache.org
-site</ulink> has tons of SVN FAQs and documentation.</para></listitem>
-<listitem><para>
-A German <ulink url="http://pvs.uni-muenster.de/pvs/lehre/WS06/projekt/svn-faq.html">SVN FAQ</ulink>
-is available at University of Muenster.
-</para></listitem>
-</itemizedlist>
 
 </section>
 
 
-</section> <!-- End of Installation:Getting the source code with SVN -->
+</section> <!-- End of Installation:Getting the source code with GIT -->
 
 
 <section id="install-binary"><title>Installing a Binary</title>
@@ -1403,8 +1323,9 @@ is different on different platforms.
 The Bochs binaries for Windows are distributed in an EXE installer package.
 The Bochs installer can be started like any other Windows program and it brings
 up the installation wizard. Here you can select the destination folder and the
-installation options. The wizard installs the files and creates the registry
-keys, start menu and desktop links.
+installation options. If an older Bochs version is installed, you'll be asked
+to uninstall it before installing the new version. The wizard installs the files
+and creates the registry keys, start menu and desktop links.
 </para>
 <para>
 Previous releases of Bochs were distributed as ZIP packages, too. These packages
@@ -1471,7 +1392,7 @@ DLX Linux screenshot.
 <row><entry>dlxlinux\testform.txt </entry> <entry> Form for reporting success or failure </entry> </row>
 <row>
   <entry>doc\index.html</entry>
-  <entry>a local copy of all Bochs documentation (<ulink url="http://bochs.sourceforge.net/doc/docbook/index.html">online copy</ulink>)</entry>
+  <entry>a local copy of all Bochs documentation (<ulink url="https://bochs.sourceforge.io/doc/docbook/index.html">online copy</ulink>)</entry>
 </row>
 <row><entry>keymaps\*.map </entry> <entry>keymap tables (on Windows used for the paste feature only) </entry> </row>
 </tbody>
@@ -1532,8 +1453,8 @@ anyway, but if it is missing important pieces, it may not run properly.
 </para>
 
 <para>
-The Bochs RPM installs five new commands and associated manual pages: bochs,
-bochs-dlx and bximage.  First, let's try out the
+The Bochs RPM installs four new commands and associated manual pages: bochs,
+bochs-dlx, bxhub and bximage.  First, let's try out the
 DLX Linux demo by typing <command>bochs-dlx</command>.
 
 <screen>
@@ -1634,7 +1555,7 @@ description of each one.
 <row><entry>/usr/share/doc/bochs/LICENSE</entry> <entry> Bochs license information </entry> </row>
 <row><entry>/usr/share/doc/bochs/README</entry> <entry> the read-me file from the source distribution. </entry> </row>
 <row><entry>/usr/share/doc/bochs/TODO</entry> <entry> the TODO file from the source distribution. </entry> </row>
-<row><entry>/usr/share/doc/bochs/index.html</entry> <entry> a local copy of all Bochs documentation ( <ulink url="http://bochs.sourceforge.net/doc/docbook/index.html">Online copy</ulink> )</entry> </row>
+<row><entry>/usr/share/doc/bochs/index.html</entry> <entry> a local copy of all Bochs documentation ( <ulink url="https://bochs.sourceforge.io/doc/docbook/index.html">Online copy</ulink> )</entry> </row>
 <row><entry>/usr/share/doc/bochs/slirp.conf </entry> <entry> sample config file for the advanced 'slirp' network configuration </entry> </row>
 <row><entry>/usr/share/doc/bochs/vnet.conf </entry> <entry> sample config file for the advanced 'vnet' network configuration </entry> </row>
 <row><entry>/usr/share/bochs/BIOS-bochs-latest </entry> <entry> default ROM BIOS image for Bochs </entry> </row>
@@ -1742,7 +1663,7 @@ descriptions or tool-tips).
 Bochs is written in C++, so you need a C++ compiler on your system.  Most
 platforms have been tested with GNU gcc/g++, but other compilers are known
 to work too.  By now, you should have unpacked your source TAR file or checked
-out Bochs from SVN.  If not, you can return to <link
+out Bochs with GIT from GitHub.  If not, you can return to <link
 linkend="downloading">Downloading Bochs</link> for details.  The top level
 directory of the source code will be referred to as &bochsdir;.  (&bochsdir;
 contains the files <filename>bochs.h</filename> and
@@ -2522,7 +2443,7 @@ SMP, x86_64 support) and the devices options (e.g. PCI, USB, Cirrus graphics).
       features of the debugger.  You only want this option if you are
       developing guest OS code for use in Bochs.  In other words, most people
       don't.  Also, it should only be used with <option>--enable-debugger</option>.
-      See the <ulink url="http://bochs.sourceforge.net/doc/docbook/development/iodebug.html">
+      See the <ulink url="https://bochs.sourceforge.io/doc/docbook/development/iodebug.html">
       developer documentation</ulink> for details.
       </entry>
     </row>
@@ -3066,7 +2987,7 @@ called from <command>make</command> are causing the failure (e.g. compiler / lin
 In some cases it might be useful to rebuild Bochs completely by calling
 <command>make dist-clean</command> and running the <command>configure</command>
 script once again. These steps are recommended if the development sources from
-SVN are used and one of the build system files (e.g. <filename>Makefile</filename>
+GitHub are used and one of the build system files (e.g. <filename>Makefile</filename>
 or <filename>config.h.in</filename>) has been changed.
 </para>
 <para>
@@ -3167,7 +3088,7 @@ instructions given in <xref linkend="keymap">.
 
 <para>
 A collection of disk images of different operating systems can be found at
-<ulink url="http://bochs.sourceforge.net/diskimages.html"></ulink>. Some disk
+<ulink url="https://bochs.sourceforge.io/diskimages.html"></ulink>. Some disk
 images are the size of a floppy disk (1 meg compressed) and others are gigantic
 (160 meg compressed). If you want to create a disk image yourself, please see
 <xref linkend="diskimagehowto">.
@@ -3815,7 +3736,7 @@ The start address is optional, since it can be calculated from image size.
 The Bochs BIOS currently supports only the option "fastboot" to skip the
 boot menu delay.
 </para>
-<para><command>flash_dats</command></para>
+<para><command>flash_data</command></para>
 <para>
 This parameter defines the file name for the flash BIOS config space loaded
 startup if existing and saved on exit if modified. The Bochs BIOS doesn't
@@ -5025,8 +4946,8 @@ available in the runtime configuration.
 <para>
 The device 'printer' emulates the HP Deskjet 920C printer. The PCL data is
 sent to a file specified in the 'file' option with the options<replaceable>X</replaceable>
-parameter. The current code appends the PCL code to the file if the file already
-existed. The output file can be changed at runtime.
+parameter. Note that an existing file will be over-written when Bochs starts
+again. The output file can be changed at runtime.
 </para>
 <para>
 The options<replaceable>X</replaceable> parameter can also be used to assign
@@ -5098,6 +5019,8 @@ The options<replaceable>X</replaceable> parameter is also available on OHCI.</pa
 <para>
 Example:
 <screen>
+  usb_ehci: enabled=1, companion=uhci
+  usb_ehci: enabled=1, companion=ohci
   usb_ehci: enabled=1, port1=tablet, options1="speed:high"
   usb_ehci: enabled=1, port1=disk, options1="speed:high, path:hdd.img, proto:bbb"
   usb_ehci: enabled=1, port1=disk, options1="speed:high, path:hdd.img, proto:uasp"
@@ -5105,9 +5028,17 @@ Example:
   usb_ehci: enabled=1, port1=cdrom, options1="speed:high, path:bootcd.iso, proto:uasp"
 </screen>
 This option controls the presence of the USB EHCI host controller with a
-6-port hub. The port<replaceable>X</replaceable> parameter accepts the same device types with the same
+6-port root hub. The port<replaceable>X</replaceable> parameter accepts the same device types with the same
 syntax as the UHCI controller (see the <link linkend="bochsopt-usb-uhci">usb_uhci option</link>).
-The options<replaceable>X</replaceable> parameter is also available on EHCI.</para>
+The options<replaceable>X</replaceable> parameter is also available on EHCI.
+</para>
+<para>
+The EHCI will default to three UHCI companion controllers, but you can specify either UHCI or OHCI.
+</para>
+<para>
+Either companion with allocate there first two ports to the first companion, the second pair to the next
+companion, and the last pair to the third companion. Currently, there is no way to change this.
+</para>
 </section>
 
 <section id="bochsopt-usb-xhci"><title>usb_xhci</title>
@@ -5115,7 +5046,9 @@ The options<replaceable>X</replaceable> parameter is also available on EHCI.</pa
 Example:
 <screen>
   usb_xhci: enabled=1, model="uPD720202", n_ports=4
-  usb_xhci: enabled=1, port1="disk:usbdisk.img"      # defaults to the BBB protocol
+  usb_xhci: port1="disk:usbdisk.img"                   # defaults to super-speed
+  usb_xhci: port3="disk:usbdisk.img"                   # defaults to high-speed
+  usb_xhci: port1="speed:super, disk:usbdisk.img"      # defaults to the BBB protocol
   usb_xhci: port1=disk, options1="speed:super, path:usbdisk.img, proto:uasp"
   usb_xhci: port1=disk, options1="speed:super, path:usbdisk.img, proto:bbb"
   usb_xhci: port1=cdrom, options1="speed:super, path:bootcd.iso, proto:uasp"
@@ -5149,6 +5082,79 @@ On an xHCI, the number of ports used is the number of port register sets, one se
 protocol and a paired set for the USB2 protocol. An 'n_ports=' specification of 4 defines
 <emphasis>two</emphasis> physical sockets.
 </para></note>
+<para>
+Since the register sets are paired on the xHCI, for example if you have 2 sockets (4 register sets),
+Bochs has Port 1 and Port 3 paired.  Port 1 is for Super-speed devices while Port 3 is for high-, 
+full-, and low-speed devices. With this in mind, if you have a device on Port 1, you <emphasis>must
+not</emphasis> have a device on Port 3. If you have a (super-speed) device on Port 1 and a (non-super-speed)
+device on Port 3, Bochs will Panic with a string similar to:
+<screen>
+  >>PANIC<< Port #3: Paired port number #1 already in use.
+</screen>
+</para>
+<para>
+With an example of 4 register sets (ports), this means there are only 2 physical sockets. You may 
+only have two devices at a time. To remedy the above Panic, take the following in mind:
+</para>
+<para>
+<table frame='all'><title>Valid Port definitions (4-port example)</title>
+  <?dbhtml table-width="50%" ?>
+  <tgroup cols='5' align='left' colsep='1' rowsep='1'>
+    <colspec colname='c1' colwidth='100pt'>
+    <colspec colname='c2' colwidth='175pt'>
+    <colspec colname='c3' colwidth='175pt'>
+    <colspec colname='c4' colwidth='175pt'>
+    <colspec colname='c5' colwidth='175pt'>
+    <thead>
+    <row>
+      <entry align="center">Scenario</entry>
+      <entry align="center">Port 1 (Paired with Port 3)</entry>
+      <entry align="center">Port 2 (Paired with Port 4)</entry>
+      <entry align="center">Port 3 (Paired with Port 1)</entry>
+      <entry align="center">Port 4 (Paired with Port 2)</entry>
+    </row>
+    </thead>
+    <tbody>
+    <row>
+      <entry align="center">1</entry>
+      <entry align="center">Super</entry>
+      <entry align="center">Super</entry>
+      <entry align="center">none</entry>
+      <entry align="center">none</entry>
+    </row>
+    <row>
+      <entry align="center">2</entry>
+      <entry align="center">Super</entry>
+      <entry align="center">none</entry>
+      <entry align="center">none</entry>
+      <entry align="center">High/Full/Low</entry>
+    </row>
+    <row>
+      <entry align="center">3</entry>
+      <entry align="center">none</entry>
+      <entry align="center">Super</entry>
+      <entry align="center">High/Full/Low</entry>
+      <entry align="center">none</entry>
+    </row>
+    <row>
+      <entry align="center">4</entry>
+      <entry align="center">none</entry>
+      <entry align="center">none</entry>
+      <entry align="center">High/Full/Low</entry>
+      <entry align="center">High/Full/Low</entry>
+    </row>
+    </tbody>
+    
+  </tgroup>
+</table>
+
+</para>
+</section>
+
+<section id="bochsopt-usb-debug"><title>usb debug</title>
+<para>
+See <xref linkend="bochsopt-usb-debugger"> for this item.
+</para>
 </section>
 
 <section><title>pcidev</title>
@@ -6343,7 +6349,10 @@ byte 3:  WWWWWWWW  8-bit Wheel displacement (-127 -> 127)
 Using the 'model:xxxx" parameter, you can set the mouse to report a different type packet. See below.
 </para>
 <para>
-This device may be used on all Host Controller types using a speed of 'low', 'full', or 'high'. (see model 'm388phy')
+This device may be used on all Host Controller types using a speed of 'low', 'full', or 'high' (see model 'm388phy'). 
+<note><para>
+Only one mouse/tablet device may be used at one time per emulation session.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=mouse, options1="speed:low"              # default report packet shown above
 usb_ohci: enabled=1, port1=mouse, options1="speed:full, model:m228" # 3-byte report packet, 2 button, 8-bits
@@ -6428,11 +6437,11 @@ byte 6:  WWWWWWWW  8-bit Wheel displacement (-128 -> 127)
 This report is deliberately irregular by design, so that a Guest can test its HID Report Descriptor Parser.
 </para>
 <itemizedlist>
-<listitem><para> - the button fields are not consecutive and are at arbitrary positions in the report.</para></listitem>
-<listitem><para> - the coords fields are not byte aligned or consecutively spaced.</para></listitem>
-<listitem><para> - the coords fields are of an irregular size, each a different size.</para></listitem>
-<listitem><para> - there are padding fields between entries that <command>do not</command> align the next field on a byte boundary.</para></listitem>
-<listitem><para> - this also uses the push/pop mechanism to test the function of your parser.</para></listitem>
+<listitem><para> the button fields are not consecutive and are at arbitrary positions in the report.</para></listitem>
+<listitem><para> the coords fields are not byte aligned or consecutively spaced.</para></listitem>
+<listitem><para> the coords fields are of an irregular size, each a different size.</para></listitem>
+<listitem><para> there are padding fields between entries that <command>do not</command> align the next field on a byte boundary.</para></listitem>
+<listitem><para> this also uses the push/pop mechanism to test the function of your parser.</para></listitem>
 </itemizedlist>
 <para>Again, this is deliberate. A correctly written parser will extract the neccessary fields no matter the irregularity.</para>
 <para>Returns the 5-byte packet shown below.</para>
@@ -6449,9 +6458,15 @@ Please note that this model is not for normal use. It is <command>intentionally<
 </section>
 
 <section><title>mouse: misc</title>
-<para>
-Please note that most physical USB mice will be 'low-speed' only.
-</para>
+<note><para>
+Note that most physical USB mice will be 'low-speed' only.
+</para></note>
+<note><para>
+Note that the mouse is known to not function correctly in a Windows 2000 Guest. Clearing HANDLE_TOGGLE_CONTROL to zero 
+in usb_common.h and rebuilding Bochs allows this guest to function more regularly, though there are still some issues.
+Since the USB mouse and keyboard work in all other regulary tested Guests, it must be a quirk with Win2k that needs to
+be investigated.
+</para></note>
 </section>
 </section>
 
@@ -6493,6 +6508,9 @@ byte 0:  00000LLL  Lock States
 <para>
 This device may be used on all Host Controller types using a speed of 'low', 'full',
 or 'high'.
+<note><para>
+Only one keyboard/keypad device may be used at one time per emulation session.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=keyboard, options1="speed:low"
 usb_ohci: enabled=1, port1=keyboard, options1="speed:full"
@@ -6523,6 +6541,9 @@ Only the key range noted before will be sent via the USB emulation.
 <para>
 This device may be used on all Host Controller types using a speed of 'low', 'full',
 or 'high'.
+<note><para>
+Only one keyboard/keypad device may be used at one time per emulation session.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=keypad, options1="speed:low"
 usb_ohci: enabled=1, port1=keypad, options1="speed:full"
@@ -6555,6 +6576,9 @@ Please note that the X and Y Displacement values are absolute, not relative valu
 </para></note>
 This device may be used on all Host Controller types using a speed of 'low', 'full',
 or 'high'.
+<note><para>
+Only one mouse/tablet device may be used at one time per emulation session.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=tablet, options1="speed:low"
 usb_ohci: enabled=1, port1=tablet, options1="speed:full"
@@ -6577,6 +6601,10 @@ high- and super-speed devices, you can specify the "UASP" protocol, also known a
 <para>
 This device may be used on all Host Controller types using a speed of 'full', 'high',
 or 'super'.
+<note><para>
+Any number of disk/CD-ROM devices may be used as long as there is an available HC/Hub port,
+and that each instance uses its own image file, i.e.: image files cannot be shared.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=disk, options1="speed:full, path:hdd.img"  # defaults to the BBB protocol
 usb_ohci: enabled=1, port1=disk, options1="speed:full, path:hdd.img"
@@ -6602,7 +6630,7 @@ Specifying 'proto:uasp' does not guarantee that the Guest will use that protocol
 See a <link linkend="bochsopt-usb-uhci">previous section</link> for more information.
 </para></note>
 <note><para>
-Please note that this device is not allowed as a low-speed only device. Low-speed should be specified.
+Please note that this device is not allowed as a low-speed only device. Low-speed should not be specified.
 </para></note>
 </para>
 </section>
@@ -6610,11 +6638,15 @@ Please note that this device is not allowed as a low-speed only device. Low-spee
 <section><title>Floppy</title>
 <para>
 This emulates a media device in the form of an external Floppy drive. By default,
-the emulation uses the "Control/Bulk/Interrupt" transport, aka "CBI". Bochs can be
-re-compiled to use the "Control/Bulk" transport, aka "CB".
+the emulation uses the "Control/Bulk/Interrupt" transport, aka "CBI". A compile-time option can be
+given to use the "Control/Bulk" transport, aka "CB".
 </para>
 <para>
 This device may be used on all Host Controller types using a speed of 'full'.
+<note><para>
+Any number of floppy devices may be used as long as there is an available HC/Hub 
+port, and that each instance uses its own image file, i.e.: image files cannot be shared.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=floppy, options1="speed:full, path:floppy.img"
 usb_ohci: enabled=1, port1=floppy, options1="speed:full, path:floppy.img, model:teac"
@@ -6629,19 +6661,36 @@ usb_uhci: enabled=1, port1=floppy, options1="speed:full, path:<emphasis>mode</em
 The 'model:teac' option can be used to emulate that specific model, else a default
 model will be used. If a guest does not see the attached floppy, try specifying the 'teac'
 model.
+</para>
+<para>
+The 'nofail' option can be used to disable the INQUIRY quirk. This quirk is enabled by default.
+<screen>
+usb_uhci: enabled=1, port1=floppy, options1="speed:full, path:floppy.img, nofail"
+</screen>
+To be consistant with real hardware, we need to fail with a STALL twice for any command after the first
+INQUIRY command except for the INQUIRY command itself and the REQUEST SENSE command. (I don't know why,
+and will document further when I know more.)
+</para>
+<para>
+Bochs allows more than one USB floppy devices to be used at one time, one on each available port.
+Each will be displayed in the status bar, the first as USB-FD1, the second as USB-FD2, etc.
+</para>
 <note><para>
 Please note that this device is a full-speed only device. No other speed should be specified.
 </para></note>
-</para>
 </section>
 
 <section><title>Printer</title>
 <para>
-This emulates a simple USB printer. All data sent to the printer will be appended
+This emulates a simple USB printer. All data sent to the printer will be written
 to a specified file on the Host.
 </para>
 <para>
 This device may be used on all Host Controller types using a speed of 'full'.
+<note><para>
+Any number of printer devices may be used as long as there is an available HC/Hub port,
+and that each instance uses its own target file, i.e.: target files cannot be shared.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=printer, options1="speed:full, file:printdata.bin"
 usb_ohci: enabled=1, port1=printer, options1="speed:full, file:printdata.bin"
@@ -6661,6 +6710,9 @@ changed, with a range of 2 to 8.
 </para>
 <para>
 This device may be used on all Host Controller types using a speed of 'full'.
+<note><para>
+Any number of hub devices may be used as long as there is an available HC/Hub port.
+</para></note>
 <screen>
 usb_uhci: enabled=1, port1=hub, options1="speed:full"
 usb_ohci: enabled=1, port1=hub, options1="speed:full, ports:4"
@@ -6727,8 +6779,181 @@ interface has problems when double-quotes are used. Therefore, don't use them in
 runtime configuration interface.
 </para>
 </listitem>
+<listitem>
+<para>
+When adjusting an xHCI port within the runtime configuration, you must remove a device
+from a companion port before adding to the other associated port.  For example, if port
+1 and port 3 are paired and you currently have something on port 3, you must remove it
+from port 3, continue the emulation, then come back and add something to port 1. You cannot
+remove something from port 3 and add something to port 1 at the same time.
+</para>
+</listitem>
+<listitem>
+<para>
+The USB emulation has been tested on numerous Guests. You can find these results at 
+<ulink url="http://www.fysnet.net/bochs/images/supported.htm">here</ulink>.
+</para>
+</listitem>
 </itemizedlist>
 </section>
+</section>
+
+<section id="bochsopt-usb-debugger"><title>USB Debugger</title>
+<para>
+<emphasis>This debugger implementation is experimental. Please take caution when using it.</emphasis>
+</para>
+<para>
+<screen>
+  usb_debug: type=none|uhci|ohci|ehci|xhci, reset, enable, start_frame, doorbell, event, non_exist
+</screen>
+</para>
+<para>
+Currently only <emphasis>none</emphasis>, <emphasis>uhci</emphasis>, or <emphasis>xhci</emphasis> can be specified as the type.
+Future additions will include the other two controller types.
+</para>
+<para>
+Only one type may be specified. You can only debug one controller type at a time.
+</para>
+<para>
+<screen>
+ triggers: (one or more must be specified)
+  'reset'       -- When the controller resets a port, the debugger will halt the emulation and display
+                   the debugger. This does not include when the HC gets reset, which in turn would reset
+                   the downstream ports.
+                   The debugger is triggered at the write of the port before the port value is updated by the write.
+  'enable'      -- When the controller enables a port, the debugger will halt the emulation and display
+                   the debugger. For an EHCI port, the controller automatically enables the port when
+                   a high-speed device is detected.
+                   The debugger is triggered at the write of the port before the port value is updated by the write.
+  'start_frame' -- When the controller starts a new frame, the debugger will halt the emulation 
+                   and display the debugger. Please note that the implementation of this feature is/will
+                   be different with each controller type. Also, if the frame is not active, this trigger will
+                   never be called. i.e.: In the UHCI, if the schedule is not in the RUN state, this trigger will
+                   not be active.
+                -- uhci: Load the next Frame Index and process the TD/Queue pointed by it.
+                -- ohci: ** TODO **
+                -- ehci: ** TODO **
+                -- xhci: Start/Continue to process Transfer Rings.
+  'doorbell'    -- When the xHCI controller receives a doorbell ring indicator (for the Command Ring),
+                   the debugger will halt the emulation and display the debugger. 
+                -- When the EHCI controller is to execute a single TD, the debugger will halt the 
+                   emulation and display the debugger. 
+                -- When the OHCI controller is to execute a single TD, the debugger will halt the 
+                   emulation and display the debugger. 
+                -- When the UHCI controller is to execute a single TD, the debugger will halt the 
+                   emulation and display the debugger. 
+  'event'       -- When the xHCI controller posts an event on the event ring, the debugger will 
+                   halt the emulation and display the debugger. This is only used in the xHCI controller
+                   type. Other types will ignore this trigger.
+  'non_exist'   -- When the guest writes to a non-existent port, the debugger will halt the emulation 
+                   and display the debugger.  This is so you can trigger the debugger via software.
+                   Write to the first non-existent port and the debugger will be triggered.
+                   Reads have no affect.
+</screen>
+</para>
+<para>
+The USB Debugger also has a button-bar icon that when clicked will trigger the debugger. However, please
+note that if the debugger is currently unavailable, due to the controller state for example, the icon
+will change to squiggly lines and then at the next available controller state, the debugger will display.
+If the icon has an 'X' through it, the debugger is unavailable.
+</para>
+<para>
+If you modify any value within the debugger's display, any change that might trigger a change to
+the controller's state will take place.  For example, if you change the Current Connect Status
+<emphasis>and</emphasis> the Current Enable Status, both will be triggered at the same time by
+the controller. To keep this from happening, change one and hit the Apply Button. Then trigger
+the debugger again and change another.
+</para>
+<para>
+When the Debugger dialog is displayed, you can view/modify different aspects of the controller, the
+controller root hub ports, as well as other items.  For example, with the xHCI debugger, you can view
+and modify TRBs on the Command Ring. Simply set the 'doorbell' trigger, and when a doorbell is written,
+the emulation will stop and display the current Command Ring with any available TRBs.
+</para>
+<para>
+You can turn off or on any trigger (listed above) while within the Debugger dialog. If all of them
+are off, you can use the Ribbon Trigger button to display the Debugger, then set any triggers active.
+</para>
+<para>
+The figure below is an example of an xHCI controller using the Doorbell trigger to stop when the
+Controller receives a TRB in the Command Ring with the Command Ring Doorbell being triggered.
+<figure><title>USB Debugger Example0</title>
+  <mediaobject>
+    <imageobject>
+      <imagedata fileref="../images/usb_debugger0.png">
+    </imageobject>
+    <textobject><phrase>USB Debugger Example 0</phrase></textobject>
+  </mediaobject>
+</figure>
+The three register sets are displayed allowing you to modify their values. Please note that modifying
+the Capability Register set will produce undefined results. It is recommended that you do not modify
+this register set.
+</para>
+<para>
+The Debug Flags box allows you to set or clear a trigger. If the checkbox is checked, the trigger is active.
+</para>
+<para>
+The Port Register set displays the used registers allowing you to modify them as you see fit. Again, undefined
+results may happen if you modify these registers.
+</para>
+<para>
+The Tree List shows the current TRB list of the Command Ring. Notice that six TRBs have already been executed.
+(You should have had the Debugger triggered six times already). The TRB listed in bold is the current TRB to
+be executed. If you select that item and then click the "View TRB" button, you can modify the TRB before the
+controller has a chance to execute it. Note that you cannot change the TRB's type, though you can modify its
+attributes.
+</para>
+<para>
+The "Continue" button will exit the debugger and continue the emulation. The "Quit" button will quit the entire
+emulation.
+</para>
+
+<section id="bochsopt-usb-debugger-xhci"><title>USB Debugger: xHCI</title>
+<para>
+Notes on the xHCI USB Debugger will go here.
+</para>
+</section>
+
+<section id="bochsopt-usb-debugger-ehci"><title>USB Debugger: EHCI</title>
+<para>
+Notes on the EHCI USB Debugger will go here.
+</para>
+</section>
+
+<section id="bochsopt-usb-debugger-ohci"><title>USB Debugger: OHCI</title>
+<para>
+Notes on the OHCI USB Debugger will go here.
+</para>
+</section>
+
+<section id="bochsopt-usb-debugger-uhci"><title>USB Debugger: UHCI</title>
+<para>
+When the 'doorbell' trigger is used, the debugger will trigger before the controller processes the TD *and* again 
+after the controller processes the TD. This is so you can see the TD before it is processed, allowing you to make 
+changes, and then see the results. Please note that the *before* and *after* status only effects the currently
+executing TD. All other TDs have either already been executed or have not yet been executed.
+</para>
+<para>
+Changing the 'Active' bit before the controller processes the TD is not allowed since the controller has already 
+found the TD active and is processing it. Changing it after the controller has processed it is allowed, but why
+would you?
+</para>
+<para>
+Changing any items in a TD *after* the TD has been processed is not recommended and undefined results may occur.
+</para>
+<para>
+You normally would not have both the 'start_frame' and 'doorbell' triggers active when using the UHCI. If they
+are, the 'doorbell' trigger will trigger the first TD in the frame anyway. The 'start_frame' trigger is only used
+when you want to see the frame's list once at start of frame.  The 'doorbell' trigger is used on every active TD found.
+</para>
+<para>
+If the TD is using BreadthFirst processing, the debugger will not display any TDs linked by the LINK PTR. This is
+because some drivers point the LINK PTR to itself to make sure the TD is executed. If the TD is executed, the active
+bit will be clear, so the next TD will be processed anyway.
+</para>
+
+</section>
+
 </section>
 
 </chapter>
@@ -6846,7 +7071,7 @@ When reporting errors while building Bochs to the &devlist; or the SF bug
 tracker for the Bochs project, this information is required to fix the issue:
 <itemizedlist>
   <listitem><para>host platorm / build environment</para></listitem>
-  <listitem><para>Bochs release version or SVN revision</para></listitem>
+  <listitem><para>Bochs release version or GIT SHA revision code</para></listitem>
   <listitem><para>configure options used</para></listitem>
   <listitem><para>full error message</para></listitem>
   <listitem><para>config.log output if configure failure</para></listitem>
@@ -6865,7 +7090,7 @@ or submit the patch in SF patch tracker for Bochs.
 If Bochs does not work properly (e.g. panic, segfault, malfunction of emulated device)
 we need some information to find out what's going on:
 <itemizedlist>
-  <listitem><para>Bochs version used (version number if binary release / SVN revision
+  <listitem><para>Bochs version used (version number if binary release / GIT revision
   if self-compiled)</para></listitem>
   <listitem><para>host platorm / build environment (if self-compiled)</para></listitem>
   <listitem><para>bochsrc options used</para></listitem>
@@ -6879,7 +7104,7 @@ we need some information to find out what's going on:
 Patches for Bochs should be provided in the "unified diff" format. In addition
 to the patch file and a detailed description this information is required:
 <itemizedlist>
-  <listitem><para>patch applies to Bochs release version / SVN revision</para></listitem>
+  <listitem><para>patch applies to Bochs release version / GIT revision</para></listitem>
   <listitem><para>test case (if required)</para></listitem>
 </itemizedlist>
 </para>
@@ -6964,8 +7189,9 @@ will get 2 copies of every announcement.
 
 <section id="bochs-cvs"><title>bochs-cvs mailing list</title>
 <para>
-This is the svn commit mailinglist (a unified diff email will be sent
-whenever someone does a checkin in the bochs SVN repository).
+This is the SVN commit mailinglist (an email had been sent whenever someone did
+a checkin in the Bochs SVN repository). After transitioning to GitHub there is
+no activity anymore. The mail archive is still present.
 </para>
 
 <para>
@@ -8336,7 +8562,7 @@ The partition size reported by fdisk is okay, but mformat reports only 504 MB
 <para>
 Mtools is a set of programs that can read, write, and format DOS disk images.
 There are links to the Mtools main page and a Win32 port of Mtools on the
-<ulink url="http://bochs.sourceforge.net/links.html">Bochs Links page</ulink>,
+<ulink url="https://bochs.sourceforge.io/links.html">Bochs Links page</ulink>,
 under Resources.
 </para>
 <para>
@@ -9199,8 +9425,8 @@ Hitting ^C works. Example:
         This section describes what is possible to do with Bochs serial port emulation.
         These examples use dlxlinux disk image
         (downloaded from
-        <ulink url="http://bochs.sourceforge.net/guestos/dlxlinux4.tar.gz">
-        http://bochs.sourceforge.net/guestos/dlxlinux3.tar.gz</ulink>
+        <ulink url="https://bochs.sourceforge.io/guestos/dlxlinux4.tar.gz">
+        https://bochs.sourceforge.io/guestos/dlxlinux4.tar.gz</ulink>
         ) running as guest, on a debian x86 linux 2.4.19 host.
 </para>
 <para>
@@ -9343,7 +9569,7 @@ A bootable CD-ROM has a special layout that is detected by the
 BIOS boot loader code, and executed if it conforms the specifications.
 This layout is called "El Torito Bootable CD-ROM Format Specification"
 and has been published by Phoenix and IBM. A copy of this spec is on
-<ulink url="http://bochs.sourceforge.net/techdata.html">Bochs tech specs page</ulink>.
+<ulink url="https://bochs.sourceforge.io/techdata.html">Bochs tech specs page</ulink>.
         </para>
         <para>
 El Torito specifies 3 ways to have a bootable CD:

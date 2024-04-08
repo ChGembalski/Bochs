@@ -73,7 +73,8 @@
 #                 win32, x)
 # "fullscreen"  - startup in fullscreen mode (sdl, sdl2)
 # "gui_debug"   - use GTK debugger gui (sdl, sdl2, x) / Win32 debugger gui (sdl,
-#                 sdl2, win32)
+#                 sdl2, win32). When using the "globalini" extension the
+#                 debugger uses ini file from BXSHARE path (see below).
 # "hideIPS"     - disable IPS output in status bar (rfb, sdl, sdl2, term, vncsrv,
 #                 win32, wx, x)
 # "nokeyrepeat" - turn off host keyboard repeat (sdl, sdl2, win32, x)
@@ -100,7 +101,7 @@
 #                 on desktop window size
 #display_library: win32, options="traphotkeys, autoscale"
 #display_library: wx
-#display_library: x
+#display_library: x, options="gui_debug:globalini"
 
 #=======================================================================
 # CPU:
@@ -957,15 +958,15 @@ parport1: enabled=1, file="parport.out"
 # waveoutdrv:
 #      This defines the driver to be used for the waveout feature.
 #      Possible values are 'file' (all wave data sent to file), 'dummy' (no
-#      output) and the platform-dependant drivers 'alsa', 'oss', 'osx', 'sdl'
-#      and 'win'.
+#      output), 'pulse', 'sdl' (both cross-platform) and the platform-dependant
+#      drivers 'alsa', 'oss', 'osx' and 'win'.
 # waveout:
 #      This defines the device to be used for wave output (if necessary) or
 #      the output file for the 'file' driver.
 # waveindrv:
 #      This defines the driver to be used for the wavein feature.
-#      Possible values are 'dummy' (recording silence) and platform-dependent
-#      drivers 'alsa', 'oss', 'sdl' and 'win'.
+#      Possible values are 'dummy' (recording silence), 'pulse', 'sdl' (both
+#      cross-platform) and platform-dependent drivers 'alsa', 'oss' and 'win'.
 # wavein:
 #      This defines the device to be used for wave input (if necessary).
 # midioutdrv:
@@ -1280,6 +1281,23 @@ speaker: enabled=1, mode=sound, volume=15
 #usb_xhci: port1=disk, options1="speed:super, path:hdd.img, proto:bbb"
 #usb_xhci: port1=disk, options1="speed:super, path:hdd.img, proto:uasp"
 #usb_xhci: port3=disk, options3="speed:high, path:hdd.img, proto:uasp"
+
+#=======================================================================
+# USB Debugger:
+# This is the experimental USB Debugger for the Windows Platform.
+# Specify a type (none, uhci, ohci, ehci, xhci) and one or more triggers.
+# (Currently, only xhci is supported, with some uhci in the process)
+# Triggers:
+#   reset:       will break and load the debugger on a port reset
+#   enable:      will break and load the debugger on a port enable
+#   start_frame: will break and load the debugger on start of frame
+#                  (this is different for each controller type)
+#   doorbell:    will break and load the debugger a xHCI Command Ring addition
+#   event:       will break and load the debugger on a xHCI Event Ring addition
+#   non_exist:   will break and load the debugger on a non-existant port access
+# (experimental and is under development)
+#=======================================================================
+#usb_debug: type=xhci, reset, enable, start_frame, doorbell, event, non_exist
 
 #=======================================================================
 # PCIDEV:

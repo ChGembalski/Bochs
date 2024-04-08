@@ -292,28 +292,28 @@ static Bit16u rcp_table[2048] = {
 // approximate reciprocal of scalar single precision FP
 float32 approximate_rcp(float32 op)
 {
-  float_class_t op_class = float32_class(op);
-  int sign = float32_sign(op);
+  softfloat_class_t op_class = f32_class(op);
+  bool sign = f32_sign(op);
 
   switch(op_class) {
-    case float_zero:
-    case float_denormal:
+    case softfloat_zero:
+    case softfloat_denormal:
       return packFloat32(sign, 0xFF, 0);
 
-    case float_negative_inf:
-    case float_positive_inf:
+    case softfloat_negative_inf:
+    case softfloat_positive_inf:
       return packFloat32(sign, 0, 0);
 
-    case float_SNaN:
-    case float_QNaN:
+    case softfloat_SNaN:
+    case softfloat_QNaN:
       return convert_to_QNaN(op);
 
-    case float_normalized:
+    case softfloat_normalized:
       break;
   }
 
-  Bit32u fraction = float32_fraction(op);
-  Bit16s exp = float32_exp(op);
+  Bit32u fraction = f32_fraction(op);
+  Bit16s exp = f32_exp(op);
 
   /*
    * Calculate (1/1.yyyyyyyyyyy1), the result is always rounded to the
@@ -638,33 +638,33 @@ static const Bit16u rsqrt_table1[1024] = {
 // approximate reciprocal sqrt of scalar single precision FP
 float32 approximate_rsqrt(float32 op)
 {
-  float_class_t op_class = float32_class(op);
-  int sign = float32_sign(op);
+  softfloat_class_t op_class = f32_class(op);
+  bool sign = f32_sign(op);
 
   switch(op_class) {
-    case float_zero:
-    case float_denormal:
+    case softfloat_zero:
+    case softfloat_denormal:
       return packFloat32(sign, 0xFF, 0);
 
-    case float_positive_inf:
+    case softfloat_positive_inf:
       return 0;
 
-    case float_negative_inf:
+    case softfloat_negative_inf:
       return float32_default_nan;
 
-    case float_SNaN:
-    case float_QNaN:
+    case softfloat_SNaN:
+    case softfloat_QNaN:
       return convert_to_QNaN(op);
 
-    case float_normalized:
+    case softfloat_normalized:
       break;
   };
 
   if (sign == 1)
     return float32_default_nan;
 
-  Bit32u fraction = float32_fraction(op);
-  Bit16s exp = float32_exp(op);
+  Bit32u fraction = f32_fraction(op);
+  Bit16s exp = f32_exp(op);
 
   /*
    * Calculate (1/1.yyyyyyyyyy1), the result is always rounded to the

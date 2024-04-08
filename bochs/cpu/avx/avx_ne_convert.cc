@@ -36,11 +36,10 @@ float_status_t prepare_ne_softfloat_status_helper()
 {
   float_status_t status;
 
-  status.float_rounding_mode = float_round_nearest_even;
+  status.float_rounding_mode = softfloat_round_near_even;
   status.float_exception_flags = 0;
   status.float_exception_masks = float_all_exceptions_mask;
   status.float_suppress_exception = float_all_exceptions_mask;
-  status.float_nan_handling_mode = float_first_operand_nan;
   status.flush_underflow_to_zero = true;
   // input denormals not converted to zero and handled normally
   status.denormals_are_zeros = false;
@@ -51,7 +50,7 @@ float_status_t prepare_ne_softfloat_status_helper()
 float32 convert_ne_fp16_to_fp32(float16 op)
 {
   static float_status_t status = prepare_ne_softfloat_status_helper();
-  return float16_to_float32(op, status);
+  return f16_to_f32(op, &status);
 }
 
 #include "bf16.h"

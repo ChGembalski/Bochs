@@ -578,7 +578,7 @@ void BX_CPU_C::print_state_FPU(void)
 #else
     f *= fp.fraction*scale_factor;
 #endif
-    float_class_t f_class = floatx80_class(fp);
+    softfloat_class_t f_class = extF80_class(fp);
     fprintf(stderr, "%sFP%d ST%d(%c):        raw 0x%04x:%08x%08x (%.10f) (%s)\n",
           i==tos?"=>":"  ", i, (i-tos)&7,
           "v0se"[tag],
@@ -596,10 +596,10 @@ void BX_CPU_C::print_state_FPU(void)
 
 int FPU_tagof(const floatx80 &reg)
 {
-   Bit32s exp = floatx80_exp(reg);
+   Bit32s exp = extF80_exp(reg);
    if (exp == 0)
    {
-      if (! floatx80_fraction(reg))
+      if (! extF80_fraction(reg))
           return FPU_Tag_Zero;
 
       /* The number is a de-normal or pseudodenormal. */

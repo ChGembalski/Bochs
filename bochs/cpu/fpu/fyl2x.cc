@@ -42,7 +42,7 @@ static const float128 float128_ln2inv2 =
 
 #define SQRT2_HALF_SIG 	BX_CONST64(0xb504f333f9de6484)
 
-extern float128 OddPoly(float128 x, float128 *arr, int n, float_status_t &status);
+extern float128_t OddPoly(float128_t x, const float128_t *arr, int n, float_status_t &status);
 
 #define L2_ARR_SIZE 9
 
@@ -59,7 +59,7 @@ static float128 ln_arr[L2_ARR_SIZE] =
     PACK_FLOAT_128(0x3ffae1e1e1e1e1e1, 0xe1e1e1e1e1e1e1e2)  /* 17 */
 };
 
-static float128 poly_ln(float128 x1, float_status_t &status)
+static float128_t poly_ln(float128_t x1, float_status_t &status)
 {
 /*
     //
@@ -84,28 +84,28 @@ static float128 poly_ln(float128 x1, float_status_t &status)
     //          1-u
     //
 */
-    return OddPoly(x1, ln_arr, L2_ARR_SIZE, status);
+    return OddPoly(x1, (const float128_t*) ln_arr, L2_ARR_SIZE, status);
 }
 
 /* required sqrt(2)/2 < x < sqrt(2) */
-static float128 poly_l2(float128 x, float_status_t &status)
+static float128_t poly_l2(float128_t x, float_status_t &status)
 {
     /* using float128 for approximation */
-    float128 x_p1 = float128_add(x, float128_one, status);
-    float128 x_m1 = float128_sub(x, float128_one, status);
-    x = float128_div(x_m1, x_p1, status);
+    float128_t x_p1 = f128_add(x, float128_one, &status);
+    float128_t x_m1 = f128_sub(x, float128_one, &status);
+    x = f128_div(x_m1, x_p1, &status);
     x = poly_ln(x, status);
-    x = float128_mul(x, float128_ln2inv2, status);
+    x = f128_mul(x, float128_ln2inv2, &status);
     return x;
 }
 
-static float128 poly_l2p1(float128 x, float_status_t &status)
+static float128_t poly_l2p1(float128_t x, float_status_t &status)
 {
     /* using float128 for approximation */
-    float128 x_p2 = float128_add(x, float128_two, status);
-    x = float128_div(x, x_p2, status);
+    float128_t x_plus2 = f128_add(x, float128_two, &status);
+    x = f128_div(x, x_plus2, &status);
     x = poly_ln(x, status);
-    x = float128_mul(x, float128_ln2inv2, status);
+    x = f128_mul(x, float128_ln2inv2, &status);
     return x;
 }
 
@@ -137,7 +137,7 @@ static float128 poly_l2p1(float128 x, float_status_t &status)
 floatx80 fyl2x(floatx80 a, floatx80 b, float_status_t &status)
 {
     // handle unsupported extended double-precision floating encodings
-    if (floatx80_is_unsupported(a) || floatx80_is_unsupported(b)) {
+    if (extF80_isUnsupported(a) || extF80_isUnsupported(b)) {
 invalid:
         float_raise(status, float_flag_invalid);
         return floatx80_default_nan;
@@ -160,8 +160,8 @@ invalid:
         }
         if (aSign) goto invalid;
         else {
-            if (bExp == 0) {
-                if (bSig == 0) goto invalid;
+            if (! bExp) {
+                if (! bSig) goto invalid;
                 float_raise(status, float_flag_denormal);
             }
             return packFloatx80(bSign, 0x7FFF, BX_CONST64(0x8000000000000000));
@@ -169,9 +169,9 @@ invalid:
     }
     if (bExp == 0x7FFF)
     {
-        if ((Bit64u) (bSig<<1)) return propagateFloatx80NaN(a, b, status);
+        if (bSig<<1) return propagateFloatx80NaN(a, b, status);
         if (aSign && (Bit64u)(aExp | aSig)) goto invalid;
-        if (aSig && (aExp == 0))
+        if (aSig && ! aExp)
             float_raise(status, float_flag_denormal);
         if (aExp < 0x3FFF) {
             return packFloatx80(zSign, 0x7FFF, BX_CONST64(0x8000000000000000));
@@ -179,8 +179,8 @@ invalid:
         if (aExp == 0x3FFF && ((Bit64u) (aSig<<1) == 0)) goto invalid;
         return packFloatx80(bSign, 0x7FFF, BX_CONST64(0x8000000000000000));
     }
-    if (aExp == 0) {
-        if (aSig == 0) {
+    if (! aExp) {
+        if (! aSig) {
             if ((bExp | bSig) == 0) goto invalid;
             float_raise(status, float_flag_divbyzero);
             return packFloatx80(zSign, 0x7FFF, BX_CONST64(0x8000000000000000));
@@ -190,15 +190,15 @@ invalid:
         normalizeFloatx80Subnormal(aSig, &aExp, &aSig);
     }
     if (aSign) goto invalid;
-    if (bExp == 0) {
-        if (bSig == 0) {
+    if (! bExp) {
+        if (! bSig) {
             if (aExp < 0x3FFF) return packFloatx80(zSign, 0, 0);
             return packFloatx80(bSign, 0, 0);
         }
         float_raise(status, float_flag_denormal);
         normalizeFloatx80Subnormal(bSig, &bExp, &bSig);
     }
-    if (aExp == 0x3FFF && ((Bit64u) (aSig<<1) == 0))
+    if (aExp == 0x3FFF && ((aSig<<1) == 0))
         return packFloatx80(bSign, 0, 0);
 
     float_raise(status, float_flag_inexact);
@@ -216,9 +216,9 @@ invalid:
 
     Bit64u zSig0, zSig1;
     shift128Right(aSig<<1, 0, 16, &zSig0, &zSig1);
-    float128 x = packFloat128(0, aExp+0x3FFF, zSig0, zSig1);
+    float128_t x = packFloat128(0, aExp+0x3FFF, zSig0, zSig1);
     x = poly_l2(x, status);
-    x = float128_add(x, int64_to_float128((Bit64s) ExpDiff), status);
+    x = f128_add(x, i32_to_f128(ExpDiff), &status);
     return floatx80_mul(b, x, status);
 }
 
@@ -254,7 +254,7 @@ floatx80 fyl2xp1(floatx80 a, floatx80 b, float_status_t &status)
     int aSign, bSign;
 
     // handle unsupported extended double-precision floating encodings
-    if (floatx80_is_unsupported(a) || floatx80_is_unsupported(b)) {
+    if (extF80_isUnsupported(a) || extF80_isUnsupported(b)) {
 invalid:
         float_raise(status, float_flag_invalid);
         return floatx80_default_nan;
@@ -316,7 +316,7 @@ invalid:
 
     if (aExp >= 0x3FFC) // big argument
     {
-        return fyl2x(floatx80_add(a, floatx80_one, status), b, status);
+        return fyl2x(extF80_add(a, floatx80_one, &status), b, status);
     }
 
     // handle tiny argument
@@ -325,14 +325,14 @@ invalid:
         // first order approximation, return (a*b)/ln(2)
         Bit32s zExp = aExp + FLOAT_LN2INV_EXP - 0x3FFE;
 
-	mul128By64To192(FLOAT_LN2INV_HI, FLOAT_LN2INV_LO, aSig, &zSig0, &zSig1, &zSig2);
+        mul128By64To192(FLOAT_LN2INV_HI, FLOAT_LN2INV_LO, aSig, &zSig0, &zSig1, &zSig2);
         if (0 < (Bit64s) zSig0) {
             shortShift128Left(zSig0, zSig1, 1, &zSig0, &zSig1);
             --zExp;
         }
 
         zExp = zExp + bExp - 0x3FFE;
-	mul128By64To192(zSig0, zSig1, bSig, &zSig0, &zSig1, &zSig2);
+        mul128By64To192(zSig0, zSig1, bSig, &zSig0, &zSig1, &zSig2);
         if (0 < (Bit64s) zSig0) {
             shortShift128Left(zSig0, zSig1, 1, &zSig0, &zSig1);
             --zExp;
