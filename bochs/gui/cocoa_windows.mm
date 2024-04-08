@@ -84,7 +84,7 @@ debugger_view_config_t debugger_view_tab_options[] = {
 
 /// general debugger configuration
 debugger_ctrl_config_t debugger_ctrl_options = {
-  true, true, true, true, true, true, true, 
+  true, true, true, true, false, false, false,
   true,
   0, 1l,
   2, 1l, true,

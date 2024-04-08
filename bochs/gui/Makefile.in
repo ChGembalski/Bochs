@@ -251,18 +251,22 @@ cocoa.o: cocoa.@CPP_SUFFIX@ \
  ../gui/siminterface.h ../gui/gui.h
 cocoa_application.o: cocoa_application.mm \
  ../gui/cocoa_bochs.h ../gui/cocoa_application.h ../gui/cocoa_windows.h \
- ../bochs.h ../gui/siminterface.h
-cocoa_menu.o: cocoa_menu.mm \
- ../gui/cocoa_menu.h ../gui/cocoa_bochs.h ../gui/cocoa_windows.h
-cocoa_windows.o: cocoa_windows.mm \
- ../gui/cocoa_windows.h ../gui/cocoa_bochs.h ../gui/cocoa_headerbar.h \
- ../gui/cocoa_menu.h ../gui/siminterface.h ../param_names.h
+ ../bochs.h ../gui/siminterface.h \
+ ../gui/cocoa_headerbar.h ../gui/cocoa_display.h \
+ ../gui/cocoa_ctrl.h ../gui/new_dbg.h \
+ ../config.h ../gui/siminterface.h ../param_names.h ../bx_debug/debug.h
+#cocoa_menu.o: cocoa_menu.mm \
+# ../gui/cocoa_menu.h ../gui/cocoa_bochs.h ../gui/cocoa_windows.h
+#cocoa_windows.o: cocoa_windows.mm \
+# ../gui/cocoa_windows.h ../gui/cocoa_bochs.h ../gui/cocoa_headerbar.h \
+# ../gui/cocoa_menu.h ../gui/siminterface.h ../param_names.h
 cocoa_ctrl.o: cocoa_ctrl.mm \
- ../gui/cocoa_ctrl.h
-cocoa_display.o: cocoa_display.mm \
- ../gui/cocoa_display.h
-cocoa_headerbar.o: cocoa_headerbar.mm \
- ../gui/cocoa_headerbar.h ../gui/cocoa_bochs.h ../gui/cocoa_display.h
+ ../gui/cocoa_ctrl.h ../gui/new_dbg.h \
+ ../config.h ../gui/siminterface.h ../param_names.h ../bx_debug/debug.h
+#cocoa_display.o: cocoa_display.mm \
+# ../gui/cocoa_display.h
+#cocoa_headerbar.o: cocoa_headerbar.mm \
+# ../gui/cocoa_headerbar.h ../gui/cocoa_bochs.h ../gui/cocoa_display.h
 cocoaconfig.o: cocoaconfig.@CPP_SUFFIX@ \
  ../config.h ../bochs.h ../osdep.h ../gui/paramtree.h ../logio.h \
  ../misc/bswap.h ../bx_debug/debug.h ../param_names.h gui.h \
