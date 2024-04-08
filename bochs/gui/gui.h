@@ -406,7 +406,7 @@ protected:
   bool gui_hide_ips;
 #endif
   bool gui_nokeyrepeat;
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && (BX_DEBUGGER_GUI || BX_NEW_DEBUGGER_GUI)
   bool enh_dbg_gui_enabled;
   bool enh_dbg_global_ini;
 #endif

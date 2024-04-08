@@ -258,7 +258,7 @@
   }
 
   // internal setup
-  void InitDebugDialog() {
+  void InitDebugDialog(bool global_ini) {
     printf("-->InitDebugDialog\n");
 //    bx_debugger.auto_disassemble = false;
     new_dbg_handler_custom(true);

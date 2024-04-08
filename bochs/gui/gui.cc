@@ -1646,7 +1646,7 @@ bool bx_gui_c::parse_common_gui_options(const char *arg, Bit8u flags)
     gui_nokeyrepeat = 1;
     return true;
   } else if (!strncmp(arg, "gui_debug", 9)) {
-#if BX_DEBUGGER && BX_DEBUGGER_GUI
+#if BX_DEBUGGER && (BX_DEBUGGER_GUI || BX_NEW_DEBUGGER_GUI)
     enh_dbg_gui_enabled = 1;
     enh_dbg_global_ini = 0;
     if ((strlen(arg) > 9) && (arg[9] == ':')) {

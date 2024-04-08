@@ -260,7 +260,7 @@ void bx_cocoa_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   // initialize debugger gui
   if (cocoa_with_debug_gui) {
     SIM->set_debug_gui(1);
-    init_debug_dialog();
+    init_debug_dialog(enh_dbg_global_ini);
   }
 #endif
 
