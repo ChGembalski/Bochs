@@ -21,12 +21,15 @@
 //
 /////////////////////////////////////////////////////////////////////////
 
-bx_define_cpudb(bx_generic)
+bx_define_cpudb(i386)
+#if BX_CPU_LEVEL >= 4
+bx_define_cpudb(i486dx4)
 #if BX_CPU_LEVEL >= 5
 bx_define_cpudb(pentium)
 bx_define_cpudb(pentium_mmx)
 bx_define_cpudb(amd_k6_2_chomper)
 #if BX_CPU_LEVEL >= 6
+bx_define_cpudb(athlon_xp)
 bx_define_cpudb(p2_klamath)
 bx_define_cpudb(p3_katmai)
 bx_define_cpudb(p4_willamette)
@@ -54,6 +57,8 @@ bx_define_cpudb(corei3_cnl)
 bx_define_cpudb(corei7_icelake_u)
 bx_define_cpudb(tigerlake)
 bx_define_cpudb(sapphire_rapids)
+bx_define_cpudb(arrow_lake)
+#endif
 #endif
 #endif
 #endif

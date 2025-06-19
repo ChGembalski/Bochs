@@ -1090,16 +1090,21 @@ bool BX_CPU_C::SetCR0(bxInstruction_c *i, bx_address val)
 
   // handle reserved bits behaviour
 #if BX_CPU_LEVEL == 3
-  val_32 = val_32 | 0x7ffffff0;
+  val_32 = val_32 | 0x7fffffe0; // reserved bits all set to 1 on 386
 #elif BX_CPU_LEVEL == 4
-  val_32 = (val_32 | 0x00000010) & 0xe005003f;
+  val_32 = val_32 & 0xe005003f;
 #elif BX_CPU_LEVEL == 5
-  val_32 = val_32 | 0x00000010;
+  val_32 = val_32;
 #elif BX_CPU_LEVEL == 6
-  val_32 = (val_32 | 0x00000010) & 0xe005003f;
+  val_32 = val_32 & 0xe005003f;
 #else
 #error "SetCR0: implement reserved bits behaviour for this CPU_LEVEL"
 #endif
+
+  // The CR0.ET is set if an 80387 is present in the configuration. If CR0.ET is reset, the
+  // configuration either contains an 80287 or does not contain a coprocessor.
+  if (is_cpu_extension_supported(BX_ISA_X87))
+    val_32 |= BX_CR0_ET_MASK;
 
   Bit32u oldCR0 = BX_CPU_THIS_PTR cr0.get32();
 
@@ -1358,7 +1363,7 @@ bool BX_CPU_C::SetCR4(bxInstruction_c *i, bx_address val)
 
 #if BX_CPU_LEVEL >= 6
   // Modification of PGE,PAE,PSE,PCIDE,SMEP flushes TLB cache according to docs.
-  if ((val & BX_CR4_FLUSH_TLB_MASK) != (BX_CPU_THIS_PTR cr4.val32 & BX_CR4_FLUSH_TLB_MASK)) {
+  if ((val & BX_CR4_FLUSH_TLB_MASK) != (BX_CPU_THIS_PTR cr4.get32() & BX_CR4_FLUSH_TLB_MASK)) {
     // reload PDPTR if needed
     if (BX_CPU_THIS_PTR cr0.get_PG() && (val & BX_CR4_PAE_MASK) != 0 && !long_mode()) {
       if (! CheckPDPTR(BX_CPU_THIS_PTR cr3)) {
@@ -1856,6 +1861,8 @@ void BX_CPU_C::xsave_xrestor_init(void)
     xsave_restore[xcr0_t::BX_XCR0_XTILEDATA_BIT].xrstor_init_method = &BX_CPU_C::xrstor_init_tiledata_state;
   }
 #endif
+
+  // XCR0[19]: APX state (not implemented)
 }
 
 #if BX_CPU_LEVEL >= 5

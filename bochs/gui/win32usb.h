@@ -3,7 +3,7 @@
 /////////////////////////////////////////////////////////////////////////
 //
 //  Copyright (C)      2023  Benjamin David Lunt
-//  Copyright (C) 2003-2024 The Bochs Project
+//  Copyright (C) 2003-2025 The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -22,45 +22,16 @@
 #ifndef BX_WIN32_USB_H
 #define BX_WIN32_USB_H
 
-#if BX_USE_WIN32USBDEBUG
-
-#define COMMON_STR_SIZE  128
-
-#define USB_DEBUG_NONE   0
-#define USB_DEBUG_UHCI   1
-#define USB_DEBUG_OHCI   2
-#define USB_DEBUG_EHCI   3
-#define USB_DEBUG_XHCI   4
-
-BOCHSAPI_MSVCONLY int win32_usb_start(HWND hwnd, int break_type, int wParam, int lParam);
-
-// USB debug break_type
-#define USB_DEBUG_FRAME    1
-#define USB_DEBUG_COMMAND  2
-#define USB_DEBUG_EVENT    3
-#define USB_DEBUG_NONEXIST 4
-#define USB_DEBUG_RESET    5
-#define USB_DEBUG_ENABLE   6
-
-BOCHSAPI_MSVCONLY void win32_usb_trigger(int type, int trigger, int wParam, int lParam);
-
-// lParam flags
-#define USB_LPARAM_FLAG_BEFORE  0x00000001
-#define USB_LPARAM_FLAG_AFTER   0x00000002
+#if BX_USB_DEBUGGER
 
 struct CALLBACK_PARAMS {
   int type;
   int break_type;
+  Bit64u zParam;
   int wParam;
   int lParam;
 };
 
-struct DUMP_PARAMS {
-  char title[COMMON_STR_SIZE];
-  bx_phy_address address;
-  int size;  // amount to dump (no more than 512)
-  bool big;  // use 64-bit addresses?
-};
 INT_PTR CALLBACK dump_dialog_callback(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,18 +62,6 @@ int hc_ehci_init(HWND hwnd);
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //  XHCI
 //
-#define VIEW_TRB_TYPE_NONE      0
-#define VIEW_TRB_TYPE_COMMAND   1
-#define VIEW_TRB_TYPE_EVENT     2
-#define VIEW_TRB_TYPE_TRANSFER  4
-
-struct VIEW_TRB_TYPE {
-  Bit8u allowed_mask;
-  char  name[22];
-};
-
-#define MAX_TRBS_ALLOWED 4096
-
 INT_PTR CALLBACK hc_xhci_callback(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 int hc_xhci_init(HWND hwnd);
 int hc_xhci_save(HWND hwnd);
@@ -147,15 +106,8 @@ INT_PTR CALLBACK hc_xhci_callback_str_context(HWND hDlg, UINT msg, WPARAM wParam
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 //  Attributes
-struct S_ATTRIBUTES {
-  DWORD64 attrb;
-  DWORD64 mask;
-  int   index;
-  char  str[32];
-  int   groups[10];  // up to 10 items can be grouped.  Increase if we need more.
-};
 void do_attributes(HWND hwnd, DWORD id, const int size, const char *title, const struct S_ATTRIBUTES *attribs);
 
 
-#endif  // BX_USE_WIN32USBDEBUG
+#endif  // BX_USB_DEBUGGER
 #endif  // BX_WIN32_USB_H

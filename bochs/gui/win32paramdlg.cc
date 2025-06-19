@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2009-2021  Volker Ruppert
+//  Copyright (C) 2009-2024  Volker Ruppert
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -348,23 +348,32 @@ int AskFilename(HWND hwnd, bx_param_filename_c *param, char *buffer)
 
 void InitDlgFont(void)
 {
-  LOGFONT LFont;
+    NONCLIENTMETRICS ncm = { 0 };
+    ncm.cbSize = sizeof(ncm);
 
-  LFont.lfHeight         = 8;                // Default logical height of font
-  LFont.lfWidth          = 0;                // Default logical average character width
-  LFont.lfEscapement     = 0;                // angle of escapement
-  LFont.lfOrientation    = 0;                // base-line orientation angle
-  LFont.lfWeight         = FW_NORMAL;        // font weight
-  LFont.lfItalic         = 0;                // italic attribute flag
-  LFont.lfUnderline      = 0;                // underline attribute flag
-  LFont.lfStrikeOut      = 0;                // strikeout attribute flag
-  LFont.lfCharSet        = DEFAULT_CHARSET;  // character set identifier
-  LFont.lfOutPrecision   = OUT_DEFAULT_PRECIS;  // output precision
-  LFont.lfClipPrecision  = CLIP_DEFAULT_PRECIS; // clipping precision
-  LFont.lfQuality        = DEFAULT_QUALITY;     // output quality
-  LFont.lfPitchAndFamily = DEFAULT_PITCH;     // pitch and family
-  lstrcpy(LFont.lfFaceName, "Helv");          // pointer to typeface name string
-  DlgFont  = CreateFontIndirect(&LFont);
+    if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
+        DlgFont = CreateFontIndirect(&ncm.lfMessageFont);
+    }
+    // fallback for Windows Server 2003 and Windows XP/2000
+    else {
+        LOGFONT LFont;
+
+        LFont.lfHeight = 8;                          // Default logical height of font
+        LFont.lfWidth = 0;                           // Default logical average character width
+        LFont.lfEscapement = 0;                      // angle of escapement
+        LFont.lfOrientation = 0;                     // base-line orientation angle
+        LFont.lfWeight = FW_NORMAL;                  // font weight
+        LFont.lfItalic = 0;                          // italic attribute flag
+        LFont.lfUnderline = 0;                       // underline attribute flag
+        LFont.lfStrikeOut = 0;                       // strikeout attribute flag
+        LFont.lfCharSet = DEFAULT_CHARSET;           // character set identifier
+        LFont.lfOutPrecision = OUT_DEFAULT_PRECIS;   // output precision
+        LFont.lfClipPrecision = CLIP_DEFAULT_PRECIS; // clipping precision
+        LFont.lfQuality = DEFAULT_QUALITY;           // output quality
+        LFont.lfPitchAndFamily = DEFAULT_PITCH;      // pitch and family
+        lstrcpy(LFont.lfFaceName, "Helv");           // pointer to typeface name string
+        DlgFont = CreateFontIndirect(&LFont);
+    }
 }
 
 LRESULT CALLBACK EditHexWndProc(HWND Window, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -583,7 +592,7 @@ HWND CreateCombobox(HWND hDlg, UINT cid, UINT xpos, UINT ypos, BOOL hide, bx_par
 {
   HWND Combo;
   RECT r;
-  int code, j;
+  int code, i, j;
   const char *choice;
 
   code = ID_PARAM + cid;
@@ -602,7 +611,10 @@ HWND CreateCombobox(HWND hDlg, UINT cid, UINT xpos, UINT ypos, BOOL hide, bx_par
   while(1) {
     choice = eparam->get_choice(j);
     if (choice == NULL) break;
-    SendMessage(Combo, CB_ADDSTRING, 0, (LPARAM)choice);
+    if (strlen(choice) > 0) {
+      i = SendMessage(Combo, CB_ADDSTRING, 0, (LPARAM)choice);
+      SendMessage(Combo, CB_SETITEMDATA, (WPARAM)i, (LPARAM)j);
+    }
     j++;
   }
   SendMessage(Combo, CB_SETCURSEL, (WPARAM)(eparam->get()-eparam->get_min()), 0);
@@ -807,7 +819,7 @@ SIZE CreateParamList(HWND hDlg, UINT lid, UINT xpos, UINT ypos, BOOL hide, bx_li
 void SetParamList(HWND hDlg, bx_list_c *list)
 {
   bx_param_c *param;
-  Bit64s val;
+  Bit64s val, idx;
   const char *src;
   char buffer[512];
   UINT cid, i, items, lid;
@@ -831,7 +843,8 @@ void SetParamList(HWND hDlg, bx_list_c *list)
         }
       } else if (param->get_type() == BXT_PARAM_ENUM) {
         bx_param_enum_c *eparam = (bx_param_enum_c*)param;
-        val = (LRESULT)(SendMessage(GetDlgItem(hDlg, ID_PARAM + cid), CB_GETCURSEL, 0, 0) + eparam->get_min());
+        idx = (LRESULT)(SendMessage(GetDlgItem(hDlg, ID_PARAM + cid), CB_GETCURSEL, 0, 0));
+        val = (LRESULT)(SendMessage(GetDlgItem(hDlg, ID_PARAM + cid), CB_GETITEMDATA, (WPARAM)idx, 0) + eparam->get_min());
         if (val != eparam->get()) {
           eparam->set(val);
         }

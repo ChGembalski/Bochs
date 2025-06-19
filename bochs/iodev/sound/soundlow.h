@@ -81,7 +81,6 @@ private:
   audio_buffer_t *root;
 };
 
-extern bx_audio_buffer_c *audio_buffers[2];
 void convert_float_to_s16le(float *src, unsigned srcsize, Bit8u *dst);
 BOCHSAPI_MSVCONLY Bit32u pcm_callback(void *dev, Bit16u rate, Bit8u *buffer, Bit32u len);
 
@@ -114,6 +113,8 @@ public:
   bool resampler_running() {return res_thread_start;}
   bool mixer_running() {return mix_thread_start;}
 
+  bx_audio_buffer_c *get_audio_buffer(int n) {return audio_buffers[n];}
+
 protected:
   void start_resampler_thread(void);
   void start_mixer_thread(void);
@@ -127,6 +128,7 @@ protected:
 #if BX_HAVE_LIBSAMPLERATE || BX_HAVE_SOXR_LSR
   SRC_STATE *src_state;
 #endif
+  bx_audio_buffer_c *audio_buffers[2];
 
   int cb_count;
   struct {

@@ -6,11 +6,6 @@ if test $# = 0; then
   which_config=plugins
 else
   which_config=$1
-  if test $# = 2; then
-    if test $2 = debugger; then
-      CONFIGURE_ARGS=--enable-debugger
-    fi
-  fi
 fi
 
 CC="gcc"
@@ -37,6 +32,7 @@ case $which_config in
                 --enable-ne2000 \
                 --enable-all-optimizations \
                 --enable-cpu-level=6 \
+                --enable-3dnow \
                 --enable-x86-64 \
                 --enable-vmx=2 \
                 --enable-svm \
@@ -54,6 +50,8 @@ case $which_config in
                 --enable-es1370 \
                 --enable-e1000 \
                 --enable-show-ips \
+                --enable-debugger \
+                --enable-debugger-gui \
                 ${CONFIGURE_ARGS}
     ;;
 
@@ -66,6 +64,7 @@ case $which_config in
                 --enable-ne2000 \
                 --enable-all-optimizations \
                 --enable-cpu-level=6 \
+                --enable-3dnow \
                 --enable-x86-64 \
                 --enable-vmx=2 \
                 --enable-svm \
@@ -84,6 +83,8 @@ case $which_config in
                 --enable-e1000 \
                 --enable-plugins \
                 --enable-show-ips \
+                --enable-debugger \
+                --enable-debugger-gui \
                 --with-all-libs \
                 ${CONFIGURE_ARGS}
     ;;

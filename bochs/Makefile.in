@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2024  The Bochs Project
+# Copyright (C) 2001-2025  The Bochs Project
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -35,20 +35,18 @@ sharedir        = $(datarootdir)/bochs
 top_builddir    = .
 top_srcdir      = $(srcdir)
 
-DESTDIR =
-
 VERSION=@VERSION@
 REL_STRING=@REL_STRING@
-MAN_PAGE_1_LIST=bochs bximage bochs-dlx
+MAN_PAGE_1_LIST=bochs bximage bxhub bochs-dlx
 MAN_PAGE_5_LIST=bochsrc
-INSTALL_LIST_SHARE=bios/BIOS-bochs-* bios/VGABIOS* bios/SeaBIOS* bios/SeaVGABIOS* bios/bios.bin-* bios/vgabios-cirrus.bin-* @INSTALL_LIST_FOR_PLATFORM@
-INSTALL_LIST_DOC=CHANGES COPYING LICENSE README TODO misc/slirp.conf misc/vnet.conf
+INSTALL_LIST_SHARE=bios/BIOS-bochs-* bios/VGABIOS* bios/SeaBIOS* bios/SeaVGABIOS* bios/bios.bin-* bios/i440fx.bin bios/README-i440fx bios/vgabios-cirrus.bin-* @INSTALL_LIST_FOR_PLATFORM@
+INSTALL_LIST_DOC=CHANGES COPYING LICENSE README TODO misc/slirp.conf misc/vnet.conf docs-html/cpu_configurability.txt
 INSTALL_LIST_BIN=bochs@EXE@ bximage@EXE@
-INSTALL_LIST_BIN_OPTIONAL=bochsdbg@EXE@ @OPTIONAL_TARGET@
+INSTALL_LIST_BIN_OPTIONAL=@OPTIONAL_TARGET@
 INSTALL_LIST_WIN32=$(INSTALL_LIST_SHARE) $(INSTALL_LIST_DOC) $(INSTALL_LIST_BIN) $(INSTALL_LIST_BIN_OPTIONAL)
 INSTALL_LIST_MACOSX=$(INSTALL_LIST_SHARE) $(INSTALL_LIST_DOC) bochs.scpt
 # for win32 and macosx, these files get renamed to *.txt in install process
-TEXT_FILE_LIST=README CHANGES COPYING LICENSE TODO VGABIOS-elpin-LICENSE VGABIOS-lgpl-README SeaBIOS-README SeaVGABIOS-README
+TEXT_FILE_LIST=README CHANGES COPYING LICENSE TODO VGABIOS-elpin-LICENSE VGABIOS-lgpl-README SeaBIOS-README SeaVGABIOS-README README-i440fx
 CP=cp
 CAT=cat
 RM=rm
@@ -253,7 +251,7 @@ bximage@EXE@: misc/bximage.o misc/hdimage.o misc/vmware3.o misc/vmware4.o misc/v
 	@LINK_CONSOLE@ $(BXIMAGE_LINK_OPTS) misc/bximage.o misc/hdimage.o misc/vmware3.o misc/vmware4.o misc/vpc.o misc/vbox.o
 
 niclist@EXE@: misc/niclist.o
-	@LINK_CONSOLE@ misc/niclist.o
+	@LINK_CONSOLE@ misc/niclist.o @NICLIST_LINK_OPTS@
 
 bxhub@EXE@: misc/bxhub.o misc/netutil.o
 	@LINK_CONSOLE@ misc/bxhub.o misc/netutil.o @BXHUB_LINK_OPTS@
@@ -355,7 +353,7 @@ cpu/fpu/libfpu.a::
 
 cpu/softfloat3e/libsoftfloat.a::
 	cd cpu/softfloat3e @COMMAND_SEPARATOR@
-	$(MAKE) $(MDEFINES) CXX=$(CXX) libsoftfloat.a
+	$(MAKE) $(MDEFINES) CXX="$(CXX)" libsoftfloat.a
 	@CD_UP_TWO@
 
 memory/libmemory.a::
@@ -379,11 +377,11 @@ libbochs.a:
 	$(RANLIB) libbochs.a
 
 # for wxWidgets port, on win32 platform
-wxbochs_resources.o: wxbochs.rc win32res.rc bxversion.rc
-	windres $(srcdir)/wxbochs.rc -o $@ --include-dir=`@WX_CONFIG@ --prefix`/include
+wxbochs_resources.o: wxbochs.rc win32res.rc bxversion.rc win32_enh_dbg.rc win32usbres.rc
+	`wx-config --rescomp` $(srcdir)/wxbochs.rc -o $@
 
 # for win32 gui
-win32res.o: win32res.rc bxversion.rc
+win32res.o: win32res.rc bxversion.rc win32_enh_dbg.rc win32usbres.rc
 	$(RC_CMD)$@ $(srcdir)/win32res.rc
 
 #####################################################################
@@ -609,6 +607,8 @@ all-clean: clean @CLEAN_DOCBOOK_VAR@ @CLEAN_PCIDEV_VAR@
 	$(MAKE) clean
 	@CD_UP_ONE@
 
+distclean: dist-clean
+
 dist-clean: local-dist-clean
 	cd iodev @COMMAND_SEPARATOR@
 	$(MAKE) dist-clean
@@ -783,59 +783,63 @@ install_macosx: all download_dlx install_man @INSTALL_DOCBOOK_VAR@
 #  gcc -MM -I. -Iinstrument/stubs *.cc | sed -e 's/\.cc/.@CPP_SUFFIX@/g' -e 's,cpu/,cpu/,g'
 ###########################################
 bxdisasm.o: bxdisasm.@CPP_SUFFIX@ config.h cpu/decoder/instr.h
-bxthread.o: bxthread.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- instrument/stubs/instrument.h misc/bswap.h bxthread.h
-config.o: config.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- cpudb.h instrument/stubs/instrument.h misc/bswap.h bxversion.h \
- iodev/iodev.h bochs.h plugin.h extplugin.h param_names.h pc_system.h \
- bx_debug/debug.h config.h osdep.h memory/memory-bochs.h \
- gui/siminterface.h gui/paramtree.h gui/gui.h iodev/hdimage/hdimage.h \
- iodev/network/netmod.h iodev/sound/soundmod.h iodev/usb/usb_common.h \
- param_names.h
+bxthread.o: bxthread.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ bxthread.h
+config.o: config.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ bxversion.h iodev/iodev.h bochs.h plugin.h extplugin.h param_names.h \
+ pc_system.h memory/memory-bochs.h gui/siminterface.h gui/paramtree.h \
+ gui/gui.h iodev/hdimage/hdimage.h iodev/network/netmod.h \
+ iodev/usb/usb_common.h iodev/usb/usb_pcap.h param_names.h \
+ bx_debug/debug.h config.h osdep.h cpu/decoder/decoder.h \
+ cpu/decoder/features.h cpudb.h
 crc.o: crc.@CPP_SUFFIX@ config.h
-gdbstub.o: gdbstub.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- instrument/stubs/instrument.h misc/bswap.h param_names.h \
- cpu/cpu.h bx_debug/debug.h config.h osdep.h cpu/decoder/decoder.h \
- cpu/i387.h cpu/fpu/softfloat.h cpu/fpu/tag_w.h cpu/fpu/status_w.h \
- cpu/fpu/control_w.h cpu/crregs.h cpu/descriptor.h cpu/decoder/instr.h \
- cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/apic.h cpu/xmm.h cpu/vmx.h \
- cpu/cpuid.h cpu/stack.h cpu/access.h
-logio.o: logio.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- instrument/stubs/instrument.h misc/bswap.h gui/siminterface.h \
- gui/paramtree.h pc_system.h bxthread.h cpu/cpu.h bx_debug/debug.h \
- config.h osdep.h cpu/decoder/decoder.h cpu/i387.h cpu/fpu/softfloat.h \
- cpu/fpu/tag_w.h cpu/fpu/status_w.h cpu/fpu/control_w.h cpu/crregs.h \
- cpu/descriptor.h cpu/decoder/instr.h cpu/lazy_flags.h cpu/tlb.h \
- cpu/icache.h cpu/apic.h cpu/xmm.h cpu/vmx.h cpu/cpuid.h cpu/access.h
-main.o: main.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- instrument/stubs/instrument.h misc/bswap.h bxversion.h param_names.h \
- config.h cpu/cpu.h bx_debug/debug.h osdep.h \
- cpu/decoder/decoder.h cpu/i387.h cpu/fpu/softfloat.h cpu/fpu/tag_w.h \
+gdbstub.o: gdbstub.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ param_names.h cpu/cpu.h cpu/decoder/decoder.h cpu/decoder/features.h \
+ instrument/stubs/instrument.h cpu/i387.h \
+ cpu/softfloat3e/include/softfloat_types.h config.h cpu/fpu/tag_w.h \
  cpu/fpu/status_w.h cpu/fpu/control_w.h cpu/crregs.h cpu/descriptor.h \
- cpu/decoder/instr.h cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/apic.h \
- cpu/xmm.h cpu/vmx.h cpu/cpuid.h cpu/access.h iodev/iodev.h bochs.h \
- plugin.h extplugin.h param_names.h pc_system.h memory/memory-bochs.h \
+ cpu/decoder/instr.h cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/xmm.h \
+ cpu/vmx.h cpu/vmx_ctrls.h cpu/stack.h cpu/access.h gui/siminterface.h \
+ gui/paramtree.h memory/memory-bochs.h
+logio.o: logio.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ gui/siminterface.h gui/paramtree.h pc_system.h bxthread.h cpu/cpu.h \
+ cpu/decoder/decoder.h cpu/decoder/features.h \
+ instrument/stubs/instrument.h cpu/i387.h \
+ cpu/softfloat3e/include/softfloat_types.h config.h cpu/fpu/tag_w.h \
+ cpu/fpu/status_w.h cpu/fpu/control_w.h cpu/crregs.h cpu/descriptor.h \
+ cpu/decoder/instr.h cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/xmm.h \
+ cpu/vmx.h cpu/vmx_ctrls.h cpu/access.h bx_debug/debug.h osdep.h \
+ cpu/decoder/decoder.h
+main.o: main.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h bxversion.h \
+ param_names.h cpu/cpu.h cpu/decoder/decoder.h cpu/decoder/features.h \
+ instrument/stubs/instrument.h cpu/i387.h \
+ cpu/softfloat3e/include/softfloat_types.h config.h cpu/fpu/tag_w.h \
+ cpu/fpu/status_w.h cpu/fpu/control_w.h cpu/crregs.h cpu/descriptor.h \
+ cpu/decoder/instr.h cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/xmm.h \
+ cpu/vmx.h cpu/vmx_ctrls.h cpu/access.h iodev/iodev.h bochs.h plugin.h \
+ extplugin.h param_names.h pc_system.h memory/memory-bochs.h \
  gui/siminterface.h gui/paramtree.h gui/gui.h iodev/hdimage/hdimage.h \
- iodev/network/netmod.h iodev/sound/soundmod.h iodev/usb/usb_common.h
+ iodev/network/netmod.h iodev/usb/usb_common.h iodev/usb/usb_pcap.h \
+ bx_debug/debug.h osdep.h cpu/decoder/decoder.h
 main_cocoa.o: main_cocoa.mm \
  gui/cocoa_bochs.h gui/cocoa_application.h gui/cocoa_windows.h \
  bochs.h gui/siminterface.h \
  gui/cocoa_headerbar.h gui/cocoa_display.h \
  gui/cocoa_ctrl.h gui/new_dbg.h \
  config.h gui/siminterface.h param_names.h bx_debug/debug.h
-osdep.o: osdep.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- instrument/stubs/instrument.h misc/bswap.h bxthread.h
-pc_system.o: pc_system.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h \
- logio.h instrument/stubs/instrument.h misc/bswap.h cpu/cpu.h \
- bx_debug/debug.h config.h osdep.h cpu/decoder/decoder.h cpu/i387.h \
- cpu/fpu/softfloat.h cpu/fpu/tag_w.h cpu/fpu/status_w.h \
- cpu/fpu/control_w.h cpu/crregs.h cpu/descriptor.h cpu/decoder/instr.h \
- cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/apic.h cpu/xmm.h cpu/vmx.h \
- cpu/cpuid.h cpu/access.h iodev/iodev.h bochs.h plugin.h extplugin.h \
- param_names.h pc_system.h memory/memory-bochs.h gui/siminterface.h \
- gui/paramtree.h gui/gui.h
-plugin.o: plugin.@CPP_SUFFIX@ bochs.h config.h osdep.h gui/paramtree.h logio.h \
- instrument/stubs/instrument.h misc/bswap.h iodev/iodev.h bochs.h \
- plugin.h extplugin.h param_names.h pc_system.h bx_debug/debug.h config.h \
- osdep.h memory/memory-bochs.h gui/siminterface.h gui/paramtree.h \
- gui/gui.h plugin.h
+osdep.o: osdep.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ bxthread.h
+pc_system.o: pc_system.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ cpu/cpu.h cpu/decoder/decoder.h cpu/decoder/features.h \
+ instrument/stubs/instrument.h cpu/i387.h \
+ cpu/softfloat3e/include/softfloat_types.h config.h cpu/fpu/tag_w.h \
+ cpu/fpu/status_w.h cpu/fpu/control_w.h cpu/crregs.h cpu/descriptor.h \
+ cpu/decoder/instr.h cpu/lazy_flags.h cpu/tlb.h cpu/icache.h cpu/xmm.h \
+ cpu/vmx.h cpu/vmx_ctrls.h cpu/access.h iodev/iodev.h bochs.h plugin.h \
+ extplugin.h param_names.h pc_system.h memory/memory-bochs.h \
+ gui/siminterface.h gui/paramtree.h gui/gui.h bx_debug/debug.h osdep.h \
+ cpu/decoder/decoder.h
+plugin.o: plugin.@CPP_SUFFIX@ bochs.h config.h osdep.h logio.h misc/bswap.h \
+ iodev/iodev.h bochs.h plugin.h extplugin.h param_names.h pc_system.h \
+ memory/memory-bochs.h gui/siminterface.h gui/paramtree.h gui/gui.h \
+ plugin.h

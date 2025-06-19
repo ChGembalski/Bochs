@@ -8,14 +8,14 @@ AC_CONFIG_HEADERS([config.h])
 
 dnl // Put Bochs version information right here so that it gets substituted
 dnl // into all the right places.
-VERSION="2.8.devel"
-VER_MAJOR=2
-VER_MINOR=8
+VERSION="3.0.devel"
+VER_MAJOR=3
+VER_MINOR=0
 dnl // this should be > 90 for pre-release of next version otherwise revision level
 VER_REVISION=0
 dnl // this should be 0 for release and 1 for development version
 VER_DEV=1
-REL_STRING="Built from GitHub snapshot after release 2.8"
+REL_STRING="Built from GitHub snapshot after release 3.0"
 REL_TIMESTAMP=`grep "Updated:" $srcdir/README | sed 's/Updated: //'`
 
 changequote(<<, >>)
@@ -847,7 +847,6 @@ AC_ARG_ENABLE(debugger-gui,
    else
     AC_MSG_RESULT(no)
     AC_DEFINE(BX_DEBUGGER_GUI, 0)
-    gui_debugger=0
    fi],
   [
     if test "$bx_debugger" = 1; then
@@ -856,7 +855,6 @@ AC_ARG_ENABLE(debugger-gui,
     else
       AC_MSG_RESULT(no)
       AC_DEFINE(BX_DEBUGGER_GUI, 0)
-      gui_debugger=0
     fi
   ]
 )
@@ -973,11 +971,6 @@ if test "$speedup_fastcall" = 1; then
   AC_DEFINE(BX_FAST_FUNC_CALL, 1)
 else
   AC_DEFINE(BX_FAST_FUNC_CALL, 0)
-fi
-
-if test "$bx_debugger" = 1 -a "$speedup_handlers_chaining" = 1; then
-  speedup_handlers_chaining=0
-  echo "ERROR: handlers-chaining speedups are not supported with internal debugger or gdbstub yet"
 fi
 
 if test "$bx_gdb_stub" = 1 -a "$speedup_handlers_chaining" = 1; then
@@ -1331,8 +1324,13 @@ AC_ARG_ENABLE(3dnow,
    fi
    ],
   [
-    AC_MSG_RESULT(no)
-    AC_DEFINE(BX_SUPPORT_3DNOW, 0)
+    if test "$bx_cpu_level" -gt 4; then
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(BX_SUPPORT_3DNOW, 1)
+    else
+      AC_MSG_RESULT(no)
+      AC_DEFINE(BX_SUPPORT_3DNOW, 0)
+    fi
   ]
   )
 
@@ -1503,8 +1501,8 @@ AC_ARG_ENABLE(x86-debugger,
    fi
    ],
   [
-    AC_MSG_RESULT(no)
-    AC_DEFINE(BX_X86_DEBUGGER, 0)
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(BX_X86_DEBUGGER, 1)
     ]
   )
 
@@ -1699,24 +1697,24 @@ AC_SUBST(USBHC_OBJS)
 AC_SUBST(USBHC_DLL_TARGETS)
 
 usb_debugger=0
-AC_MSG_CHECKING(enable Bochs Win32 USB debugger)
-AC_ARG_ENABLE(win32usbdbg,
-  AS_HELP_STRING([--enable-win32usbdbg], [compile in support for Bochs Win32 USB debugger (yes, if debugger is on and USB is on)]),
+AC_MSG_CHECKING(enable Bochs USB debugger)
+AC_ARG_ENABLE(usb-debugger,
+  AS_HELP_STRING([--enable-usb-debugger], [compile in support for Bochs USB debugger (yes, if debugger is on and USB is on)]),
   [if test "$enableval" = yes; then
     AC_MSG_RESULT(yes)
     usb_debugger=1
    else
     AC_MSG_RESULT(no)
-    AC_DEFINE(BX_USE_WIN32USBDEBUG, 0)
+    AC_DEFINE(BX_USB_DEBUGGER, 0)
     usb_debugger=0
    fi],
   [
-    if test "$bx_debugger" = 1 -a "$use_usb" = 1 -a "$bx_plugins" = 0; then
+    if test "$bx_debugger" = 1 -a "$use_usb" = 1; then
       AC_MSG_RESULT(yes)
       usb_debugger=1
     else
       AC_MSG_RESULT(no)
-      AC_DEFINE(BX_USE_WIN32USBDEBUG, 0)
+      AC_DEFINE(BX_USB_DEBUGGER, 0)
       usb_debugger=0
     fi
     ]
@@ -2187,7 +2185,8 @@ if test "$soundcard_present" = 1; then
     [
     case x$SDL2_VERSION in
       x2.0.[0-4]) ;;
-      x2.0.[5-9]) sdl2_audio_capture=1 ;;
+      x2.0.[5-22]) sdl2_audio_capture=1 ;;
+      x2.[24-30]*) sdl2_audio_capture=1 ;;
       *) ;;
     esac
     ]
@@ -2442,7 +2441,11 @@ INSTALL_LIST_FOR_PLATFORM=
 # check for existence of and usable version of wxWidgets.  This comes
 # early so that it could affect which one gets chosen.
 if test x$WX_CONFIG = x; then
-  AC_CHECK_PROG(WX_CONFIG, [ wx-config --version ], wx-config, not_found)
+  if test "$enable_static_link" = yes; then
+    AC_CHECK_PROG(WX_CONFIG, [ wx-config-static --version ], wx-config-static, not_found)
+  else
+    AC_CHECK_PROG(WX_CONFIG, [ wx-config --version ], wx-config, not_found)
+  fi
 fi
 AC_MSG_CHECKING(for wxWidgets configuration script)
 AC_MSG_RESULT($WX_CONFIG)
@@ -2566,7 +2569,7 @@ if test "$with_x11" = yes; then
   GUI_CXXFLAGS="$GUI_CXXFLAGS \$(X_CFLAGS)"
   GUI_LINK_OPTS="$GUI_LINK_OPTS \$(GUI_LINK_OPTS_X)"
   # The enhanced X debugger depends on GTK2
-  if test "$gui_debugger" = 1; then
+  if test "$gui_debugger" = 1 -o "$usb_debugger" = 1; then
     needs_gtk2=1
   fi
   use_gui_console=1
@@ -2591,8 +2594,10 @@ if test "$with_sdl" = yes; then
     NONPLUGIN_GUI_LINK_OPTS="`sdl-config --libs`"
   fi
   # The enhanced X debugger depends on GTK2
-  if test "$gui_debugger" = 1 -a "$DEFAULT_GUI" != win32; then
-    needs_gtk2=1
+  if test "$DEFAULT_GUI" != win32; then
+    if test "$gui_debugger" = 1 -o "$usb_debugger" = 1; then
+      needs_gtk2=1
+    fi
   fi
   if test "$with_win32" != yes -a "$with_wx" != yes; then
     case $target in
@@ -2626,8 +2631,10 @@ if test "$with_sdl2" = yes; then
     NONPLUGIN_GUI_LINK_OPTS="`sdl2-config --libs`"
   fi
   # The enhanced X debugger depends on GTK2
-  if test "$gui_debugger" = 1 -a "$DEFAULT_GUI" != win32; then
-    needs_gtk2=1
+  if test "$DEFAULT_GUI" != win32; then
+    if test "$gui_debugger" = 1 -o "$usb_debugger" = 1; then
+      needs_gtk2=1
+    fi
   fi
   if test "$with_win32" != yes -a "$with_wx" != yes; then
     case $target in
@@ -2819,8 +2826,10 @@ if test "$with_wx" = yes; then
       ;;
   esac
   # The enhanced X debugger depends on GTK2
-  if test "$gui_debugger" = 1 -a "$DEFAULT_GUI" != win32; then
-    needs_gtk2=1
+  if test "$DEFAULT_GUI" != win32; then
+    if test "$gui_debugger" = 1 -o "$usb_debugger" = 1; then
+      needs_gtk2=1
+    fi
   fi
 fi
 
@@ -2842,31 +2851,24 @@ if test "$display_libs" = ""; then
 fi
 
 # some display libraries and the enhanced debugger may depend on the GTK+ software package
-BX_HAVE_GTK_VERSION=0
+bx_have_gtk_version=0
 if test "$needs_gtk2" = 1; then
   # pkg-config is required to set TOOLKIT_CXXFLAGS and LIBS
   if test "x$PKG_CONFIG" != x; then
     # if wxGTK is based on GTK 3.0, use it for gui debugger to avoid conflicts
-    if test "$with_wx" = yes -a "$wx_needs_gdk_version" = 3; then
-      $PKG_CONFIG --exists gtk+-3.0
-      if test x$? = x0; then
-        TOOLKIT_CXXFLAGS="`$PKG_CONFIG --cflags gtk+-3.0`"
-        LIBS="$LIBS `$PKG_CONFIG --libs gtk+-3.0`"
-        AC_DEFINE(BX_HAVE_GTK_VERSION, 3)
-      fi
-    else
+    if test "$with_wx" = yes -a "$wx_needs_gdk_version" = 2; then
       $PKG_CONFIG --exists gtk+-2.0
       if test x$? = x0; then
         TOOLKIT_CXXFLAGS="`$PKG_CONFIG --cflags gtk+-2.0`"
         LIBS="$LIBS `$PKG_CONFIG --libs gtk+-2.0`"
-        AC_DEFINE(BX_HAVE_GTK_VERSION, 2)
-      else
-        $PKG_CONFIG --exists gtk+-3.0
-        if test x$? = x0; then
-          TOOLKIT_CXXFLAGS="`$PKG_CONFIG --cflags gtk+-3.0`"
-          LIBS="$LIBS `$PKG_CONFIG --libs gtk+-3.0`"
-          AC_DEFINE(BX_HAVE_GTK_VERSION, 3)
-        fi
+        bx_have_gtk_version=2
+      fi
+    else
+      $PKG_CONFIG --exists gtk+-3.0
+      if test x$? = x0; then
+        TOOLKIT_CXXFLAGS="`$PKG_CONFIG --cflags gtk+-3.0`"
+        LIBS="$LIBS `$PKG_CONFIG --libs gtk+-3.0`"
+        bx_have_gtk_version=3
       fi
     fi
   else
@@ -2874,6 +2876,7 @@ if test "$needs_gtk2" = 1; then
     echo "The gui debugger support is disabled now."
   fi
 fi
+AC_DEFINE_UNQUOTED(BX_HAVE_GTK_VERSION, $bx_have_gtk_version)
 
 dnl To use wxWidgets you must select it as both the configuration interface
 dnl and the display library.  In the simplest case where the user has
@@ -2889,6 +2892,8 @@ if test "$display_libs" = " wxWidgets"; then
   AC_DEFINE(BX_DEFAULT_CONFIG_INTERFACE, "wx")
   AC_DEFINE(BX_DEFAULT_DISPLAY_LIBRARY, "wx")
   AC_DEFINE(BX_USE_TEXTCONFIG, 0)
+  AC_DEFINE(HAVE_LIBREADLINE, 0)
+  READLINE_LIB=""
 else
   if test "$DEFAULT_GUI" != cocoa; then
     if test "$DEFAULT_GUI" = win32; then
@@ -2957,6 +2962,7 @@ case "$target" in
     else
       C_OPT="$C_OPT /EHs-c-"
     fi
+    C_OPT="$C_OPT /std:c++20"
     if test "$bx_plugins" = 1; then
       CFLAGS="/nologo /MD /W3 /DNDEBUG /DWIN32 /D_WINDOWS /D_CRT_SECURE_NO_WARNINGS $C_OPT"
     else
@@ -3012,6 +3018,7 @@ case "$target" in
     BXIMAGE_LINK_OPTS="-luser32"
     if test "$enable_static_link" = yes; then
       BXIMAGE_LINK_OPTS="${BXIMAGE_LINK_OPTS} -static"
+      NICLIST_LINK_OPTS="-static"
     fi
     if test "$networking" = yes; then
       OPTIONAL_TARGET="$OPTIONAL_TARGET bxhub niclist"
@@ -3046,6 +3053,7 @@ AC_SUBST(BXIMAGE_FLAG)
 AC_SUBST(BXIMAGE_LINK_OPTS)
 AC_SUBST(BXHUB_FLAG)
 AC_SUBST(BXHUB_LINK_OPTS)
+AC_SUBST(NICLIST_LINK_OPTS)
 AC_SUBST(CXXFLAGS_CONSOLE)
 
 XTD_DBG_OBJS=""
@@ -3067,7 +3075,7 @@ AC_SUBST(XTD_DBG_OBJS)
 
 ENH_DBG_OBJS=""
 if test "$gui_debugger" = 1; then
-  if test "$BX_HAVE_GTK_VERSION" -ge 2; then
+  if test "$bx_have_gtk_version" -ge 2; then
     ENH_DBG_OBJS="enh_dbg.o gtk_enh_dbg_osdep.o"
     AC_DEFINE(BX_DEBUGGER_GUI, 1)
   elif test "$DEFAULT_GUI" = win32 -o "$with_win32" = yes; then
@@ -3084,12 +3092,15 @@ AC_SUBST(ENH_DBG_OBJS)
 
 USB_DBG_OBJS=""
 if test "$usb_debugger" = 1; then
-  if test "$DEFAULT_GUI" = win32 -o "$with_win32" = yes; then
-    USB_DBG_OBJS="win32usb.o"
-    AC_DEFINE(BX_USE_WIN32USBDEBUG, 1)
+  if test "$bx_have_gtk_version" -ge 3; then
+    USB_DBG_OBJS="usb_debug.o gtk_usb_debug.o"
+    AC_DEFINE(BX_USB_DEBUGGER, 1)
+  elif test "$DEFAULT_GUI" = win32 -o "$with_win32" = yes; then
+    USB_DBG_OBJS="usb_debug.o win32usb.o"
+    AC_DEFINE(BX_USB_DEBUGGER, 1)
   else
-    AC_MSG_WARN([The USB debugger supported only for Win32 cannot be compiled here, disabling it])
-    AC_DEFINE(BX_USE_WIN32USBDEBUG, 0)
+    AC_MSG_WARN([The USB debugger cannot be compiled here, disabling it])
+    AC_DEFINE(BX_USB_DEBUGGER, 0)
   fi
 fi
 AC_SUBST(USB_DBG_OBJS)

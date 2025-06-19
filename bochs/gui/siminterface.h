@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2024  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -119,7 +119,8 @@ typedef enum {
   BX_TOOLBAR_SNAPSHOT,
   BX_TOOLBAR_CONFIG,
   BX_TOOLBAR_MOUSE_EN,
-  BX_TOOLBAR_USER
+  BX_TOOLBAR_USER,
+  BX_TOOLBAR_USB_DEBUG
 } bx_toolbar_buttons;
 
 // normally all action choices are available for all event types. The exclude
@@ -128,6 +129,8 @@ typedef enum {
 #define BX_LOG_OPTS_EXCLUDE(type, choice)  (             \
    /* can't die, ask or warn, on debug or info events */ \
    (type <= LOGLEV_INFO && (choice >= ACT_WARN))         \
+   /* can't die or ask, on warn events */                \
+   || (type == LOGLEV_WARN && (choice > ACT_WARN))       \
    /* can't ignore panics */                             \
    || (type == LOGLEV_PANIC && choice == ACT_IGNORE)     \
    )
@@ -141,6 +144,8 @@ enum {
   BX_BOOT_FLOPPYA,
   BX_BOOT_DISKC,
   BX_BOOT_CDROM,
+  BX_BOOT_PCMCIA,
+  BX_BOOT_USB,
   BX_BOOT_NETWORK
 };
 
@@ -443,9 +448,22 @@ enum {
 };
 
 enum {
+  BX_VGA_EXTENSION_NONE,
+  BX_VGA_EXTENSION_VBE
+};
+
+enum {
   BX_DDC_MODE_DISABLED,
   BX_DDC_MODE_BUILTIN,
+  BX_DDC_MODE_BUILTIN_GUI,
   BX_DDC_MODE_FILE
+};
+
+enum {
+  BX_VBE_MEMSIZE_4MB,
+  BX_VBE_MEMSIZE_8MB,
+  BX_VBE_MEMSIZE_16MB,
+  BX_VBE_MEMSIZE_32MB
 };
 
 enum {
@@ -465,6 +483,7 @@ enum {
   BX_MOUSE_TOGGLE_CTRL_MB,
   BX_MOUSE_TOGGLE_CTRL_F10,
   BX_MOUSE_TOGGLE_CTRL_ALT,
+  BX_MOUSE_TOGGLE_CTRL_ALT_G,
   BX_MOUSE_TOGGLE_F12
 };
 
@@ -526,32 +545,6 @@ enum {
   BX_PCI_CHIPSET_I440BX
 };
 
-enum {
-  BX_CPUID_SUPPORT_NOSSE,
-  BX_CPUID_SUPPORT_SSE,
-  BX_CPUID_SUPPORT_SSE2,
-  BX_CPUID_SUPPORT_SSE3,
-  BX_CPUID_SUPPORT_SSSE3,
-  BX_CPUID_SUPPORT_SSE4_1,
-  BX_CPUID_SUPPORT_SSE4_2,
-#if BX_SUPPORT_AVX
-  BX_CPUID_SUPPORT_AVX,
-  BX_CPUID_SUPPORT_AVX2,
-#if BX_SUPPORT_EVEX
-  BX_CPUID_SUPPORT_AVX512
-#endif
-#endif
-};
-
-enum {
-  BX_CPUID_SUPPORT_LEGACY_APIC,
-  BX_CPUID_SUPPORT_XAPIC,
-#if BX_CPU_LEVEL >= 6
-  BX_CPUID_SUPPORT_XAPIC_EXT,
-  BX_CPUID_SUPPORT_X2APIC
-#endif
-};
-
 #define BX_CLOCK_TIME0_LOCAL     1
 #define BX_CLOCK_TIME0_UTC       2
 
@@ -560,6 +553,36 @@ BOCHSAPI extern const char *floppy_type_names[];
 BOCHSAPI extern int floppy_type_n_sectors[];
 BOCHSAPI extern const char *media_status_names[];
 BOCHSAPI extern const char *bochs_bootdisk_names[];
+
+// usb_debug items
+#if BX_USB_DEBUGGER
+
+enum {
+  USB_DEBUG_NONE,
+  USB_DEBUG_UHCI,
+  USB_DEBUG_OHCI,
+  USB_DEBUG_EHCI,
+  USB_DEBUG_XHCI
+};
+
+// USB debug break_type
+#define USB_DEBUG_FRAME    1
+#define USB_DEBUG_COMMAND  2
+#define USB_DEBUG_EVENT    3
+#define USB_DEBUG_NONEXIST 4
+#define USB_DEBUG_RESET    5
+#define USB_DEBUG_ENABLE   6
+#define USB_DEBUG_DATA     7
+
+#define BX_USB_DEBUG_SOF_NONE      0
+#define BX_USB_DEBUG_SOF_SET       1
+#define BX_USB_DEBUG_SOF_TRIGGER   2
+
+// lParam flags
+#define USB_LPARAM_FLAG_BEFORE  0x00000001
+#define USB_LPARAM_FLAG_AFTER   0x00000002
+
+#endif
 
 ////////////////////////////////////////////////////////////////////
 // base class simulator interface, contains just virtual functions.
@@ -574,9 +597,6 @@ enum ci_return_t {
   CI_ERR_NO_TEXT_CONSOLE  // err: can't work because there's no text console
 };
 typedef int (*config_interface_callback_t)(void *userdata, ci_command_t command);
-#if BX_USE_WIN32USBDEBUG
-  typedef int (*usb_interface_callback_t)(int type, int wParam, int lParam);
-#endif
 typedef BxEvent* (*bxevent_handler)(void *theclass, BxEvent *event);
 typedef void (*rt_conf_handler_t)(void *this_ptr);
 typedef Bit32s (*addon_option_parser_t)(const char *context, int num_params, char *params[]);
@@ -705,6 +725,7 @@ public:
   virtual bool is_pci_device(const char *name) {return 0;}
   // return 1 if device is connected to the AGP slot
   virtual bool is_agp_device(const char *name) {return 0;}
+  virtual bool debugger_active() {return false;}
 #if BX_DEBUGGER
   // for debugger: same behavior as pressing control-C
   virtual void debug_break() {}
@@ -717,9 +738,10 @@ public:
     config_interface_callback_t callback,
     void *userdata) {}
   virtual int configuration_interface(const char* name, ci_command_t command) {return -1; }
-#if BX_USE_WIN32USBDEBUG
-  virtual void register_usb_interface(usb_interface_callback_t callback, void *data) {}
-  virtual int usb_config_interface(int type, int wParam, int lParam) { return -1; }
+#if BX_USB_DEBUGGER
+  virtual void register_usb_debug_type(int type) {}
+  virtual void usb_debug_trigger(int type, int trigger, Bit64u param0, int param1, int param2) {}
+  virtual int usb_debug_interface(int type, Bit64u param0, int param1, int param2) { return -1; }
 #endif
   virtual int begin_simulation(int argc, char *argv[]) {return -1;}
   virtual int register_runtime_config_handler(void *dev, rt_conf_handler_t handler) {return 0;}

@@ -36,23 +36,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdbool.h>
 #include <stdint.h>
 #include "internals.h"
+#include "primitives.h"
 #include "softfloat.h"
 
 // trimmed for Bochs to support only 'softfloat_round_nearest_even' rounding mode
 float128_t
- softfloat_roundPackToF128(
-     bool sign,
-     int32_t exp,
-     uint64_t sig64,
-     uint64_t sig0,
-     uint64_t sigExtra,
-     struct softfloat_status_t *status
-)
+ softfloat_roundPackToF128(bool sign, int32_t exp, uint64_t sig64, uint64_t sig0, uint64_t sigExtra, struct softfloat_status_t *status)
 {
     bool doIncrement, isTiny;
     struct uint128_extra sig128Extra;
     struct uint128 sig128;
     float128_t z;
+
+    sigExtra = 0; // artificially reduce precision to match hardware x86 which uses only 67-bit
+    sig0 &= UINT64_C(0xFFFFFFFF00000000); // do 80 bits for now
 
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/

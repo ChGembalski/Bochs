@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2021  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -26,6 +26,8 @@
 #define BX_PLUGGABLE
 #include "iodev.h"
 #include "unmapped.h"
+
+#include "bx_debug/debug.h"
 
 #define LOG_THIS theUnmappedDevice->
 
@@ -85,12 +87,7 @@ Bit32u bx_unmapped_c::read(Bit32u address, unsigned io_len)
   Bit32u retval;
 
   // This function gets called for access to any IO ports which
-  // are not mapped to any device handler.  Reads return 0
-
-  if (address >= 0x02e0 && address <= 0x02ef) {
-    retval = 0;
-    goto return_from_read;
-  }
+  // are not mapped to any device handler.
 
   switch (address) {
     case 0x80:
@@ -144,22 +141,20 @@ Bit32u bx_unmapped_c::read(Bit32u address, unsigned io_len)
       retval = 0xffffffff;
     }
 
-return_from_read:
-
   switch (io_len) {
     case 1:
       retval = (Bit8u)retval;
-      BX_DEBUG(("unmapped: 8-bit read from %04x = %02x", address, retval));
+      BX_DEBUG(("8-bit read from %04x = %02x", address, retval));
       break;
     case 2:
       retval = (Bit16u)retval;
-      BX_DEBUG(("unmapped: 16-bit read from %04x = %04x", address, retval));
+      BX_DEBUG(("16-bit read from %04x = %04x", address, retval));
       break;
     case 4:
-      BX_DEBUG(("unmapped: 32-bit read from %04x = %08x", address, retval));
+      BX_DEBUG(("32-bit read from %04x = %08x", address, retval));
       break;
     default:
-      BX_PANIC(("unmapped: %d-bit read from %04x = %x", io_len * 8, address, retval));
+      BX_PANIC(("%d-bit read from %04x = %x", io_len * 8, address, retval));
   }
 
   return retval;
@@ -185,9 +180,6 @@ void bx_unmapped_c::write(Bit32u address, Bit32u value, unsigned io_len)
   // This function gets called for access to any IO ports which
   // are not mapped to any device handler. Writes to an unmapped
   // IO port are ignored.
-
-  if (address >= 0x02e0 && address <= 0x02ef)
-    goto return_from_write;
 
   switch (address) {
     case 0x80: // diagnostic test port to display progress of POST
@@ -257,30 +249,22 @@ void bx_unmapped_c::write(Bit32u address, Bit32u value, unsigned io_len)
         BX_FATAL(("Shutdown port: shutdown requested"));
       }
       break;
-/*
-    case 0xfedc:
-      bx_dbg.io_debugger = (value > 0);
-      BX_DEBUG(("DEBUGGER = %u", (unsigned) bx_dbg.io_debugger));
-      break;
-*/
     default:
       break;
   }
 
-return_from_write:
-
   switch (io_len) {
     case 1:
-      BX_DEBUG(("unmapped: 8-bit write to %04x = %02x", address, value));
+      BX_DEBUG(("8-bit write to %04x = %02x", address, value));
       break;
     case 2:
-      BX_DEBUG(("unmapped: 16-bit write to %04x = %04x", address, value));
+      BX_DEBUG(("16-bit write to %04x = %04x", address, value));
       break;
     case 4:
-      BX_DEBUG(("unmapped: 32-bit write to %04x = %08x", address, value));
+      BX_DEBUG(("32-bit write to %04x = %08x", address, value));
       break;
     default:
-      BX_PANIC(("unmapped: %d-bit write to %04x = %x", io_len * 8, address, value));
+      BX_PANIC(("%d-bit write to %04x = %x", io_len * 8, address, value));
       break;
   }
 }

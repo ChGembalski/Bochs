@@ -1494,14 +1494,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VPBLENDMB_MASK_VdqHdqWdqR(bxInstruction_c 
 
   Bit64u opmask = (i->opmask() != 0) ? BX_READ_OPMASK(i->opmask()) : BX_CONST64(0xffffffffffffffff);
 
-  if (i->isZeroMasking()) {
-    for (unsigned n=0; n < len; n++, opmask >>= 16)
-      xmm_zero_pblendb(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
-  else {
-    for (unsigned n=0; n < len; n++, opmask >>= 16)
-      xmm_pblendb(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
+  if (i->isZeroMasking())
+    simd_zero_pblendb(&op1, &op2, opmask, BYTE_ELEMENTS(len));
+  else
+    simd_pblendb(&op1, &op2, opmask, BYTE_ELEMENTS(len));
 
   BX_WRITE_AVX_REGZ(i->dst(), op1, len);
   BX_NEXT_INSTR(i);
@@ -1514,14 +1510,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VPBLENDMW_MASK_VdqHdqWdqR(bxInstruction_c 
 
   Bit32u opmask = (i->opmask() != 0) ? BX_READ_32BIT_OPMASK(i->opmask()) : 0xffffffff;
 
-  if (i->isZeroMasking()) {
-    for (unsigned n=0; n < len; n++, opmask >>= 8)
-      xmm_zero_pblendw(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
-  else {
-    for (unsigned n=0; n < len; n++, opmask >>= 8)
-      xmm_pblendw(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
+  if (i->isZeroMasking())
+    simd_zero_pblendw(&op1, &op2, opmask, WORD_ELEMENTS(len));
+  else
+    simd_pblendw(&op1, &op2, opmask, WORD_ELEMENTS(len));
 
   BX_WRITE_AVX_REGZ(i->dst(), op1, len);
   BX_NEXT_INSTR(i);
@@ -1534,14 +1526,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VBLENDMPS_MASK_VpsHpsWpsR(bxInstruction_c 
 
   Bit32u opmask = (i->opmask() != 0) ? BX_READ_16BIT_OPMASK(i->opmask()) : 0xffff;
 
-  if (i->isZeroMasking()) {
-    for (unsigned n=0; n < len; n++, opmask >>= 4)
-      xmm_zero_blendps(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
-  else {
-    for (unsigned n=0; n < len; n++, opmask >>= 4)
-      xmm_blendps(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
+  if (i->isZeroMasking())
+    simd_zero_blendps(&op1, &op2, opmask, DWORD_ELEMENTS(len));
+  else
+    simd_blendps(&op1, &op2, opmask, DWORD_ELEMENTS(len));
 
   BX_WRITE_AVX_REGZ(i->dst(), op1, len);
   BX_NEXT_INSTR(i);
@@ -1554,14 +1542,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VBLENDMPD_MASK_VpdHpdWpdR(bxInstruction_c 
 
   Bit32u opmask = (i->opmask() != 0) ? BX_READ_8BIT_OPMASK(i->opmask()) : 0xff;
 
-  if (i->isZeroMasking()) {
-    for (unsigned n=0; n < len; n++, opmask >>= 2)
-      xmm_zero_blendpd(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
-  else {
-    for (unsigned n=0; n < len; n++, opmask >>= 2)
-      xmm_blendpd(&op1.vmm128(n), &op2.vmm128(n), opmask);
-  }
+  if (i->isZeroMasking())
+    simd_zero_blendpd(&op1, &op2, opmask, QWORD_ELEMENTS(len));
+  else
+    simd_blendpd(&op1, &op2, opmask, QWORD_ELEMENTS(len));
 
   BX_WRITE_AVX_REGZ(i->dst(), op1, len);
   BX_NEXT_INSTR(i);
@@ -2032,7 +2016,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VPMULTISHIFTQB_MASK_VdqHdqWdqR(bxInstructi
 void BX_CPP_AttrRegparmN(1) BX_CPU_C::VP2INTERSECTD_KGqHdqWdqR(bxInstruction_c *i)
 {
   BxPackedAvxRegister op1 = BX_READ_AVX_REG(i->src1()), op2 = BX_READ_AVX_REG(i->src2());
-  Bit64u mask1 = 0, mask2 = 0;
+  Bit32u mask1 = 0, mask2 = 0;
   unsigned len = i->getVL();
 
   for (unsigned n=0;n < DWORD_ELEMENTS(len); n++) {
@@ -2045,8 +2029,8 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VP2INTERSECTD_KGqHdqWdqR(bxInstruction_c *
   }
 
   unsigned mask_base = i->dst() & ~1;
-  BX_WRITE_OPMASK(mask_base,   mask1);
-  BX_WRITE_OPMASK(mask_base+1, mask2);
+  BX_WRITE_OPMASK(mask_base,   (Bit64u) mask1);
+  BX_WRITE_OPMASK(mask_base+1, (Bit64u) mask2);
 
   BX_NEXT_INSTR(i);
 }
@@ -2054,7 +2038,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VP2INTERSECTD_KGqHdqWdqR(bxInstruction_c *
 void BX_CPP_AttrRegparmN(1) BX_CPU_C::VP2INTERSECTQ_KGqHdqWdqR(bxInstruction_c *i)
 {
   BxPackedAvxRegister op1 = BX_READ_AVX_REG(i->src1()), op2 = BX_READ_AVX_REG(i->src2());
-  Bit64u mask1 = 0, mask2 = 0;
+  Bit32u mask1 = 0, mask2 = 0;
   unsigned len = i->getVL();
 
   for (unsigned n=0;n < QWORD_ELEMENTS(len); n++) {
@@ -2067,8 +2051,8 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VP2INTERSECTQ_KGqHdqWdqR(bxInstruction_c *
   }
 
   unsigned mask_base = i->dst() & ~1;
-  BX_WRITE_OPMASK(mask_base,   mask1);
-  BX_WRITE_OPMASK(mask_base+1, mask2);
+  BX_WRITE_OPMASK(mask_base,   (Bit64u) mask1);
+  BX_WRITE_OPMASK(mask_base+1, (Bit64u) mask2);
 
   BX_NEXT_INSTR(i);
 }

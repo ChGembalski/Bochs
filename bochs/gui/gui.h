@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2024  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -26,7 +26,7 @@
 // header bar and status bar stuff
 #define BX_HEADER_BAR_Y 32
 
-#if BX_USE_WIN32USBDEBUG
+#if BX_USB_DEBUGGER
   #define BX_MAX_PIXMAPS 19
   #define BX_MAX_HEADERBAR_ENTRIES 13
 #else
@@ -47,7 +47,7 @@
 #define BX_GUI_DLG_RUNTIME      0x08
 #define BX_GUI_DLG_USER         0x10
 #define BX_GUI_DLG_SAVE_RESTORE 0x20
-#if BX_USE_WIN32USBDEBUG
+#if BX_USB_DEBUGGER
   #define BX_GUI_DLG_USB          0x40
   #define BX_GUI_DLG_ALL          0x7F
 #else
@@ -70,22 +70,17 @@
 #define BX_MT_KEY_ALT           0x02
 #define BX_MT_KEY_F10           0x04
 #define BX_MT_KEY_F12           0x08
-#define BX_MT_MBUTTON           0x10
-#define BX_MT_LBUTTON           0x20
-#define BX_MT_RBUTTON           0x40
+#define BX_MT_KEY_G             0x10
+#define BX_MT_MBUTTON           0x20
+#define BX_MT_LBUTTON           0x40
+#define BX_MT_RBUTTON           0x80
 
 #define BX_GUI_MT_CTRL_MB       (BX_MT_KEY_CTRL | BX_MT_MBUTTON)
 #define BX_GUI_MT_CTRL_LRB      (BX_MT_KEY_CTRL | BX_MT_LBUTTON | BX_MT_RBUTTON)
 #define BX_GUI_MT_CTRL_F10      (BX_MT_KEY_CTRL | BX_MT_KEY_F10)
 #define BX_GUI_MT_F12           (BX_MT_KEY_F12)
 #define BX_GUI_MT_CTRL_ALT      (BX_MT_KEY_CTRL | BX_MT_KEY_ALT)
-
-// usb_debug items
-#if BX_USE_WIN32USBDEBUG
-  #define BX_USB_DEBUG_SOF_NONE      0
-  #define BX_USB_DEBUG_SOF_SET       1
-  #define BX_USB_DEBUG_SOF_TRIGGER   2
-#endif
+#define BX_GUI_MT_CTRL_ALT_G    (BX_MT_KEY_CTRL | BX_MT_KEY_ALT | BX_MT_KEY_G)
 
 // display library option flags
 #define BX_GUI_OPT_HIDE_IPS       0x01
@@ -245,6 +240,9 @@ public:
   void set_fullscreen_mode(bool active) {fullscreen_mode = active;}
   // marklog handler without button, called in gui command mode
   static void marklog_handler(void);
+#if BX_USB_DEBUGGER
+  void set_usbdbg_bitmap(bool trigger);
+#endif
 
 protected:
   // And these are defined and used privately in gui.cc
@@ -258,7 +256,7 @@ protected:
   static void paste_handler(void);
   static void snapshot_handler(void);
   static void config_handler(void);
-#if BX_USE_WIN32USBDEBUG
+#if BX_USB_DEBUGGER
   static void usb_handler(void);
 #endif
   static void userbutton_handler(void);
@@ -295,11 +293,8 @@ protected:
   unsigned mouse_bmap_id, nomouse_bmap_id, mouse_hbar_id;
   unsigned user_bmap_id, user_hbar_id;
   unsigned save_restore_bmap_id, save_restore_hbar_id;
-#if BX_USE_WIN32USBDEBUG
-  // TODO: this is a lousy hack. we need to keep these protected....
-public:
-  unsigned usb_bmap_id, usb_eject_bmap_id, usb_trigger_bmap_id, usb_hbar_id;
-protected:
+#if BX_USB_DEBUGGER
+  unsigned usbdbg_bmap_id, usbdbg_dis_bmap_id, usbdbg_trigger_bmap_id, usbdbg_hbar_id;
 #endif
   // the "classic" Bochs headerbar
   unsigned bx_headerbar_entries;
@@ -402,14 +397,17 @@ protected:
   bool fullscreen_mode;
   Bit32u marker_count;
   // display library options
+  struct {
 #if BX_SHOW_IPS
-  bool gui_hide_ips;
+  bool hide_ips;
 #endif
   bool gui_nokeyrepeat;
 #if BX_DEBUGGER && (BX_DEBUGGER_GUI || BX_NEW_DEBUGGER_GUI)
   bool enh_dbg_gui_enabled;
   bool enh_dbg_global_ini;
 #endif
+    bool nokeyrepeat;
+  } gui_opts;
 };
 
 

@@ -32,6 +32,8 @@
 #include "param_names.h"
 #include "iodev/iodev.h"
 
+#include "bx_debug/debug.h"
+
 #if BX_SUPPORT_X86_64==0
 // Make life easier merging cpu64 & cpu code.
 #define RIP EIP
@@ -766,7 +768,8 @@ void BX_CPU_C::interrupt(Bit8u vector, unsigned type, bool push_error, Bit16u er
     if (vector == 0x80) bx_dbg_linux_syscall(BX_CPU_ID);
   }
 #endif
-  bx_dbg_interrupt(BX_CPU_ID, vector, error_code);
+  if (bx_dbg.debugger_active)
+    bx_dbg_interrupt(BX_CPU_ID, vector, error_code);
 #endif
 
   BX_INSTR_INTERRUPT(BX_CPU_ID, vector);
@@ -966,7 +969,8 @@ void BX_CPU_C::exception(unsigned vector, Bit16u error_code)
   BX_INSTR_EXCEPTION(BX_CPU_ID, vector, error_code);
 
 #if BX_DEBUGGER
-  bx_dbg_exception(BX_CPU_ID, vector, error_code);
+  if (bx_dbg.debugger_active)
+    bx_dbg_exception(BX_CPU_ID, vector, error_code);
 #endif
 
 #if BX_SUPPORT_VMX
@@ -1004,15 +1008,14 @@ void BX_CPU_C::exception(unsigned vector, Bit16u error_code)
 #endif
 #if BX_DEBUGGER
       // trap into debugger (the same as when a PANIC occurs)
-      bx_debug_break();
+      if (bx_dbg.debugger_active) bx_debug_break();
 #endif
       if (SIM->get_param_bool(BXPN_RESET_ON_TRIPLE_FAULT)->get()) {
         BX_ERROR(("exception(): 3rd (%d) exception with no resolution, shutdown status is %02xh, resetting", vector, DEV_cmos_get_reg(0x0f)));
         bx_pc_system.Reset(BX_RESET_HARDWARE);
       }
       else {
-        BX_PANIC(("exception(): 3rd (%d) exception with no resolution", vector));
-        BX_ERROR(("WARNING: Any simulation after this point is completely bogus !"));
+        BX_WARN(("exception(): 3rd (%d) exception with no resolution", vector));
         shutdown();
       }
       longjmp(BX_CPU_THIS_PTR jmp_buf_env, 1); // go back to main decode loop

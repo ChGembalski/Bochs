@@ -76,8 +76,8 @@ static bx_thread_sem_t vertical_sem;
 static Bit8u dither4_lookup[256*16*2];
 static Bit8u dither2_lookup[256*16*2];
 
-/* fast reciprocal+log2 lookup */
-Bit32u voodoo_reciplog[(2 << RECIPLOG_LOOKUP_BITS) + 2];
+/* fast log2 lookup */
+Bit8u voodoo_log[1 << LOG_LOOKUP_BITS];
 
 
 void raster_function(int tmus, void *destbase, Bit32s y, const poly_extent *extent, const void *extradata, int threadid) {
@@ -132,9 +132,9 @@ void raster_function(int tmus, void *destbase, Bit32s y, const poly_extent *exte
 			startx = tempclip;
 		}
 		tempclip = v->reg[clipLeftRight].u & v->fbi.clip_mask;
-		if (stopx >= tempclip) {
+		if (stopx > tempclip) {
 			stats->pixels_in += stopx - tempclip;
-			stopx = tempclip - 1;
+			stopx = tempclip;
 		}
 	}
 
@@ -435,9 +435,6 @@ void recompute_texture_params(tmu_state *t)
 
 BX_CPP_INLINE Bit32s prepare_tmu(tmu_state *t)
 {
-  Bit64s texdx, texdy;
-  Bit32s lodbase;
-
   /* if the texture parameters are dirty, update them */
   if (t->regdirty) {
     recompute_texture_params(t);
@@ -452,22 +449,22 @@ BX_CPP_INLINE Bit32s prepare_tmu(tmu_state *t)
     }
   }
 
-  /* compute (ds^2 + dt^2) in both X and Y as 28.36 numbers */
-  texdx = (Bit64s)(t->dsdx >> 14) * (Bit64s)(t->dsdx >> 14) + (Bit64s)(t->dtdx >> 14) * (Bit64s)(t->dtdx >> 14);
-  texdy = (Bit64s)(t->dsdy >> 14) * (Bit64s)(t->dsdy >> 14) + (Bit64s)(t->dtdy >> 14) * (Bit64s)(t->dtdy >> 14);
+  // compute (ds^2 + dt^2) in both X and Y; note that these values are
+  // each .32, so the square is a .64 fixed point value
+  double fdsdx = (double)t->dsdx;
+  double fdsdy = (double)t->dsdy;
+  double fdtdx = (double)t->dtdx;
+  double fdtdy = (double)t->dtdy;
+  double texdx = fdsdx * fdsdx + fdtdx * fdtdx;
+  double texdy = fdsdy * fdsdy + fdtdy * fdtdy;
 
-  /* pick whichever is larger and shift off some high bits -> 28.20 */
-  if (texdx < texdy)
-    texdx = texdy;
-  texdx >>= 16;
+  // pick whichever is larger
+  double maxval = BX_MAX(texdx, texdy);
 
-  /* use our fast reciprocal/log on this value; it expects input as a */
-  /* 16.32 number, and returns the log of the reciprocal, so we have to */
-  /* adjust the result: negative to get the log of the original value */
-  /* plus 12 to account for the extra exponent, and divided by 2 to */
-  /* get the log of the square root of texdx */
-  (void)fast_reciplog(texdx, &lodbase);
-  return (-lodbase + (12 << 8)) / 2;
+  // use our fast reciprocal/log on this value; 64 to indicate how many
+  // bits of fractional resolution in the source, and divide by 2 because
+  // we really want the log of the square root
+  return fast_log2(maxval, 64) / 2;
 }
 
 
@@ -713,6 +710,8 @@ Bit32s triangle()
 
     case 1:   /* back buffer */
       drawbuf = (Bit16u *)(v->fbi.ram + v->fbi.rgboffs[v->fbi.backbuf]);
+      if (v->fbi.rgboffs[v->fbi.frontbuf] == v->fbi.rgboffs[v->fbi.backbuf])
+        v->fbi.video_changed = 1;
       break;
 
     default:  /* reserved */
@@ -756,7 +755,7 @@ static Bit32s setup_and_draw_triangle()
 
     /* if doing strips and ping pong is enabled, apply the ping pong */
     if ((v->reg[sSetupMode].u & 0x90000) == 0x00000)
-      culling_sign ^= (v->fbi.sverts - 3) & 1;
+      culling_sign ^= v->fbi.pingpong;
 
     /* if our sign matches the culling sign, we're done for */
     if (divisor_sign == culling_sign)
@@ -875,6 +874,7 @@ static Bit32s begin_triangle()
   /* spread it across all three verts and reset the count */
   v->fbi.svert[0] = v->fbi.svert[1] = v->fbi.svert[2];
   v->fbi.sverts = 1;
+  v->fbi.pingpong = 0;
 
   return 0;
 }
@@ -886,8 +886,10 @@ static Bit32s draw_triangle()
   int cycles = 0;
 
   /* for strip mode, shuffle vertex 1 down to 0 */
-  if (!(v->reg[sSetupMode].u & (1 << 16)))
+  if (!(v->reg[sSetupMode].u & (1 << 16))) {
+    v->fbi.pingpong ^= 1;
     v->fbi.svert[0] = v->fbi.svert[1];
+  }
 
   /* copy 2 down to 1 regardless */
   v->fbi.svert[1] = v->fbi.svert[2];
@@ -1787,7 +1789,6 @@ void register_w(Bit32u offset, Bit32u data, bool log)
   Bit32u regnum  = (offset) & 0xff;
   Bit32u chips   = (offset>>8) & 0xf;
   Bit64s data64;
-  static Bit32u count = 0;
 
   if (chips == 0)
     chips = 0xf;
@@ -2200,10 +2201,6 @@ void register_w(Bit32u offset, Bit32u data, bool log)
 
     /* texture modifications cause us to recompute everything */
     case textureMode:
-      if (((chips & 6) > 0) && TEXMODE_TRILINEAR(data)) {
-        if (count < 50) BX_INFO(("Trilinear textures not implemented yet"));
-        count++;
-      }
     case tLOD:
     case tDetail:
     case texBaseAddr:
@@ -2471,7 +2468,6 @@ Bit32u lfb_w(Bit32u offset, Bit32u data, Bit32u mem_mask)
 {
   Bit16u *dest, *depth;
   Bit32u destmax, depthmax;
-  Bit32u forcefront=0;
 
   int sr[2], sg[2], sb[2], sa[2], sw[2];
   int x, y, scry, mask;
@@ -2679,7 +2675,7 @@ Bit32u lfb_w(Bit32u offset, Bit32u data, Bit32u mem_mask)
     mask &= ~(0xf0 + LFB_DEPTH_PRESENT_MSW);
 
   /* select the target buffer */
-  destbuf = (v->type >= VOODOO_BANSHEE) ? (!forcefront) : LFBMODE_WRITE_BUFFER_SELECT(v->reg[lfbMode].u);
+  destbuf = (v->type >= VOODOO_BANSHEE) ? 1 : LFBMODE_WRITE_BUFFER_SELECT(v->reg[lfbMode].u);
   switch (destbuf)
   {
     case 0:     /* front buffer */
@@ -2691,6 +2687,8 @@ Bit32u lfb_w(Bit32u offset, Bit32u data, Bit32u mem_mask)
     case 1:     /* back buffer */
       dest = (Bit16u *)(v->fbi.ram + v->fbi.rgboffs[v->fbi.backbuf]);
       destmax = (v->fbi.mask + 1 - v->fbi.rgboffs[v->fbi.backbuf]) / 2;
+      if (v->fbi.rgboffs[v->fbi.frontbuf] == v->fbi.rgboffs[v->fbi.backbuf])
+        v->fbi.video_changed = 1;
       break;
 
     default:    /* reserved */
@@ -2918,6 +2916,10 @@ void cmdfifo_w(cmdfifo_info *f, Bit32u fbi_offset, Bit32u data)
       f->amax = fbi_offset;
     }
   }
+  else {
+    f->amax = fbi_offset;
+    f->depth++;
+  }
   if (f->depth_needed == BX_MAX_BIT32U) {
     f->depth_needed = cmdfifo_calc_depth_needed(f);
   }
@@ -2936,18 +2938,20 @@ Bit32u cmdfifo_r(cmdfifo_info *f)
 
   data = *(Bit32u*)(&v->fbi.ram[f->rdptr & v->fbi.mask]);
   f->rdptr += 4;
-  if (f->rdptr >= f->end) {
-    BX_INFO(("CMDFIFO RdPtr rollover"));
-    f->rdptr = f->base;
+  if (!f->jsr) {
+    if (f->rdptr >= f->end) {
+      BX_INFO(("CMDFIFO RdPtr rollover"));
+      f->rdptr = f->base;
+    }
+    f->depth--;
   }
-  f->depth--;
   return data;
 }
 
 void cmdfifo_process(cmdfifo_info *f)
 {
   Bit32u command, data, mask, nwords, regaddr;
-  Bit8u type, code, nvertex, smode, disbytes;
+  Bit8u type, code, nvertex, smode, disbytes, datalen = 0;
   bool inc, pcolor;
   voodoo_reg reg;
   int i, w0, wn;
@@ -2960,6 +2964,24 @@ void cmdfifo_process(cmdfifo_info *f)
       code = (Bit8u)((command >> 3) & 0x07);
       switch (code) {
         case 0: // NOP
+          break;
+        case 1: // JSR
+          if (f->jsr) {
+            BX_ERROR(("cmdfifo_process(): JSR: already inside of subroutine"));
+          } else {
+            f->jsr = true;
+            f->retAddr = f->rdptr;
+            f->rdptr = (command >> 4) & 0xfffffc;
+          }
+          break;
+        case 2: // RET
+          if (!f->jsr) {
+            BX_ERROR(("cmdfifo_process(): RET: not inside of subroutine"));
+          } else {
+            f->rdptr = f->retAddr;
+            f->retAddr = 0;
+            f->jsr = false;
+          }
           break;
         case 3: // JMP
           f->rdptr = (command >> 4) & 0xfffffc;
@@ -3079,12 +3101,15 @@ void cmdfifo_process(cmdfifo_info *f)
         /* if we're starting a new strip, or if this is the first of a set of verts */
         /* for a series of individual triangles, initialize all the verts */
         if ((code == 1 && i == 0) || (code == 0 && i % 3 == 0)) {
+          v->fbi.pingpong = 0;
           v->fbi.sverts = 1;
           v->fbi.svert[0] = v->fbi.svert[1] = v->fbi.svert[2] = svert;
         } else { /* otherwise, add this to the list */
           /* for strip mode, shuffle vertex 1 down to 0 */
-          if (!(smode & 1))
+          if (!(smode & 1)) {
+            v->fbi.pingpong ^= 1;
             v->fbi.svert[0] = v->fbi.svert[1];
+          }
 
           /* copy 2 down to 1 and add our new one regardless */
           v->fbi.svert[1] = v->fbi.svert[2];
@@ -3132,14 +3157,20 @@ void cmdfifo_process(cmdfifo_info *f)
           if ((disbytes & 0xf0) > 0) {
             data = cmdfifo_r(f);
             if ((disbytes & 0xf0) == 0x30) {
+              datalen = 2;
               data >>= 16;
             } else if ((disbytes & 0xf0) == 0xc0) {
-              data &= 0xffff;
+              datalen = 2;
+            } else if ((disbytes & 0xf0) == 0xb0) {
+              datalen = 1;
+              data >>= 16;
+            } else if ((disbytes & 0xf0) == 0xe0) {
+              datalen = 1;
             } else {
               BX_ERROR(("CMDFIFO packet type 5: byte disable not complete (dest code = 0)"));
             }
             BX_UNLOCK(cmdfifo_mutex);
-            Banshee_LFB_write(regaddr, data, 2);
+            Banshee_LFB_write(regaddr, data, datalen);
             BX_LOCK(cmdfifo_mutex);
             w0++;
             regaddr += 4;
@@ -3209,7 +3240,7 @@ void cmdfifo_process(cmdfifo_info *f)
       BX_ERROR(("CMDFIFO: unsupported packet type %d", type));
   }
   f->depth_needed = cmdfifo_calc_depth_needed(f);
-  if (f->depth < f->depth_needed) {
+  if (!f->jsr && f->depth < f->depth_needed) {
     f->cmd_ready = 0;
   }
 }
@@ -3603,7 +3634,7 @@ Bit32u register_r(Bit32u offset)
         result |= 1 << 9;
 
       if (v->type == VOODOO_2) {
-        if (v->fbi.cmdfifo[0].enabled && v->fbi.cmdfifo[0].depth > 0)
+        if (v->fbi.cmdfifo[0].enabled && (v->fbi.cmdfifo[0].depth > 0 || v->fbi.cmdfifo[0].cmd_ready))
           result |= 7 << 7;
       }
       /* Banshee is different starting here */
@@ -3632,11 +3663,11 @@ Bit32u register_r(Bit32u offset)
           result |= 3 << 9;
 
         /* bit 11 is cmd FIFO 0 busy */
-        if (v->fbi.cmdfifo[0].enabled && v->fbi.cmdfifo[0].depth > 0)
+        if (v->fbi.cmdfifo[0].enabled && (v->fbi.cmdfifo[0].depth > 0 || v->fbi.cmdfifo[0].cmd_ready))
           result |= 5 << 9;
 
         /* bit 12 is cmd FIFO 1 busy */
-        if (v->fbi.cmdfifo[1].enabled && v->fbi.cmdfifo[1].depth > 0)
+        if (v->fbi.cmdfifo[1].enabled && (v->fbi.cmdfifo[1].depth > 0 || v->fbi.cmdfifo[1].cmd_ready))
           result |= 9 << 9;
       }
 
@@ -3984,12 +4015,11 @@ void voodoo_init(Bit8u _type)
   v->pci.fifo.size = 64*2;
   v->pci.fifo.in = v->pci.fifo.out = 0;
 
-  /* create a table of precomputed 1/n and log2(n) values */
+  /* create a table of precomputed log2(n) values */
   /* n ranges from 1.0000 to 2.0000 */
-  for (val = 0; val <= (1 << RECIPLOG_LOOKUP_BITS); val++) {
-    Bit32u value = (1 << RECIPLOG_LOOKUP_BITS) + val;
-    voodoo_reciplog[val*2 + 0] = (1 << (RECIPLOG_LOOKUP_PREC + RECIPLOG_LOOKUP_BITS)) / value;
-    voodoo_reciplog[val*2 + 1] = (Bit32u)(LOGB2((double)value / (double)(1 << RECIPLOG_LOOKUP_BITS)) * (double)(1 << RECIPLOG_LOOKUP_PREC));
+  for (val = 0; val < (1 << LOG_LOOKUP_BITS); val++) {
+    Bit32u value = (1 << LOG_LOOKUP_BITS) + val;
+    voodoo_log[val] = (Bit32u)(LOGB2((double)value / (double)(1 << LOG_LOOKUP_BITS)) * (double)(1 << LOG_OUTPUT_PREC));
   }
 
   /* create dithering tables */

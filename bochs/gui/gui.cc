@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2024  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -32,8 +32,8 @@
 #include "gui/bitmaps/copy.h"
 #include "gui/bitmaps/paste.h"
 #include "gui/bitmaps/configbutton.h"
-#include "gui/bitmaps/cdromd.h"
-#if BX_USE_WIN32USBDEBUG
+#include "gui/bitmaps/cdrom1.h"
+#if BX_USB_DEBUGGER
   #include "gui/bitmaps/usb.h"
 #endif
 #include "gui/bitmaps/userbutton.h"
@@ -155,6 +155,7 @@ bx_gui_c::bx_gui_c(void): disp_mode(DISP_MODE_SIM)
   memset(palette, 0, sizeof(palette));
   memset(vga_charmap[0], 0, 0x2000);
   memset(vga_charmap[1], 0, 0x2000);
+  memset(&gui_opts, 0, sizeof(gui_opts));
 }
 
 bx_gui_c::~bx_gui_c()
@@ -200,6 +201,9 @@ void bx_gui_c::init(int argc, char **argv, unsigned max_xres, unsigned max_yres,
     case BX_MOUSE_TOGGLE_CTRL_ALT:
       strcpy(mouse_toggle_text, "CTRL + ALT");
       break;
+    case BX_MOUSE_TOGGLE_CTRL_ALT_G:
+      strcpy(mouse_toggle_text, "CTRL + ALT + G");
+      break;
     case BX_MOUSE_TOGGLE_F12:
       strcpy(mouse_toggle_text, "F12");
       break;
@@ -216,10 +220,10 @@ void bx_gui_c::init(int argc, char **argv, unsigned max_xres, unsigned max_yres,
                           BX_FLOPPYB_BMAP_X, BX_FLOPPYB_BMAP_Y);
   BX_GUI_THIS floppyB_eject_bmap_id = create_bitmap(bx_floppyb_eject_bmap,
                           BX_FLOPPYB_BMAP_X, BX_FLOPPYB_BMAP_Y);
-  BX_GUI_THIS cdrom1_bmap_id = create_bitmap(bx_cdromd_bmap,
-                          BX_CDROMD_BMAP_X, BX_CDROMD_BMAP_Y);
-  BX_GUI_THIS cdrom1_eject_bmap_id = create_bitmap(bx_cdromd_eject_bmap,
-                          BX_CDROMD_BMAP_X, BX_CDROMD_BMAP_Y);
+  BX_GUI_THIS cdrom1_bmap_id = create_bitmap(bx_cdrom1_bmap,
+                          BX_CDROM1_BMAP_X, BX_CDROM1_BMAP_Y);
+  BX_GUI_THIS cdrom1_eject_bmap_id = create_bitmap(bx_cdrom1_eject_bmap,
+                          BX_CDROM1_BMAP_X, BX_CDROM1_BMAP_Y);
   BX_GUI_THIS mouse_bmap_id = create_bitmap(bx_mouse_bmap,
                           BX_MOUSE_BMAP_X, BX_MOUSE_BMAP_Y);
   BX_GUI_THIS nomouse_bmap_id = create_bitmap(bx_nomouse_bmap,
@@ -235,12 +239,12 @@ void bx_gui_c::init(int argc, char **argv, unsigned max_xres, unsigned max_yres,
   BX_GUI_THIS save_restore_bmap_id = create_bitmap(bx_save_restore_bmap,
                           BX_SAVE_RESTORE_BMAP_X, BX_SAVE_RESTORE_BMAP_Y);
 
-#if BX_USE_WIN32USBDEBUG
-  BX_GUI_THIS usb_bmap_id = create_bitmap(bx_usb_bmap,
+#if BX_USB_DEBUGGER
+  BX_GUI_THIS usbdbg_bmap_id = create_bitmap(bx_usbdbg_bmap,
                           BX_USB_BMAP_X, BX_USB_BMAP_Y);
-  BX_GUI_THIS usb_eject_bmap_id = create_bitmap(bx_usb_eject_bmap,
+  BX_GUI_THIS usbdbg_dis_bmap_id = create_bitmap(bx_usbdbg_dis_bmap,
                           BX_USB_BMAP_X, BX_USB_BMAP_Y);
-  BX_GUI_THIS usb_trigger_bmap_id = create_bitmap(bx_usb_trigger_bmap,
+  BX_GUI_THIS usbdbg_trigger_bmap_id = create_bitmap(bx_usbdbg_trigger_bmap,
                           BX_USB_BMAP_X, BX_USB_BMAP_Y);
 #endif
 
@@ -272,22 +276,12 @@ void bx_gui_c::init(int argc, char **argv, unsigned max_xres, unsigned max_yres,
                           BX_GRAVITY_LEFT, toggle_mouse_enable);
   BX_GUI_THIS set_tooltip(BX_GUI_THIS mouse_hbar_id, "Enable mouse capture");
 
-#if BX_USE_WIN32USBDEBUG
+#if BX_USB_DEBUGGER
   // USB button
   if (BX_GUI_THIS dialog_caps & BX_GUI_DLG_USB) {
-    if ((SIM->get_param_enum(BXPN_USB_DEBUG_TYPE)->get() > 0) && (
-        SIM->get_param_bool(BXPN_UHCI_ENABLED)->get() ||
-        SIM->get_param_bool(BXPN_OHCI_ENABLED)->get() ||
-        SIM->get_param_bool(BXPN_EHCI_ENABLED)->get() ||
-        SIM->get_param_bool(BXPN_XHCI_ENABLED)->get())) {
-      BX_GUI_THIS usb_hbar_id = headerbar_bitmap(BX_GUI_THIS usb_bmap_id,
-                            BX_GRAVITY_LEFT, usb_handler);
-      BX_GUI_THIS set_tooltip(BX_GUI_THIS usb_hbar_id, "Trigger the USB Debugger");
-    } else {
-      BX_GUI_THIS usb_hbar_id = headerbar_bitmap(BX_GUI_THIS usb_eject_bmap_id,
-                            BX_GRAVITY_LEFT, usb_handler);
-      BX_GUI_THIS set_tooltip(BX_GUI_THIS usb_hbar_id, "USB support not enabled");
-    }
+    BX_GUI_THIS usbdbg_hbar_id = headerbar_bitmap(BX_GUI_THIS usbdbg_dis_bmap_id,
+                          BX_GRAVITY_LEFT, usb_handler);
+    BX_GUI_THIS set_tooltip(BX_GUI_THIS usbdbg_hbar_id, "USB debugger support not enabled");
   }
 #endif
 
@@ -709,19 +703,26 @@ void bx_gui_c::paste_handler(void)
 void bx_gui_c::config_handler(void)
 {
   if (BX_GUI_THIS dialog_caps & BX_GUI_DLG_RUNTIME) {
-    SIM->configuration_interface(NULL, CI_RUNTIME_CONFIG);
+    if (!SIM->configuration_interface(NULL, CI_RUNTIME_CONFIG)) {
+      bx_exit(1);
+    }
   }
 }
 
-#if BX_USE_WIN32USBDEBUG
-#include "win32usb.h"
+#if BX_USB_DEBUGGER
 void bx_gui_c::usb_handler(void)
 {
   if (BX_GUI_THIS dialog_caps & BX_GUI_DLG_USB) {
     // Once we set the trigger, don't allow the user to press the button again
     if (SIM->get_param_num(BXPN_USB_DEBUG_START_FRAME)->get() < BX_USB_DEBUG_SOF_TRIGGER)
-      SIM->usb_config_interface(USB_DEBUG_FRAME, 0, 0);
+      SIM->usb_debug_interface(USB_DEBUG_FRAME, 0, 0, 0);
   }
+}
+
+void bx_gui_c::set_usbdbg_bitmap(bool trigger)
+{
+  set_tooltip(BX_GUI_THIS usbdbg_hbar_id, "Trigger the USB debugger");
+  replace_bitmap(usbdbg_hbar_id, trigger ? usbdbg_trigger_bmap_id : usbdbg_bmap_id);
 }
 #endif
 
@@ -757,7 +758,10 @@ bool bx_gui_c::mouse_toggle_check(Bit32u key, bool pressed)
         toggle = (newstate & BX_GUI_MT_CTRL_F10) == BX_GUI_MT_CTRL_F10;
         break;
       case BX_MOUSE_TOGGLE_CTRL_ALT:
-        toggle = (newstate & BX_GUI_MT_CTRL_ALT) == BX_GUI_MT_CTRL_ALT;
+        toggle = (newstate & BX_GUI_MT_CTRL_ALT_G) == BX_GUI_MT_CTRL_ALT;
+        break;
+      case BX_MOUSE_TOGGLE_CTRL_ALT_G:
+        toggle = (newstate & BX_GUI_MT_CTRL_ALT_G) == BX_GUI_MT_CTRL_ALT_G;
         break;
       case BX_MOUSE_TOGGLE_F12:
         toggle = (newstate == BX_GUI_MT_F12);
@@ -1258,8 +1262,10 @@ void bx_gui_c::text_update_common(Bit8u *old_text, Bit8u *new_text,
       blink_mode = (tm_info->blink_flags & BX_TEXT_BLINK_MODE) > 0;
       blink_state = (tm_info->blink_flags & BX_TEXT_BLINK_STATE) > 0;
       if (blink_mode) {
-        if (!blink_state) cursor_visible = 0;
+        if (tm_info->blink_flags & BX_TEXT_BLINK_TOGGLE)
+          forceUpdate = 1;
       }
+      if (!blink_state) cursor_visible = 0;
       if (BX_GUI_THIS charmap_updated) {
         BX_GUI_THIS set_font(tm_info->line_graphics);
         BX_GUI_THIS charmap_updated = 0;
@@ -1449,11 +1455,40 @@ bx_svga_tileinfo_t * bx_gui_c::graphics_tile_info_common(bx_svga_tileinfo_t *inf
   info->snapshot_mode = BX_GUI_THIS snapshot_mode;
   if (BX_GUI_THIS snapshot_mode) {
     info->pitch = BX_GUI_THIS guest_xres * ((BX_GUI_THIS guest_bpp + 1) >> 3);
+    info->bpp = BX_GUI_THIS guest_bpp;
+    info->is_indexed = (info->bpp == 8);
+    info->is_little_endian = 1;
+    switch (info->bpp) {
+      case 15:
+        info->red_shift = 15;
+        info->green_shift = 10;
+        info->blue_shift = 5;
+        info->red_mask = 0x7c00;
+        info->green_mask = 0x03e0;
+        info->blue_mask = 0x001f;
+        break;
+      case 16:
+        info->red_shift = 16;
+        info->green_shift = 11;
+        info->blue_shift = 5;
+        info->red_mask = 0xf800;
+        info->green_mask = 0x07e0;
+        info->blue_mask = 0x001f;
+        break;
+      case 24:
+      case 32:
+        info->red_shift = 24;
+        info->green_shift = 16;
+        info->blue_shift = 8;
+        info->red_mask = 0xff0000;
+        info->green_mask = 0x00ff00;
+        info->blue_mask = 0x0000ff;
+        break;
+    }
+    return info;
   } else {
     return graphics_tile_info(info);
   }
-
-  return info;
 }
 
 #if BX_USE_GUI_CONSOLE
@@ -1579,7 +1614,7 @@ int bx_gui_c::bx_printf(const char *s)
   }
   console.cursor_addr = console.cursor_y * 160 + console.cursor_x * 2;
   console_refresh(0);
-  return strlen(s);
+  return (int)strlen(s);
 }
 
 char* bx_gui_c::bx_gets(char *s, int size)
@@ -1589,6 +1624,7 @@ char* bx_gui_c::bx_gets(char *s, int size)
   int cs_counter = 1, cs_visible = 0;
 
   set_console_edit_mode(1);
+  console.tminfo.blink_flags |= BX_TEXT_BLINK_MODE;
   keystr[1] = 0;
   do {
     handle_events();
@@ -1620,13 +1656,19 @@ char* bx_gui_c::bx_gets(char *s, int size)
       cs_visible ^= 1;
       if (cs_visible) {
         console.tminfo.cs_start &= ~0x20;
+        console.tminfo.blink_flags |= BX_TEXT_BLINK_STATE;
       } else {
         console.tminfo.cs_start |= 0x20;
+        console.tminfo.blink_flags &= ~BX_TEXT_BLINK_STATE;
       }
+      console.tminfo.blink_flags |= BX_TEXT_BLINK_TOGGLE;
       console_refresh(0);
+    } else {
+      console.tminfo.blink_flags &= ~BX_TEXT_BLINK_TOGGLE;
     }
   } while (!done);
   console.tminfo.cs_start |= 0x20;
+  console.tminfo.blink_flags &= ~BX_TEXT_BLINK_MODE;
   set_console_edit_mode(0);
   return s;
 }
@@ -1643,7 +1685,7 @@ bool bx_gui_c::parse_common_gui_options(const char *arg, Bit8u flags)
 {
   if (!strcmp(arg, "nokeyrepeat") && (flags & BX_GUI_OPT_NOKEYREPEAT)) {
     BX_INFO(("disabled host keyboard repeat"));
-    gui_nokeyrepeat = 1;
+    gui_opts.nokeyrepeat = 1;
     return true;
   } else if (!strncmp(arg, "gui_debug", 9)) {
 #if BX_DEBUGGER && (BX_DEBUGGER_GUI || BX_NEW_DEBUGGER_GUI)
@@ -1659,14 +1701,17 @@ bool bx_gui_c::parse_common_gui_options(const char *arg, Bit8u flags)
     } else if (strlen(arg) > 9) {
       return false;
     }
+#if BX_DEBUGGER && BX_DEBUGGER_GUI
+    SIM->message_box("ERROR", "The 'gui_debug' option is deprecated - use command line option '-dbg_gui' instead");
+#endif
 #else
     SIM->message_box("ERROR", "Bochs debugger not available - ignoring 'gui_debug' option");
 #endif
-    return true;
+    return false;
 #if BX_SHOW_IPS
   } else if (!strcmp(arg, "hideIPS") && (flags & BX_GUI_OPT_HIDE_IPS)) {
     BX_INFO(("hide IPS display in status bar"));
-    gui_hide_ips = 1;
+    gui_opts.hide_ips = 1;
     return true;
 #endif
   } else if (!strcmp(arg, "cmdmode") && (flags & BX_GUI_OPT_CMDMODE)) {

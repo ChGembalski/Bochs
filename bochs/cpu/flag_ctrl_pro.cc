@@ -70,10 +70,12 @@ BX_CPU_C::writeEFlags(Bit32u flags, Bit32u changeMask)
   // ID,VIP,VIF,AC,VM,RF,x,NT,IOPL,OF,DF,IF,TF,SF,ZF,x,AF,x,PF,x,CF
   Bit32u supportMask = 0x00037fd5;
 #if BX_CPU_LEVEL >= 4
-  supportMask |= (EFlagsIDMask | EFlagsACMask); // ID/AC
+  if (BX_CPUID_SUPPORT_ISA_EXTENSION(BX_ISA_486))
+    supportMask |= (EFlagsIDMask | EFlagsACMask); // ID/AC
 #endif
 #if BX_CPU_LEVEL >= 5
-  supportMask |= (EFlagsVIPMask | EFlagsVIFMask); // VIP/VIF
+  if (BX_CPUID_SUPPORT_ISA_EXTENSION(BX_ISA_VME))
+    supportMask |= (EFlagsVIPMask | EFlagsVIFMask); // VIP/VIF
 #endif
 
   // Screen out changing of any unsupported bits.

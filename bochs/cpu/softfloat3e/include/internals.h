@@ -38,16 +38,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "primitives.h"
+//#include "primitives.h"
 #include "softfloat_types.h"
 
 struct softfloat_status_t;
 
 /*----------------------------------------------------------------------------
 *----------------------------------------------------------------------------*/
+uint8_t  softfloat_roundToUI8(bool, uint32_t, uint8_t, bool, bool, struct softfloat_status_t *);
+uint16_t softfloat_roundToUI16(bool, uint32_t, uint8_t, bool, struct softfloat_status_t *);
 uint32_t softfloat_roundToUI32(bool, uint64_t, uint8_t, bool, struct softfloat_status_t *);
 uint64_t softfloat_roundToUI64(bool, uint64_t, uint64_t, uint8_t, bool, struct softfloat_status_t *);
 
+int8_t  softfloat_roundToI8(bool, uint32_t, uint8_t, bool, bool, struct softfloat_status_t *);
+int16_t softfloat_roundToI16(bool, uint32_t, uint8_t, bool, struct softfloat_status_t *);
 int32_t softfloat_roundToI32(bool, uint64_t, uint8_t, bool, struct softfloat_status_t *);
 int64_t softfloat_roundToI64(bool, uint64_t, uint64_t, uint8_t, bool, struct softfloat_status_t *);
 
@@ -63,23 +67,23 @@ int64_t softfloat_roundToI64(bool, uint64_t, uint64_t, uint8_t, bool, struct sof
 struct exp8_sig16 { int8_t exp; uint16_t sig; };
 struct exp8_sig16 softfloat_normSubnormalF16Sig(uint16_t);
 
-float16_t softfloat_roundPackToF16(bool, int16_t, uint16_t, struct softfloat_status_t *);
-float16_t softfloat_normRoundPackToF16(bool, int16_t, uint16_t, struct softfloat_status_t *);
+float16 softfloat_roundPackToF16(bool, int16_t, uint16_t, struct softfloat_status_t *);
+float16 softfloat_normRoundPackToF16(bool, int16_t, uint16_t, struct softfloat_status_t *);
 
 /*----------------------------------------------------------------------------
 *----------------------------------------------------------------------------*/
 #define signF32UI(a) ((bool) ((uint32_t) (a)>>31))
 #define expF32UI(a) ((int16_t) ((a)>>23) & 0xFF)
 #define fracF32UI(a) ((a) & 0x007FFFFF)
-#define packToF32UI(sign, exp, sig) (((uint32_t) (sign)<<31) + ((uint32_t) (exp)<<23) + (sig))
+#define packToF32UI(sign, exp, sig) (((uint32_t) (sign)<<31) + ((uint32_t) (exp)<<23) + (uint32_t)(sig))
 
 #define isNaNF32UI(a) (((~(a) & 0x7F800000) == 0) && ((a) & 0x007FFFFF))
 
 struct exp16_sig32 { int16_t exp; uint32_t sig; };
 struct exp16_sig32 softfloat_normSubnormalF32Sig(uint32_t);
 
-float32_t softfloat_roundPackToF32(bool, int16_t, uint32_t, struct softfloat_status_t *);
-float32_t softfloat_normRoundPackToF32(bool, int16_t, uint32_t, struct softfloat_status_t *);
+float32 softfloat_roundPackToF32(bool, int16_t, uint32_t, struct softfloat_status_t *);
+float32 softfloat_normRoundPackToF32(bool, int16_t, uint32_t, struct softfloat_status_t *);
 
 /*----------------------------------------------------------------------------
 *----------------------------------------------------------------------------*/
@@ -93,8 +97,8 @@ float32_t softfloat_normRoundPackToF32(bool, int16_t, uint32_t, struct softfloat
 struct exp16_sig64 { int16_t exp; uint64_t sig; };
 struct exp16_sig64 softfloat_normSubnormalF64Sig(uint64_t);
 
-float64_t softfloat_roundPackToF64(bool, int16_t, uint64_t, struct softfloat_status_t *);
-float64_t softfloat_normRoundPackToF64(bool, int16_t, uint64_t, struct softfloat_status_t *);
+float64 softfloat_roundPackToF64(bool, int16_t, uint64_t, struct softfloat_status_t *);
+float64 softfloat_normRoundPackToF64(bool, int16_t, uint64_t, struct softfloat_status_t *);
 
 /*----------------------------------------------------------------------------
 *----------------------------------------------------------------------------*/

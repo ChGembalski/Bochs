@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2023  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,8 @@
 #if BX_SUPPORT_PCIUSB
 #include "iodev/usb/usb_common.h"
 #endif
+
+#include "bx_debug/debug.h"
 
 #ifdef HAVE_LOCALE_H
 #include <locale.h>
@@ -306,6 +308,7 @@ void print_statistics_tree(bx_param_c *node, int level)
 
 int bxmain(void)
 {
+  bx_init_realtime64_usec();
 #ifdef HAVE_LOCALE_H
   // Initialize locale (for isprint() and other functions)
   setlocale (LC_ALL, "");
@@ -574,6 +577,10 @@ void print_usage(void)
     "  -log filename    specify Bochs log file name\n"
     "  -unlock          unlock Bochs images leftover from previous session\n"
 #if BX_DEBUGGER
+    "  -debugger        start Bochs internal debugger on startup\n"
+    "  -dbg_gui         start Bochs internal debugger with gui on startup\n"
+    "  -dbg_gui:globalini\n"
+    "                   use ini file from BXSHARE path for debugger gui\n"
     "  -rc filename     execute debugger commands stored in file\n"
     "  -dbglog filename specify Bochs internal debugger log file name\n"
 #endif
@@ -717,6 +724,26 @@ int bx_init_main(int argc, char *argv[])
       SIM->get_param_bool(BXPN_UNLOCK_IMAGES)->set(1);
     }
 #if BX_DEBUGGER
+    else if (!strcmp("-debugger", argv[arg]) || !strcmp("-dbg", argv[arg])) {
+      SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_QUICK_START);
+      bx_dbg.debugger_active = true;
+    }
+#if BX_DEBUGGER_GUI
+    else if (!strncmp("-dbg_gui", argv[arg], 8)) {
+      SIM->get_param_enum(BXPN_BOCHS_START)->set(BX_QUICK_START);
+      bx_dbg.debugger_active = true;
+      bx_dbg.debugger_gui = true;
+      if ((strlen(argv[arg]) > 9) && (argv[arg][8] == ':')) {
+        if (!strcmp("globalini", &argv[arg][9])) {
+          bx_dbg.dbg_gui_globalini = true;
+        } else {
+          BX_PANIC(("-dbg_gui option malformed"));
+        }
+      } else if (argv[arg][8] != 0) {
+        BX_PANIC(("-dbg_gui option malformed"));
+      }
+    }
+#endif
     else if (!strcmp("-dbglog", argv[arg])) {
       if (++arg >= argc) BX_PANIC(("-dbglog must be followed by a filename"));
       else SIM->get_param_string(BXPN_DEBUGGER_LOG_FILENAME)->set(argv[arg]);
@@ -999,7 +1026,7 @@ int bx_begin_simulation(int argc, char *argv[])
                  SIM->get_param_num(BXPN_CPU_NTHREADS)->get();
 
 #if BX_SUPPORT_APIC
-  simulate_xapic = (SIM->get_param_enum(BXPN_CPUID_APIC)->get() >= BX_CPUID_SUPPORT_XAPIC);
+  simulate_xapic = true;
 
   // For P6 and Pentium family processors the local APIC ID feild is 4 bits
   // APIC_MAX_ID indicate broadcast so it can't be used as valid APIC ID
@@ -1035,74 +1062,82 @@ int bx_begin_simulation(int argc, char *argv[])
   // Not a great solution but it works. BBD
   SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(SIM->get_param_bool(BXPN_MOUSE_ENABLED)->get());
 
+
 #if BX_DEBUGGER
-  // If using the debugger, it will take control and call
-  // bx_init_hardware() and cpu_loop()
-  bx_dbg_main();
-#else
-#if BX_GDBSTUB
-  // If using gdbstub, it will take control and call
-  // bx_init_hardware() and cpu_loop()
-  if (bx_dbg.gdbstub_enabled) bx_gdbstub_init();
+  if (bx_dbg.debugger_active) {
+    // If using the debugger, it will take control and call
+    // bx_init_hardware() and cpu_loop()
+    bx_dbg_main();
+  }
   else
 #endif
   {
-    if (BX_SMP_PROCESSORS == 1) {
-      // only one processor, run as fast as possible by not messing with
-      // quantums and loops.
-      while (1) {
-        BX_CPU(0)->cpu_loop();
-        if (bx_pc_system.kill_bochs_request)
-          break;
-      }
-      // for one processor, the only reason for cpu_loop to return is
-      // that kill_bochs_request was set by the GUI interface.
+#if BX_GDBSTUB
+    // If using gdbstub, it will take control and call
+    // bx_init_hardware() and cpu_loop()
+    if (bx_dbg.gdbstub_enabled) {
+      bx_gdbstub_init();
     }
+    else
+#endif
+    {
+      if (BX_SMP_PROCESSORS == 1) {
+        // only one processor, run as fast as possible by not messing with
+        // quantums and loops.
+        while (1) {
+          BX_CPU(0)->cpu_loop();
+          if (bx_pc_system.kill_bochs_request)
+            break;
+        }
+        // for one processor, the only reason for cpu_loop to return is
+        // that kill_bochs_request was set by the GUI interface.
+      }
 #if BX_SUPPORT_SMP
-    else {
-      // SMP simulation: do a few instructions on each processor, then switch
-      // to another.  Increasing quantum speeds up overall performance, but
-      // reduces granularity of synchronization between processors.
-      // Current implementation uses dynamic quantum, each processor will
-      // execute exactly one trace then quit the cpu_loop and switch to
-      // the next processor.
+      else {
+        // SMP simulation: do a few instructions on each processor, then switch
+        // to another.  Increasing quantum speeds up overall performance, but
+        // reduces granularity of synchronization between processors.
+        // Current implementation uses dynamic quantum, each processor will
+        // execute exactly one trace then quit the cpu_loop and switch to
+        // the next processor.
 
-      static int quantum = SIM->get_param_num(BXPN_SMP_QUANTUM)->get();
-      Bit32u executed = 0, processor = 0;
-      bool run = true;
+        static int quantum = SIM->get_param_num(BXPN_SMP_QUANTUM)->get();
+        Bit32u executed = 0, processor = 0;
+        bool run = true;
 
-      if (setjmp(BX_CPU_C::jmp_buf_env)) {
-        // can get here only from exception function or VMEXIT
-        BX_CPU(processor)->icount++;
-        run = false;
+        if (setjmp(BX_CPU_C::jmp_buf_env)) {
+          // can get here only from exception function or VMEXIT
+          BX_CPU(processor)->icount++;
+          run = false;
+        }
+        while (1) {
+          // do some instructions in each processor
+          if (run)
+            BX_CPU(processor)->cpu_run_trace();
+          else
+            run = true;
+
+           // see how many instruction it was able to run
+           Bit32u n = (Bit32u)(BX_CPU(processor)->get_icount() - BX_CPU(processor)->icount_last_sync);
+           if (n == 0) n = quantum; // the CPU was halted
+           executed += n;
+
+           if (++processor == BX_SMP_PROCESSORS) {
+             processor = 0;
+             BX_TICKN(executed / BX_SMP_PROCESSORS);
+             executed %= BX_SMP_PROCESSORS;
+           }
+
+           BX_CPU(processor)->icount_last_sync = BX_CPU(processor)->get_icount();
+
+           if (bx_pc_system.kill_bochs_request)
+             break;
+        }
       }
-      while (1) {
-         // do some instructions in each processor
-        if (run)
-          BX_CPU(processor)->cpu_run_trace();
-        else
-          run = true;
-
-         // see how many instruction it was able to run
-         Bit32u n = (Bit32u)(BX_CPU(processor)->get_icount() - BX_CPU(processor)->icount_last_sync);
-         if (n == 0) n = quantum; // the CPU was halted
-         executed += n;
-
-         if (++processor == BX_SMP_PROCESSORS) {
-           processor = 0;
-           BX_TICKN(executed / BX_SMP_PROCESSORS);
-           executed %= BX_SMP_PROCESSORS;
-         }
-
-         BX_CPU(processor)->icount_last_sync = BX_CPU(processor)->get_icount();
-
-         if (bx_pc_system.kill_bochs_request)
-           break;
-      }
-    }
 #endif /* BX_SUPPORT_SMP */
+    }
   }
-#endif /* BX_DEBUGGER == 0 */
+
   BX_INFO(("cpu loop quit, shutting down simulator"));
   bx_atexit();
   return(0);
@@ -1198,69 +1233,8 @@ void bx_init_hardware()
   BX_INFO(("  SMP support: no"));
 #endif
 
-  unsigned cpu_model = SIM->get_param_enum(BXPN_CPU_MODEL)->get();
-  if (! cpu_model) {
-#if BX_CPU_LEVEL >= 5
-    unsigned cpu_level = SIM->get_param_num(BXPN_CPUID_LEVEL)->get();
-    BX_INFO(("  level: %d", cpu_level));
-    BX_INFO(("  APIC support: %s", SIM->get_param_enum(BXPN_CPUID_APIC)->get_selected()));
-#else
-    BX_INFO(("  level: %d", BX_CPU_LEVEL));
-    BX_INFO(("  APIC support: no"));
-#endif
-    BX_INFO(("  FPU support: %s", BX_SUPPORT_FPU?"yes":"no"));
-#if BX_CPU_LEVEL >= 5
-    bool mmx_enabled = SIM->get_param_bool(BXPN_CPUID_MMX)->get();
-    BX_INFO(("  MMX support: %s", mmx_enabled?"yes":"no"));
-    BX_INFO(("  3dnow! support: %s", BX_SUPPORT_3DNOW?"yes":"no"));
-#endif
-#if BX_CPU_LEVEL >= 6
-    bool sep_enabled = SIM->get_param_bool(BXPN_CPUID_SEP)->get();
-    BX_INFO(("  SEP support: %s", sep_enabled?"yes":"no"));
-    BX_INFO(("  SIMD support: %s", SIM->get_param_enum(BXPN_CPUID_SIMD)->get_selected()));
-    bool xsave_enabled = SIM->get_param_bool(BXPN_CPUID_XSAVE)->get();
-    bool xsaveopt_enabled = SIM->get_param_bool(BXPN_CPUID_XSAVEOPT)->get();
-    BX_INFO(("  XSAVE support: %s %s",
-      xsave_enabled?"xsave":"no", xsaveopt_enabled?"xsaveopt":""));
-    bool aes_enabled = SIM->get_param_bool(BXPN_CPUID_AES)->get();
-    BX_INFO(("  AES support: %s", aes_enabled?"yes":"no"));
-    bool sha_enabled = SIM->get_param_bool(BXPN_CPUID_SHA)->get();
-    BX_INFO(("  SHA support: %s", sha_enabled?"yes":"no"));
-    bool movbe_enabled = SIM->get_param_bool(BXPN_CPUID_MOVBE)->get();
-    BX_INFO(("  MOVBE support: %s", movbe_enabled?"yes":"no"));
-    bool adx_enabled = SIM->get_param_bool(BXPN_CPUID_ADX)->get();
-    BX_INFO(("  ADX support: %s", adx_enabled?"yes":"no"));
-#if BX_SUPPORT_X86_64
-    bool x86_64_enabled = SIM->get_param_bool(BXPN_CPUID_X86_64)->get();
-    BX_INFO(("  x86-64 support: %s", x86_64_enabled?"yes":"no"));
-    bool xlarge_enabled = SIM->get_param_bool(BXPN_CPUID_1G_PAGES)->get();
-    BX_INFO(("  1G paging support: %s", xlarge_enabled?"yes":"no"));
-#else
-    BX_INFO(("  x86-64 support: no"));
-#endif
-#if BX_SUPPORT_MONITOR_MWAIT
-    bool mwait_enabled = SIM->get_param_bool(BXPN_CPUID_MWAIT)->get();
-    BX_INFO(("  MWAIT support: %s", mwait_enabled?"yes":"no"));
-#endif
-#if BX_SUPPORT_VMX
-    unsigned vmx_enabled = SIM->get_param_num(BXPN_CPUID_VMX)->get();
-    if (vmx_enabled) {
-      BX_INFO(("  VMX support: %d", vmx_enabled));
-    }
-    else {
-      BX_INFO(("  VMX support: no"));
-    }
-#endif
-#if BX_SUPPORT_SVM
-    bool svm_enabled = SIM->get_param_bool(BXPN_CPUID_SVM)->get();
-    BX_INFO(("  SVM support: %s", svm_enabled?"yes":"no"));
-#endif
-#endif // BX_CPU_LEVEL >= 6
-  }
-  else {
-    BX_INFO(("  Using pre-defined CPU configuration: %s",
+  BX_INFO(("  Using pre-defined CPU configuration: %s",
       SIM->get_param_enum(BXPN_CPU_MODEL)->get_selected()));
-  }
 
   BX_INFO(("Optimization configuration"));
   BX_INFO(("  RepeatSpeedups support: %s", BX_SUPPORT_REPEAT_SPEEDUPS?"yes":"no"));
@@ -1335,7 +1309,7 @@ void bx_init_hardware()
   if (memSize < hostMemSize) hostMemSize = memSize;
 
   bx_param_num_c *bxp_memblock_size = SIM->get_param_num(BXPN_MEM_BLOCK_SIZE);
-  Bit32u memBlockSize = bxp_memblock_size->get64() * 1024;
+  Bit32u memBlockSize = (Bit32u)(bxp_memblock_size->get64() * 1024);
 
   BX_MEM(0)->init_memory(memSize, hostMemSize, memBlockSize);
 
@@ -1413,9 +1387,10 @@ void bx_init_hardware()
 
   BX_DEBUG(("bx_init_hardware is setting signal handlers"));
 // if not using debugger, then we can take control of SIGINT.
-#if !BX_DEBUGGER
-  signal(SIGINT, bx_signal_handler);
+#if BX_DEBUGGER
+  if (! bx_dbg.debugger_active)
 #endif
+    signal(SIGINT, bx_signal_handler);
 
 #if BX_SHOW_IPS
 #if !defined(WIN32)
@@ -1430,9 +1405,23 @@ void bx_init_hardware()
 void bx_init_bx_dbg(void)
 {
 #if BX_DEBUGGER
-  bx_dbg_init_infile();
+  bx_dbg_init();
 #endif
   memset(&bx_dbg, 0, sizeof(bx_debug_t));
+}
+
+void bx_exit(int errcode)
+{
+#if BX_DEBUGGER
+  if (bx_dbg.debugger_active) {
+    bx_dbg_exit(errcode);
+  }
+  else
+#endif
+  {
+    bx_atexit();
+    SIM->quit_sim(errcode);
+  }
 }
 
 int bx_atexit(void)
@@ -1443,25 +1432,21 @@ int bx_atexit(void)
   // so that the user can see any messages left behind on the console.
   SIM->set_display_mode(DISP_MODE_CONFIG);
 
-#if BX_DEBUGGER == 0
-  if (SIM && SIM->get_init_done()) {
-    for (int cpu=0; cpu<BX_SMP_PROCESSORS; cpu++)
-#if BX_SUPPORT_SMP
-      if (BX_CPU(cpu))
-#endif
-        BX_CPU(cpu)->atexit();
-  }
-#endif
+  for (int cpu=0; cpu<BX_SMP_PROCESSORS; cpu++)
+    if (BX_CPU(cpu)) BX_CPU(cpu)->atexit();
 
   BX_MEM(0)->cleanup_memory();
 
   bx_pc_system.exit();
 
   // restore signal handling to defaults
-#if BX_DEBUGGER == 0
-  BX_INFO(("restoring default signal behavior"));
-  signal(SIGINT, SIG_DFL);
+#if BX_DEBUGGER
+  if (! bx_dbg.debugger_active)
 #endif
+  {
+    BX_INFO(("restoring default signal behavior"));
+    signal(SIGINT, SIG_DFL);
+  }
 
 #if BX_SHOW_IPS
 #if !defined(__MINGW32__) && !defined(_MSC_VER)

@@ -35,10 +35,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdint.h>
 #include "internals.h"
+#include "primitives.h"
 #include "softfloat.h"
 #include "specialize.h"
 
-float16_t f16_mulAdd(float16_t a, float16_t b, float16_t c, uint8_t op, struct softfloat_status_t *status)
+float16 f16_mulAdd(float16 a, float16 b, float16 c, uint8_t op, struct softfloat_status_t *status)
 {
     bool signA;
     int8_t expA;

@@ -25,8 +25,6 @@
 #include "config.h"
 #include "osdep.h"
 
-#define BX_DBG_NO_HANDLE 1000
-
 Bit32u crc32(const Bit8u *buf, int len);
 
 #if BX_DEBUGGER
@@ -46,15 +44,6 @@ typedef enum
   bkAtIP,
   bkStepOver
 } BreakpointKind;
-
-typedef enum _show_flags {
-  Flag_call    = 0x1,
-  Flag_ret     = 0x2,
-  Flag_softint = 0x4,
-  Flag_iret    = 0x8,
-  Flag_intsig  = 0x10,
-  Flag_mode    = 0x20,
-} show_flags_t;
 
 extern "C" {
   // Flex defs
@@ -134,6 +123,7 @@ void bx_dbg_unwatch_all(void);
 void bx_dbg_unwatch(bx_phy_address handle);
 void bx_dbg_continue_command(bool expression);
 void bx_dbg_stepN_command(int cpu, Bit32u count);
+int  bx_dbg_run_to_laddr(bx_address addr);
 void bx_dbg_set_auto_disassemble(bool enable);
 void bx_dbg_disassemble_switch_mode(void);
 void bx_dbg_set_disassemble_size(unsigned size);
@@ -206,7 +196,7 @@ void bx_dbg_check_memory_watchpoints(unsigned cpu, bx_phy_address phy, unsigned 
 void bx_dbg_restore_command(const char *param_name, const char *path);
 void bx_dbg_show_param_command(const char *param, bool xml);
 
-void bx_dbg_show_symbolic(void);
+void bx_dbg_show_symbolic(unsigned cpu);
 void bx_dbg_set_symbol_command(const char *symbol, bx_address val);
 const char* bx_dbg_symbolic_address(bx_address context, bx_address eip, bx_address base);
 int bx_dbg_symbol_command(const char* filename, bool global, bx_address offset);
@@ -330,19 +320,6 @@ struct bx_guard_t {
   } async_changes_pending;
 };
 
-// working information for each simulator to update when a guard
-// is reached (found)
-typedef struct bx_guard_found_t {
-  unsigned guard_found;
-  Bit64u icount_max; // stop after completing this many instructions
-  unsigned iaddr_index;
-  Bit32u cs; // cs:eip and linear addr of instruction at guard point
-  bx_address eip;
-  bx_address laddr;
-  // 00 - 16 bit, 01 - 32 bit, 10 - 64-bit, 11 - illegal
-  unsigned code_32_64; // CS seg size at guard point
-} bx_guard_found_t;
-
 struct bx_watchpoint {
   bx_phy_address addr;
   Bit32u len;
@@ -357,24 +334,19 @@ BOCHSAPI_MSVCONLY extern bx_guard_t bx_guard;
 #define IS_CODE_32(code_32_64) ((code_32_64 & 1) != 0)
 #define IS_CODE_64(code_32_64) ((code_32_64 & 2) != 0)
 
-void bx_dbg_init_infile(void);
+void bx_dbg_init(void);
 int  bx_dbg_set_rcfile(const char *rcfile);
 int  bx_dbg_main(void);
 void bx_dbg_user_input_loop(void);
 void bx_dbg_interpret_line(char *cmd);
 
-typedef struct {
+typedef struct bx_dbg_sreg_t {
   Bit16u sel;
   Bit32u des_l, des_h, valid;
 #if BX_SUPPORT_X86_64
   Bit32u dword3;
 #endif
 } bx_dbg_sreg_t;
-
-typedef struct {
-  bx_address base;
-  Bit16u limit;
-} bx_dbg_global_sreg_t;
 
 BOCHSAPI_MSVCONLY void bx_dbg_dma_report(bx_phy_address addr, unsigned len, unsigned what, Bit32u val);
 BOCHSAPI_MSVCONLY void bx_dbg_iac_report(unsigned vector, unsigned irq);

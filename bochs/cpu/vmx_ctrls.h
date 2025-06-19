@@ -172,6 +172,7 @@ public:
 #define VMX_VM_EXEC_CTRL3_IPI_VIRTUALIZATION        (1 <<  4) /* IPI virtualization (not implemented) */
 #define VMX_VM_EXEC_CTRL3_ENABLE_MSRLIST            (1 <<  6) /* MSRLIST */
 #define VMX_VM_EXEC_CTRL3_VIRTUALIZE_IA32_SPEC_CTRL (1 <<  7)
+#define VMX_VM_EXEC_CTRL3_EMULATE_AVX10_VL256       (1 << 13) /* deprecated */
 
    bool LOADIWKEY_VMEXIT() const { return vmexec_ctrls & VMX_VM_EXEC_CTRL3_LOADIWKEY_VMEXIT; }
    bool HLAT_ENABLE() const { return vmexec_ctrls & VMX_VM_EXEC_CTRL3_HLAT_ENABLE; }
@@ -239,6 +240,7 @@ public:
 #define VMX_VMENTRY_CTRL1_LOAD_GUEST_CET_STATE              (1 << 20) /* CET */
 #define VMX_VMENTRY_CTRL1_LOAD_GUEST_LBR_CTRL               (1 << 21) // not implemented
 #define VMX_VMENTRY_CTRL1_LOAD_GUEST_PKRS                   (1 << 22) /* Supervisor-Mode Protection Keys */
+#define VMX_VMENTRY_CTRL1_LOAD_GUEST_IA32_SPEC_CTRL         (1 << 24)
 
    bool LOAD_DBG_CTRLS() const { return vmentry_ctrls & VMX_VMENTRY_CTRL1_LOAD_DBG_CTRLS; }
    bool X86_64_GUEST() const { return vmentry_ctrls & VMX_VMENTRY_CTRL1_X86_64_GUEST; }
@@ -254,6 +256,7 @@ public:
    bool LOAD_GUEST_CET_STATE() const { return vmentry_ctrls & VMX_VMENTRY_CTRL1_LOAD_GUEST_CET_STATE; }
    bool LOAD_GUEST_LBR() const { return vmentry_ctrls & VMX_VMENTRY_CTRL1_LOAD_GUEST_LBR_CTRL; }
    bool LOAD_GUEST_PKRS() const { return vmentry_ctrls & VMX_VMENTRY_CTRL1_LOAD_GUEST_PKRS; }
+   bool LOAD_GUEST_IA32_SPEC_CTRL() const { return vmentry_ctrls & VMX_VMENTRY_CTRL1_LOAD_GUEST_IA32_SPEC_CTRL; }
 
    bool query_any(Bit32u mask) const { return (vmentry_ctrls & mask) != 0; }
    bool query_all(Bit32u mask) const { return (vmentry_ctrls & mask) == mask; }
@@ -326,8 +329,10 @@ private:
 public:
    BxVmexit2Controls(Bit64u ctrls = 0): vmexit2_ctrls(ctrls) {}
 
-#define VMX_VMEXIT_CTRL2_SHADOW_STACK_BUSY_CTRL     (1 <<  2) /* Shadow stack prematurely busy */
+#define VMX_VMEXIT_CTRL2_LOAD_HOST_IA32_SPEC_CTRL   (1 <<  2)
+#define VMX_VMEXIT_CTRL2_SHADOW_STACK_BUSY_CTRL     (1 <<  3) /* Shadow stack prematurely busy */
 
+   bool LOAD_HOST_IA32_SPEC_CTRL() const { return vmexit2_ctrls & VMX_VMEXIT_CTRL2_LOAD_HOST_IA32_SPEC_CTRL; }
    bool SHADOW_STACK_PREMATURELY_BUSY_CTRL() const { return vmexit2_ctrls & VMX_VMEXIT_CTRL2_SHADOW_STACK_BUSY_CTRL; }
 
    bool query_any(Bit64u mask) const { return (vmexit2_ctrls & mask) != 0; }

@@ -8,7 +8,7 @@
 //
 //  Modified by Bruce Ewing
 //
-//  Copyright (C) 2008-2021  The Bochs Project
+//  Copyright (C) 2008-2024  The Bochs Project
 
 #include "bochs.h"
 #include "bx_debug/debug.h"
@@ -106,7 +106,7 @@ HWND hE_I;          // command input window
 HWND hS_S;          // "status" window at bottom
 HWND hE_O;          // debugger text output
 HWND hT;            // param_tree window
-HWND hBTN[5];       // button row
+HWND hBTN[NBUTTONS];       // button row
 HWND hCPUt[BX_MAX_SMP_THREADS_SUPPORTED];   // "tabs" for the individual CPUs
 HFONT CustomFont[4];
 HFONT DefFont;
@@ -128,6 +128,7 @@ WNDPROC wListView;  // all the lists use the same Proc
 // window resizing/docking variables
 unsigned CurXSize = 0;      // last known size of main client window
 unsigned CurYSize = 0;
+int      BytesCurSize = -1; // defaults to 125
 HCURSOR hCursResize;
 HCURSOR hCursDock;
 HCURSOR hCursArrow;
@@ -145,7 +146,7 @@ TVINSERTSTRUCT tvis;    // tree-view generic item
 
 Bit32u SelectedBID;
 
-#define BTN_BASE            1024
+#define BTN_BASE            1024 /* exactly for 6 buttons */
 #define MULTICPU_BTN_BASE   1030
 
 bool UpdInProgress[3];       // flag -- list update incomplete (not OK to paint)
@@ -674,7 +675,7 @@ void InsertListRow(char *ColumnText[], int ColumnCount, int listnum, int LineCou
 
 void SetSizeIOS(int WinSizeX, int WinSizeY)
 {
-    int i, j;
+    int i, j, n;
     TEXTMETRIC tm;
     // calculate the height/width of typical "glyphs" in the font
     HDC hdc = GetDC (hS_S);
@@ -697,22 +698,20 @@ void SetSizeIOS(int WinSizeX, int WinSizeY)
     LstTop = 0;
     if (ShowButtons != FALSE)
     {
-        // position the 5 command buttons
+        // position the 6 command buttons
         LstTop = sY;
-        i = WinSizeX / 5;
+        i = WinSizeX / NBUTTONS;
         SetWindowPos(hBTN[0],0,0,0,i,LstTop,SWP_SHOWWINDOW);
         SetWindowPos(hBTN[1],0,i,0,i,LstTop,SWP_SHOWWINDOW);
         SetWindowPos(hBTN[2],0,i*2,0,i,LstTop,SWP_SHOWWINDOW);
         SetWindowPos(hBTN[3],0,i*3,0,i,LstTop,SWP_SHOWWINDOW);
-        SetWindowPos(hBTN[4],0,i*4,0,WinSizeX - 4*i,LstTop,SWP_SHOWWINDOW);
+        SetWindowPos(hBTN[4],0,i*4,0,i,LstTop,SWP_SHOWWINDOW);
+        SetWindowPos(hBTN[5],0,i*5,0,WinSizeX - 5*i,LstTop,SWP_SHOWWINDOW);
     }
     else
     {
-        ShowWindow(hBTN[0],SW_HIDE);
-        ShowWindow(hBTN[1],SW_HIDE);
-        ShowWindow(hBTN[2],SW_HIDE);
-        ShowWindow(hBTN[3],SW_HIDE);
-        ShowWindow(hBTN[4],SW_HIDE);
+        for (n=0; n < NBUTTONS; n++)
+          ShowWindow(hBTN[n],SW_HIDE);
     }
     if (TotCPUs > 1)
     {
@@ -840,10 +839,12 @@ void RedrawColumns(int listnum)
     else if (listnum == ASM_WND)
     {
         // recalculate # of list items per page for all list windows
+        BytesCurSize = (BytesCurSize > 0) ? ListView_GetColumnWidth(hL[ASM_WND], 1) : 125;
         AsmPgSize = CallWindowProc(wListView,hL[ASM_WND],LVM_GETCOUNTPERPAGE,(WPARAM) 0,(LPARAM) 0);
         if (AsmPgSize != 0)
             ListLineRatio = ListVerticalPix / AsmPgSize;
-        CallWindowProc(wListView, hL[ASM_WND], LVM_SETCOLUMNWIDTH, 0, LVSCW_AUTOSIZE);
+        CallWindowProc(wListView, hL[ASM_WND], LVM_SETCOLUMNWIDTH, 0, LVSCW_AUTOSIZE_USEHEADER);
+        ListView_SetColumnWidth(hL[ASM_WND], 1, BytesCurSize);
     }
     else
     {
@@ -1387,12 +1388,12 @@ LRESULT CALLBACK B_WP(HWND hh,UINT mm,WPARAM ww,LPARAM ll)
                 while (--j > 0)
                 {
                     sprintf (bigbuf, "cpu%d",j);        // number all the CPU buttons
-                    hCPUt[j] = CreateWindowEx(0,"sBtn",bigbuf,WStyle,0,0,1,1,hh,(HMENU)(1030+j),GetModuleHandle(0),0);
+                    hCPUt[j] = CreateWindowEx(0,"sBtn",bigbuf,WStyle,0,0,1,1,hh,(HMENU)(MULTICPU_BTN_BASE+j),GetModuleHandle(0),0);
                 }
                 strcpy (bigbuf, "CPU0");        // Handle CPU0 specially -- it is "selected"
                 hCPUt[0] = CreateWindowEx(0,"sBtn",bigbuf,WStyle,0,0,1,1,hh,(HMENU)MULTICPU_BTN_BASE,GetModuleHandle(0),0);
             }
-            j = 5;
+            j = NBUTTONS;
             while (--j >= 0)
                 hBTN[j] = CreateWindowEx(0,"sBtn",BTxt[j],WStyle,0,0,1,1,hh,(HMENU)(BTN_BASE+j),GetModuleHandle(0),0);
 
@@ -1476,7 +1477,7 @@ LRESULT CALLBACK B_WP(HWND hh,UINT mm,WPARAM ww,LPARAM ll)
         {
             int LW = LOWORD(ww);
 
-            if (LW >= BTN_BASE && LW <= BTN_BASE +4)    // convert button IDs to command IDs
+            if (LW >= BTN_BASE && LW < BTN_BASE + NBUTTONS)    // convert button IDs to command IDs
                 LW = BtnLkup [LW - BTN_BASE];
             else if (LW >= MULTICPU_BTN_BASE && LW < MULTICPU_BTN_BASE + BX_MAX_SMP_THREADS_SUPPORTED)
             {

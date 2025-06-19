@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2023  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -54,7 +54,6 @@ extern "C" {
 #endif
 
 #include "osdep.h"
-#include "bx_debug/debug.h"
 #include "param_names.h"
 #include "logio.h"
 #include "paramtree.h"
@@ -111,10 +110,7 @@ int bx_read_rc(char *rc);
 int bx_write_rc(char *rc);
 void bx_plugin_ctrl();
 void bx_log_options(int individual);
-int bx_atexit();
-#if BX_DEBUGGER
-void bx_dbg_exit(int code);
-#endif
+void bx_exit(int errcode);
 int text_ask(bx_param_c *param);
 
 /******************************************************************/
@@ -205,7 +201,7 @@ int ask_int(const char *prompt, const char *help, Bit64s min, Bit64s max, Bit64s
       bx_printf("Your choice must be an integer between " FMT_LL "d and " FMT_LL "d.\n\n", min, max);
       continue;
     }
-    illegal = (1 != sscanf(buffer, "%ld", &n));
+    illegal = (1 != sscanf(buffer, FMT_LL "d", &n));
     if (illegal || n<min || n>max) {
       bx_printf("Your choice (%s) was not an integer between " FMT_LL "d and " FMT_LL "d.\n\n",
              clean, min, max);
@@ -345,19 +341,18 @@ static const char *startup_options_prompt =
 "3. Log options for all devices\n"
 "4. Log options for individual devices\n"
 "5. CPU options\n"
-"6. CPUID options\n"
-"7. Memory options\n"
-"8. Clock & CMOS options\n"
-"9. PCI options\n"
-"10. Bochs Display & Interface options\n"
-"11. Keyboard & Mouse options\n"
-"12. Disk & Boot options\n"
-"13. Serial / Parallel / USB options\n"
-"14. Network card options\n"
-"15. Sound card options\n"
-"16. Other options\n"
+"6. Memory options\n"
+"7. Clock & CMOS options\n"
+"8. PCI options\n"
+"9. Bochs Display & Interface options\n"
+"10. Keyboard & Mouse options\n"
+"11. Disk & Boot options\n"
+"12. Serial / Parallel / USB options\n"
+"13. Network card options\n"
+"14. Sound card options\n"
+"15. Other options\n"
 #if BX_PLUGINS
-"17. User-defined options\n"
+"16. User-defined options\n"
 #endif
 "\n"
 "Please choose one: [0] ";
@@ -526,19 +521,18 @@ int bx_text_config_interface(int menu)
           case 4: bx_log_options(1); break;
           case 2: do_menu("log"); break;
           case 5: do_menu("cpu"); break;
-          case 6: do_menu("cpuid"); break;
-          case 7: do_menu("memory"); break;
-          case 8: do_menu("clock_cmos"); break;
-          case 9: do_menu("pci"); break;
-          case 10: do_menu("display"); break;
-          case 11: do_menu("keyboard_mouse"); break;
-          case 12: do_menu(BXPN_MENU_DISK); break;
-          case 13: do_menu("ports"); break;
-          case 14: do_menu("network"); break;
-          case 15: do_menu("sound"); break;
-          case 16: do_menu("misc"); break;
+          case 6: do_menu("memory"); break;
+          case 7: do_menu("clock_cmos"); break;
+          case 8: do_menu("pci"); break;
+          case 9: do_menu("display"); break;
+          case 10: do_menu("keyboard_mouse"); break;
+          case 11: do_menu(BXPN_MENU_DISK); break;
+          case 12: do_menu("ports"); break;
+          case 13: do_menu("network"); break;
+          case 14: do_menu("sound"); break;
+          case 15: do_menu("misc"); break;
 #if BX_PLUGINS
-          case 17: do_menu("user"); break;
+          case 16: do_menu("user"); break;
 #endif
           default: BAD_OPTION(menu, choice);
         }
@@ -566,17 +560,11 @@ int bx_text_config_interface(int menu)
             case BX_CI_RT_CONT:
               SIM->update_runtime_options();
               bx_printf("Continuing simulation\n");
-              return 0;
+              return 1;
             case BX_CI_RT_QUIT:
               bx_printf("You chose quit on the configuration interface.\n");
               bx_user_quit = 1;
-#if !BX_DEBUGGER
-              bx_atexit();
-              SIM->quit_sim(1);
-#else
-              bx_dbg_exit(1);
-#endif
-              return -1;
+              return 0;
             default: bx_printf("Menu choice %d not implemented.\n", choice);
           }
         }
@@ -592,15 +580,15 @@ static void bx_print_log_action_table()
 {
   // just try to print all the prefixes first.
   bx_printf("Current log settings:\n");
-  bx_printf("                 Debug      Info       Error       Panic\n");
-  bx_printf("ID    Device     Action     Action     Action      Action\n");
-  bx_printf("----  ---------  ---------  ---------  ----------  ----------\n");
+  bx_printf("                 Debug      Info       Warn       Error      Panic\n");
+  bx_printf("ID    Device     Action     Action     Action     Action     Action\n");
+  bx_printf("----  ---------  ---------  ---------  ---------  ---------  ----------\n");
   int i, j, imax=SIM->get_n_log_modules();
   for (i=0; i<imax; i++) {
     if (strcmp(SIM->get_prefix(i), BX_NULL_PREFIX)) {
-      bx_printf("%3d.  %s ", i, SIM->get_prefix(i));
+      bx_printf("%3d.  %s   ", i, SIM->get_prefix(i));
       for (j=0; j<SIM->get_max_log_level(); j++) {
-        bx_printf("%10s ", SIM->get_action_name(SIM->get_log_action(i, j)));
+        bx_printf("%-10s ", SIM->get_action_name(SIM->get_log_action(i, j)));
       }
       bx_printf("\n");
     }
@@ -623,18 +611,18 @@ void bx_log_options(int individual)
       if (ask_int(log_options_prompt1, "", -1, maxid-1, -1, &id) < 0)
         return;
       if (id < 0) return;
-      bx_printf("Editing log options for the device %s\n", SIM->get_prefix(id));
+      bx_printf("Editing log options for the device %s\n", SIM->get_prefix((int)id));
       for (level=0; level<SIM->get_max_log_level(); level++) {
         char prompt[1024];
-        int default_action = SIM->get_log_action(id, level);
-        snprintf(prompt, 1024, "Enter action for %s event: [%s] ", SIM->get_log_level_name(level), SIM->get_action_name(default_action));
+        int default_action = SIM->get_log_action((int)id, level);
+        sprintf(prompt, "Enter action for %s event: [%s] ", SIM->get_log_level_name(level), SIM->get_action_name(default_action));
         // don't show the no change choice (choices=3)
         if (ask_menu(prompt, "", log_level_n_choices_normal, log_level_choices, default_action, &action)<0)
           return;
         // the exclude expression allows some choices not being available if they
         // don't make any sense.  For example, it would be stupid to ignore a panic.
         if (!BX_LOG_OPTS_EXCLUDE(level, action)) {
-          SIM->set_log_action(id, level, action);
+          SIM->set_log_action((int)id, level, action);
         } else {
           bx_printf("Event type '%s' does not support log action '%s'.\n",
                   SIM->get_log_level_name(level), log_level_choices[action]);
@@ -778,12 +766,12 @@ void bx_plugin_ctrl()
   }
 }
 
-const char *log_action_ask_choices[] = { "cont", "alwayscont", "die", "abort", "debug" };
-int log_action_n_choices = 4 + (BX_DEBUGGER||BX_GDBSTUB?1:0);
-
 BxEvent *
 textconfig_notify_callback(void *unused, BxEvent *event)
 {
+  const char *log_action_ask_choices[] = { "cont", "alwayscont", "die", "abort", "debug" };
+  int log_action_n_choices = 4 + (SIM->debugger_active()||BX_GDBSTUB?1:0);
+
   event->retcode = -1;
   switch (event->type)
   {
@@ -796,22 +784,23 @@ textconfig_notify_callback(void *unused, BxEvent *event)
     case BX_SYNC_EVT_LOG_DLG:
       if (event->u.logmsg.mode == BX_LOG_DLG_ASK) {
         int level = event->u.logmsg.level;
-        fprintf(stderr, "========================================================================\n");
-        fprintf(stderr, "Event type: %s\n", SIM->get_log_level_name (level));
-        fprintf(stderr, "Device: %s\n", event->u.logmsg.prefix);
-        fprintf(stderr, "Message: %s\n\n", event->u.logmsg.msg);
-        fprintf(stderr, "A %s has occurred.  Do you want to:\n", SIM->get_log_level_name (level));
-        fprintf(stderr, "  cont       - continue execution\n");
-        fprintf(stderr, "  alwayscont - continue execution, and don't ask again.\n");
-        fprintf(stderr, "               This affects only %s events from device %s\n", SIM->get_log_level_name (level), event->u.logmsg.prefix);
-        fprintf(stderr, "  die        - stop execution now\n");
-        fprintf(stderr, "  abort      - dump core %s\n",
-                BX_HAVE_ABORT ? "" : "(Disabled)");
+        bx_printf("========================================================================\n");
+        bx_printf("Event type: %s\n", SIM->get_log_level_name (level));
+        bx_printf("Device: %s\n", event->u.logmsg.prefix);
+        bx_printf("Message: %s\n\n", event->u.logmsg.msg);
+        bx_printf("A %s has occurred.  Do you want to:\n", SIM->get_log_level_name (level));
+        bx_printf("  cont       - continue execution\n");
+        bx_printf("  alwayscont - continue execution, and don't ask again.\n");
+        bx_printf("               This affects only %s events from device %s\n", SIM->get_log_level_name (level), event->u.logmsg.prefix);
+        bx_printf("  die        - stop execution now\n");
+        bx_printf("  abort      - dump core %s\n", BX_HAVE_ABORT ? "" : "(Disabled)");
 #if BX_DEBUGGER
-        fprintf(stderr, "  debug      - continue and return to bochs debugger\n");
+        if (SIM->debugger_active()) {
+          bx_printf("  debug      - continue and return to bochs debugger\n");
+        }
 #endif
 #if BX_GDBSTUB
-        fprintf(stderr, "  debug      - hand control to gdb\n");
+        bx_printf("  debug      - hand control to gdb\n");
 #endif
 
         int choice;
@@ -830,7 +819,7 @@ ask:
       }
       return event;
     case BX_SYNC_EVT_ML_MSG_BOX:
-      fprintf(stderr, "%s\n%s\n", event->u.logmsg.prefix, event->u.logmsg.msg);
+      bx_printf("%s\n%s\n", event->u.logmsg.prefix, event->u.logmsg.msg);
       return event;
     case BX_SYNC_EVT_ML_MSG_BOX_KILL:
       // Nothing to do
@@ -842,7 +831,7 @@ ask:
       // them.
       return event;
     default:
-      fprintf(stderr, "textconfig: notify callback called with event type %04x\n", event->type);
+      bx_printf("textconfig: notify callback called with event type %04x\n", event->type);
       return event;
   }
   assert(0); // switch statement should return
@@ -1068,7 +1057,7 @@ int text_ask(bx_param_c *param)
         bx_list_c *list = (bx_list_c*)param;
         bx_param_c *child;
         const char *my_title = list->get_title();
-        int i, imax = strlen(my_title);
+        int i, imax = (int)strlen(my_title);
         for (i=0; i<imax; i++) bx_printf("-");
         bx_printf("\n%s\n", my_title);
         for (i=0; i<imax; i++) bx_printf("-");
@@ -1137,7 +1126,7 @@ static int text_ci_callback(void *userdata, ci_command_t command)
       }
       break;
     case CI_RUNTIME_CONFIG:
-      bx_text_config_interface(BX_CI_RUNTIME);
+      return bx_text_config_interface(BX_CI_RUNTIME);
       break;
     case CI_SHUTDOWN:
       break;

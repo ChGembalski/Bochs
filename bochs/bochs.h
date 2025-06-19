@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2021  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -114,11 +114,18 @@ class bx_list_c;
 #define BX_SHARE_PATH NULL
 #endif
 
+#ifdef WIN32
+#define DIRECTORY_SEPARATOR "\\"
+#else
+#define DIRECTORY_SEPARATOR "/"
+#endif
+
 // prototypes
 int  bx_begin_simulation(int argc, char *argv[]);
 void bx_stop_simulation();
 char *bx_find_bochsrc(void);
 const char *get_builtin_variable(const char *varname);
+void get_bxshare_path(char *path);
 int  bx_parse_cmdline(int arg, int argc, char *argv[]);
 int  bx_read_configuration(const char *rcfile);
 int  bx_write_configuration(const char *rcfile, int overwrite);
@@ -231,10 +238,6 @@ void print_statistics_tree(bx_param_c *node, int level = 0);
         if (bx_guard.report.a20) bx_dbg_a20_report(val)
 #  define BX_DBG_IO_REPORT(port, size, op, val) \
         if (bx_guard.report.io) bx_dbg_io_report(port, size, op, val)
-#  define BX_DBG_LIN_MEMORY_ACCESS(cpu, lin, phy, len, memtype, rw, data) \
-        bx_dbg_lin_memory_access(cpu, lin, phy, len, memtype, rw, data)
-#  define BX_DBG_PHY_MEMORY_ACCESS(cpu, phy, len, memtype, rw, why, data) \
-        bx_dbg_phy_memory_access(cpu, phy, len, memtype, rw, why, data)
 #else  // #if BX_DEBUGGER
 // debugger not compiled in, use empty stubs
 #  define BX_DBG_ASYNC_INTR 1
@@ -243,9 +246,25 @@ void print_statistics_tree(bx_param_c *node, int level = 0);
 #  define BX_DBG_IAC_REPORT(vector, irq)                                        /* empty */
 #  define BX_DBG_A20_REPORT(val)                                                /* empty */
 #  define BX_DBG_IO_REPORT(port, size, op, val)                                 /* empty */
+#endif  // #if BX_DEBUGGER
+
+#if BX_DEBUGGER
+// memory trace callbacks from CPU
+extern void bx_dbg_lin_memory_access(unsigned cpu, bx_address lin, bx_phy_address phy, unsigned len, unsigned memtype, unsigned rw,                Bit8u *data);
+extern void bx_dbg_phy_memory_access(unsigned cpu,                 bx_phy_address phy, unsigned len, unsigned memtype, unsigned rw, unsigned attr, Bit8u *data);
+#endif
+
+#if BX_DEBUGGER
+#  define BX_DBG_LIN_MEMORY_ACCESS(cpu, lin, phy, len, memtype, rw, data) \
+   if (bx_dbg.debugger_active) \
+       bx_dbg_lin_memory_access(cpu, lin, phy, len, memtype, rw, data);
+#  define BX_DBG_PHY_MEMORY_ACCESS(cpu, phy, len, memtype, rw, why, data) \
+   if (bx_dbg.debugger_active) \
+       bx_dbg_phy_memory_access(cpu, phy, len, memtype, rw, why, data);
+#else
 #  define BX_DBG_LIN_MEMORY_ACCESS(cpu, lin, phy, len, memtype, rw, data)       /* empty */
 #  define BX_DBG_PHY_MEMORY_ACCESS(cpu,      phy, len, memtype, rw, attr, data) /* empty */
-#endif  // #if BX_DEBUGGER
+#endif
 
 #include "logio.h"
 
@@ -290,7 +309,12 @@ typedef struct {
   bool interrupts;
   bool exceptions;
   bool print_timestamps;
+  bool debugger_active;
 #if BX_DEBUGGER
+#if BX_DEBUGGER_GUI
+  bool debugger_gui;
+  bool dbg_gui_globalini;
+#endif
   Bit8u magic_break;
 #endif
 #if BX_GDBSTUB
@@ -310,6 +334,7 @@ BOCHSAPI_MSVCONLY void bx_show_ips_handler(void);
 void CDECL bx_signal_handler(int signum);
 BOCHSAPI_MSVCONLY int bx_atexit(void);
 BOCHSAPI extern bx_debug_t bx_dbg;
+BOCHSAPI_MSVCONLY void bx_exit(int errcode);
 
 #if BX_SUPPORT_SMP
   #define BX_SMP_PROCESSORS (bx_cpu_count)

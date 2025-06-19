@@ -36,15 +36,15 @@ This is the top level file for the bochs Users Manual.
 Bochs is a program that simulates a complete Intel x86 computer.
 It includes emulation of the Intel x86 CPU, common I/O devices,
 and a custom BIOS. Bochs can be compiled to emulate many different
-x86 CPUs, from early 386 to the most recent x86-64 Intel and AMD
-processors which may even not reached the market yet.
+x86 CPUs, from early 386 to the most recent (sometimes even pre-market)
+x86-64 Intel and AMD processors.
 
 Bochs interprets every instruction from power-up to reboot, and has
 device models for all of the standard PC peripherals: keyboard, mouse,
 VGA card/monitor, disks, timer chips, network card, etc.  Because Bochs
 simulates the whole PC environment, the software running in the simulation
 "believes" it is running on a real machine.  This approach allows Bochs
-to run a wide variety of software with no modification, include most popular
+to run a wide variety of software with no modification, including most popular
 x86 operating systems: Windows 95/98/NT/2000/XP and Vista, all Linux flavors,
 all BSD flavors, and more.
 </para>
@@ -410,10 +410,8 @@ currently work with.
   <row>
     <entry>3D video card</entry>
     <entry>Yes</entry>
-    <entry>Some of the 3dfx Voodoo graphics adapter models are supported now.
-      The code is still experimental, but at least the Voodoo1 and the Voodoo
-      Banshee PCI are known to work. For more information see
-      <xref linkend="voodoo-notes">.</entry>
+    <entry>Four 3dfx Voodoo graphics adapter models are supported now.
+      For more information see <xref linkend="voodoo-notes">.</entry>
   </row>
   <row>
     <entry>Plug&amp;play monitor</entry>
@@ -1352,7 +1350,6 @@ DLX Linux screenshot.
 <row><entry>bios.bin-1.13.0 </entry> <entry> SeaBIOS ROM image </entry> </row>
 <row><entry>BIOS-bochs-latest </entry> <entry> default ROM BIOS image for Bochs </entry> </row>
 <row><entry>BIOS-bochs-legacy </entry> <entry> ROM BIOS image without 32-bit init code </entry> </row>
-<row><entry>bochsdbg.exe </entry> <entry> the main Bochs executable with debugger enabled </entry> </row>
 <row><entry>bochs.exe </entry> <entry> the main Bochs executable </entry> </row>
 <row><entry>bochs.ico </entry> <entry> the Bochs icon (used for links in start menu and on the desktop) </entry> </row>
 <row><entry>bochsrc-sample.txt </entry> <entry> sample Bochs configuration file </entry> </row>
@@ -1360,12 +1357,15 @@ DLX Linux screenshot.
 <row><entry>bximage.exe </entry> <entry> tool for manipulating disk images </entry> </row>
 <row><entry>CHANGES.txt </entry> <entry> what has changed between versions </entry> </row>
 <row><entry>COPYING.txt </entry> <entry> copy of the LGPL license </entry> </row>
+<row><entry>cpu_configurability.txt </entry> <entry> documentation for all features supported by Bochs CPU models </entry> </row>
+<row><entry>i440fx.bin </entry> <entry> i440fx ROM BIOS image </entry> </row>
 <row><entry>lgban.ico </entry> <entry> a set of Bochs icons in different sizes </entry> </row>
 <row><entry>LICENSE.txt </entry> <entry> Bochs license information </entry> </row>
 <row><entry>logo.ico </entry> <entry> another set of Bochs icons </entry> </row>
 <row><entry>niclist.exe </entry> <entry> tool to find out the network interface name </entry> </row>
 <row><entry>penguin.ico </entry> <entry> icons for the DLX Linux link </entry> </row>
 <row><entry>README.txt </entry> <entry> the read-me file from the source distribution. </entry> </row>
+<row><entry>README-i440fx.txt </entry> <entry> README for i440fx ROM image </entry> </row>
 <row><entry>sb16ctrl.exe </entry> <entry> tool to control sb16 in Bochs </entry> </row>
 <row><entry>sb16ctrl.txt </entry> <entry> examples of sb16ctrl commands </entry> </row>
 <row><entry>SeaBIOS-README.txt </entry> <entry> README for SeaBIOS ROM image </entry> </row>
@@ -1378,11 +1378,12 @@ DLX Linux screenshot.
 <row><entry>vgabios-cirrus.bin-1.13.0 </entry> <entry> SeaVGABIOS ROM image (for Cirrus adapter)</entry> </row>
 <row><entry>VGABIOS-elpin-2.40 </entry> <entry> VGA BIOS image for Bochs </entry> </row>
 <row><entry>VGABIOS-elpin-LICENSE.txt </entry> <entry> license for VGA BIOS </entry> </row>
-<row><entry>VGABIOS-lgpl-latest </entry> <entry> LGPL'd VGA BIOS image for Bochs </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-debug </entry> <entry> LGPL'd VGA BIOS image for Bochs with debug output to the logfile </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-cirrus </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-cirrus-debug </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled and debug output to the logfile </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-banshee </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-bin </entry> <entry> LGPL'd VGA BIOS image for Bochs </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with debug output to the logfile </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-cirrus.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-cirrus-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled and debug output to the logfile </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-banshee.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-banshee-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled and debug output to the logfile </entry> </row>
 <row><entry>VGABIOS-lgpl-README.txt </entry> <entry> readme for the LGPL'd VGA BIOS </entry> </row>
 <row><entry>dlxlinux\ </entry> <entry> directory containing DLX linux sample disk image and configuration files</entry> </row>
 <row><entry>dlxlinux\bochsrc.bxrc </entry> <entry> Bochs configuration file for DLX</entry> </row>
@@ -1552,6 +1553,7 @@ description of each one.
 <row><entry>/usr/share/man/man5/* </entry> <entry> man page for bochsrc </entry> </row>
 <row><entry>/usr/share/doc/bochs/CHANGES</entry> <entry> what has changed between versions </entry> </row>
 <row><entry>/usr/share/doc/bochs/COPYING</entry> <entry> copy of the LGPL license </entry> </row>
+<row><entry>/usr/share/doc/bochs/cpu_configurability.txt </entry> <entry> documentation for all features supported by Bochs CPU models </entry> </row>
 <row><entry>/usr/share/doc/bochs/LICENSE</entry> <entry> Bochs license information </entry> </row>
 <row><entry>/usr/share/doc/bochs/README</entry> <entry> the read-me file from the source distribution. </entry> </row>
 <row><entry>/usr/share/doc/bochs/TODO</entry> <entry> the TODO file from the source distribution. </entry> </row>
@@ -1564,17 +1566,20 @@ description of each one.
 <row><entry>/usr/share/bochs/SeaVGABIOS-README </entry> <entry> README for SeaVGABIOS ROM image </entry> </row>
 <row><entry>/usr/share/bochs/VGABIOS-elpin-2.40 </entry> <entry> VGA BIOS image for Bochs </entry> </row>
 <row><entry>/usr/share/bochs/VGABIOS-elpin-LICENSE </entry> <entry> license for VGA BIOS </entry> </row>
-<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest </entry> <entry> LGPL'd VGA BIOS image for Bochs </entry> </row>
-<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-debug </entry> <entry> LGPL'd VGA BIOS image for Bochs with debug output to the logfile </entry> </row>
-<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-cirrus </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled </entry> </row>
-<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-cirrus-debug </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled and debug output to the logfile </entry> </row>
-<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-banshee </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled </entry> </row>
+<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs </entry> </row>
+<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with debug output to the logfile </entry> </row>
+<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-cirrus.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled </entry> </row>
+<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-cirrus-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled and debug output to the logfile </entry> </row>
+<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-banshee.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled </entry> </row>
+<row><entry>/usr/share/bochs/VGABIOS-lgpl-latest-banshee-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled and debug output to the logfile </entry> </row>
 <row><entry>/usr/share/bochs/VGABIOS-lgpl-README </entry> <entry> readme for the LGPL'd VGA BIOS </entry> </row>
 <row><entry>/usr/share/bochs/bios.bin-1.13.0 </entry> <entry> SeaBIOS ROM image </entry> </row>
+<row><entry>/usr/share/bochs/vgabios-cirrus.bin-1.13.0 </entry> <entry> SeaVGABIOS ROM image (for Cirrus adapter)</entry> </row>
+<row><entry>/usr/share/bochs/i440fx.bin </entry> <entry> i440fx ROM BIOS image </entry> </row>
+<row><entry>/usr/share/bochs/README-i440fx </entry> <entry> README for i440fx ROM image </entry> </row>
 <row><entry>/usr/share/bochs/dlxlinux/ </entry> <entry> directory containing DLX linux sample disk image and configuration files</entry> </row>
 <row><entry>/usr/share/bochs/dlxlinux/readme.txt</entry> <entry> description of DLX linux</entry> </row>
 <row><entry>/usr/share/bochs/keymaps/*.map </entry> <entry>keymap tables for X11, SDL and SDL2 </entry> </row>
-<row><entry>/usr/share/bochs/vgabios-cirrus.bin-1.13.0 </entry> <entry> SeaVGABIOS ROM image (for Cirrus adapter)</entry> </row>
 </tbody>
 </tgroup>
 </table>
@@ -2428,10 +2433,10 @@ SMP, x86_64 support) and the devices options (e.g. PCI, USB, Cirrus graphics).
     <row>
       <entry>--enable-voodoo</entry>
       <entry>no</entry>
-      <entry>Enable experimental 3dfx Voodoo Graphics emulation. The Voodoo1 is
-      known to work, the Voodoo2 support is not yet complete, but almost usable.
-      The Banshee / Voodoo3 support is under construction, but basically usable.
-      For more information see <xref linkend="voodoo-notes">.
+      <entry>Enable 3dfx Voodoo Graphics emulation. The Voodoo1 and Voodoo2 are
+      PCI add-on cards and the Banshee / Voodoo3 are VGA comaptible and can be
+      assigned to PCI or AGP. For more information see
+      <xref linkend="voodoo-notes">.
       </entry>
     </row>
     <row>
@@ -3034,7 +3039,7 @@ the BIOS image (usually called <filename>BIOS-bochs-latest</filename>)
 </listitem>
 <listitem>
 <para>
-the VGA BIOS image (e.g. <filename>VGABIOS-lgpl-latest</filename> or <filename>VGABIOS-elpin-2.40</filename>)
+the VGA BIOS image (e.g. <filename>VGABIOS-lgpl-latest.bin</filename> or <filename>VGABIOS-elpin-2.40</filename>)
 </para>
 </listitem>
 <listitem>
@@ -3081,7 +3086,7 @@ as <link linkend="bochsopt-boot">boot option</link>.
 <para>
 If your keyboard output inside of Bochs is wrong, you may also need a keymap file
 to remap your keyboard layout to the U.S. layout. A set of keymap files for the
-X window system and SDL (Linux port) is distributed with Bochs. If your
+X window system and SDL/SDL2 (Linux port) is distributed with Bochs. If your
 keyboard layout is not supported yet, you can create your own one by following the
 instructions given in <xref linkend="keymap">.
 </para>
@@ -3112,11 +3117,12 @@ system BIOS and VGA BIOS images.
 <row><entry>BIOS-bochs-legacy </entry> <entry> ROM BIOS image without 32-bit init code (for i386 and ISA graphics card emulation) </entry> </row>
 <row><entry>bios.bin-1.13.0 </entry> <entry> SeaBIOS ROM image </entry> </row>
 <row><entry>VGABIOS-elpin-2.40 </entry> <entry> legacy VGA BIOS image for Bochs </entry> </row>
-<row><entry>VGABIOS-lgpl-latest </entry> <entry> LGPL'd VGA BIOS image for Bochs </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-debug </entry> <entry> LGPL'd VGA BIOS image for Bochs with debug output to the logfile </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-cirrus </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-cirrus-debug </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled and debug output to the logfile </entry> </row>
-<row><entry>VGABIOS-lgpl-latest-banshee </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled </entry> </row>
+<row><entry>VGABIOS-lgpl-latest.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with debug output to the logfile </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-cirrus.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-cirrus-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Cirrus extension enabled and debug output to the logfile </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-banshee.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled </entry> </row>
+<row><entry>VGABIOS-lgpl-latest-banshee-debug.bin </entry> <entry> LGPL'd VGA BIOS image for Bochs with the Voodoo Banshee extension enabled and debug output to the logfile </entry> </row>
 <row><entry>vgabios-cirrus.bin-1.13.0 </entry> <entry> SeaVGABIOS ROM image (for Cirrus adapter)</entry> </row>
 </tbody>
 </tgroup>
@@ -3127,7 +3133,7 @@ system BIOS and VGA BIOS images.
 Bochs must be set up to use system and VGA BIOS like this:
 <screen>
   romimage: file=BIOS-bochs-latest, address=0xfffe0000
-  vgaromimage: file=VGABIOS-lgpl-latest
+  vgaromimage: file=VGABIOS-lgpl-latest.bin
 </screen>
 We recommend to use the ROM images distributed with Bochs or one of the latest
 <ulink url="http://www.seabios.org/">SeaBIOS</ulink> images. BIOS images designed
@@ -3307,11 +3313,12 @@ behaviour. These options are supported by more than one display library:
 <screen>
   "cmdmode"     - call a headerbar button handler after pressing F7 (sdl, sdl2, win32, x)
   "fullscreen"  - startup in fullscreen mode (sdl, sdl2)
-  "gui_debug"   - use GTK debugger GUI (sdl, x) / Win32 debugger GUI (sdl, sdl2, win32)
   "hideIPS"     - disable IPS output in status bar (rfb, sdl, sdl2, term, vncsrv, win32, wx, x)
   "nokeyrepeat" - turn off host keyboard repeat (sdl, sdl2, win32, x)
   "no_gui_console" - use system console instead of builtin GUI console (rfb, sdl, sdl2, vncsrv, x)
   "timeout"     - time (in seconds) to wait for client (rfb, vncsrv)
+  "gui_debug"   - This option is DEPRECATED, use command line option '-dbg_gui'
+                  instead. It also supports the 'globalini' extension
 </screen>
 See the examples below for other currently supported options.
 <screen>
@@ -3404,9 +3411,23 @@ This defines the parameters of the cpu inside Bochs:
 <para><command>model</command></para>
 <para>
 Selects CPU configuration to emulate from pre-defined list of all
-supported configurations. When this option is used and the value
-is different from 'bx_generic', the parameters of the <link linkend="bochsopt-cpuid">CPUID</link>
-option have no effect anymore. See the <xref linkend="cpu-models"> for supported values.
+supported configurations. See the <xref linkend="cpu-models"> for supported values.
+</para>
+<para><command>add_features</command></para>
+<para>
+Enable one of more CPU feature in the CPU configuration selected by MODEL.
+Could be useful for testing CPU with newer imaginary configurations by
+adding a specific feature or set of features to existing MODEL. The list 
+of features to add supplied through space or comma separated string.
+</para>
+<para><command>exclude_features</command></para>
+<para>
+Disable one of more CPU feature from CPU configuration selected by MODEL.
+Could be useful for testing CPU without a specific feature or set of
+features. When experiening issues booting a modern OS it could be useful
+to disable CPU features(s) to see if they responsible for the failures.
+The list of features to exclude supplied through space or comma separated
+string.
 </para>
 <para><command>count</command></para>
 <para>
@@ -3437,6 +3458,12 @@ to work around WinNT installation and boot issues.
 <para>
 When this option is enabled MWAIT will not put the CPU into a sleep state.
 This option exists only if Bochs compiled with <option>--enable-monitor-mwait</option>.
+</para>
+<para><command>brand_string</command></para>
+<para>
+Set the CPUID brand string returned by CPUID(0x80000002 .. 0x80000004).
+This should be at most a forty-eight-character ASCII string.
+Keep it empty to use original CPUID brand string.
 </para>
 <para><command>msrs</command></para>
 <para>
@@ -3489,180 +3516,6 @@ speed.</para></footnote>.
 </table>
 </section>
 
-<section id="bochsopt-cpuid"><title>cpuid</title>
-<para>
-Example:
-<screen>
-  cpuid: level=6, mmx=1, sep=1, sse=sse4_2, apic=xapic, aes=1, movbe=1, xsave=1
-</screen>
-This defines features and functionality supported by Bochs emulated CPU. These settings
-are only valid and configurable if the <link linkend="cpu-models">cpu model</link> is
-set to the default value 'bx_generic'.
-</para>
-<para><command>level</command></para>
-<para>
-Set emulated CPU level information returned by CPUID. Default value is
-determined by configure option <link linkend="configure-enable-cpu-level">--enable-cpu-level</link>.
-Currently supported values are 5 (for Pentium and similar processors) and 6 (for P6 and
-later processors).
-</para>
-<para><command>family</command></para>
-<para>
-Set family information returned by CPUID. Default family value determined
-by configure option <link linkend="configure-enable-cpu-level">--enable-cpu-level</link>.
-</para>
-<para><command>model</command></para>
-<para>
-Set model information returned by CPUID. Default model value is 3.
-</para>
-<para><command>stepping</command></para>
-<para>
-Set stepping information returned by CPUID. Default stepping value is 3.
-</para>
-<para><command>vendor_string</command></para>
-<para>
-Set the CPUID vendor string returned by CPUID(0x0).  This should be a
-twelve-character ASCII string.
-</para>
-<para><command>brand_string</command></para>
-<para>
-Set the CPUID brand string returned by CPUID(0x80000002 .. 0x80000004]).  This should be
-at most a forty-eight-character ASCII string.
-</para>
-<para><command>mmx</command></para>
-<para>
-Select MMX instruction set support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 5.
-</para>
-<para><command>apic</command></para>
-<para>
-Select APIC configuration (LEGACY/XAPIC/XAPIC_EXT/X2APIC).
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 5.
-</para>
-<para><command>sep</command></para>
-<para>
-Select SYSENTER/SYSEXIT instruction set support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>simd</command></para>
-<para>
-Select SIMD instructions support.
-Any of NONE/SSE/SSE2/SSE3/SSSE3/SSE4_1/SSE4_2/AVX/AVX2/AVX512 could be selected.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-The AVX choices exists only if Bochs compiled with --enable-avx option.
-</para>
-<para><command>sse4a</command></para>
-<para>
-Select AMD SSE4A instructions support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>misaligned_sse</command></para>
-<para>
-Select AMD Misaligned SSE mode support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>aes</command></para>
-<para>
-Select AES instruction set support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>sha</command></para>
-<para>
-Select SHA instruction set support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>movbe</command></para>
-<para>
-Select MOVBE Intel(R) Atom instruction support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>adx</command></para>
-<para>
-Select ADCX/ADOX instructions support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>xsave</command></para>
-<para>
-Select XSAVE extensions support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>xsaveopt</command></para>
-<para>
-Select XSAVEOPT instruction support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>avx_f16c</command></para>
-<para>
-Select AVX float16 convert instructions support.
-This option exists only if Bochs compiled with <option>--enable-avx</option> option.
-</para>
-<para><command>avx_fma</command></para>
-<para>
-Select AVX fused multiply add (FMA) instructions support.
-This option exists only if Bochs compiled with <option>--enable-avx</option> option.
-</para>
-<para><command>bmi</command></para>
-<para>
-Select BMI1/BMI2 instructions support.
-This option exists only if Bochs compiled with <option>--enable-avx</option> option.
-</para>
-<para><command>fma4</command></para>
-<para>
-Select AMD four operand FMA instructions support.
-This option exists only if Bochs compiled with <option>--enable-avx</option> option.
-</para>
-<para><command>xop</command></para>
-<para>
-Select AMD XOP instructions support.
-This option exists only if Bochs compiled with <option>--enable-avx</option> option.
-</para>
-<para><command>tbm</command></para>
-<para>
-Select AMD TBM instructions support.
-This option exists only if Bochs compiled with <option>--enable-avx</option> option.
-</para>
-<para><command>x86_64</command></para>
-<para>
-Enable x86-64 and long mode support.
-This option exists only if Bochs compiled with x86-64 support.
-</para>
-<para><command>1g_pages</command></para>
-<para>
-Enable 1G page size support in long mode.
-This option exists only if Bochs compiled with x86-64 support.
-</para>
-<para><command>pcid</command></para>
-<para>
-Enable Process-Context Identifiers (PCID) support in long mode.
-This option exists only if Bochs compiled with x86-64 support.
-</para>
-<para><command>smep</command></para>
-<para>
-Enable Supervisor Mode Execution Protection (SMEP) support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>smap</command></para>
-<para>
-Enable Supervisor Mode Access Prevention (SMAP) support.
-This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-</para>
-<para><command>mwait</command></para>
-<para>
-Select MONITOR/MWAIT instructions support.
-This option exists only if Bochs compiled with <option>--enable-monitor-mwait</option>.
-</para>
-<para><command>vmx</command></para>
-<para>
-Select VMX extensions emulation support.
-This option exists only if Bochs compiled with <option>--enable-vmx</option> option.
-</para>
-<para><command>svm</command></para>
-<para>
-Select AMD SVM (Secure Virtual Machine) extensions emulation support.
-This option exists only if Bochs compiled with <option>--enable-svm</option> option.
-</para>
-</section>
-
 <section id="bochsopt-memory"><title>memory</title>
 <para>
 Examples:
@@ -3710,6 +3563,7 @@ Examples:
 <screen>
   romimage: file=bios/BIOS-bochs-latest, options=fastboot
   romimage: file=$BXSHARE/BIOS-bochs-legacy
+  romimage: file=$BXSHARE/i440fx.bin, flash_data=escd.bin
   romimage: file=asus_p6np5.bin, flash_data=escd.bin
   romimage: file=mybios.bin, address=0xfff80000
 </screen>
@@ -3743,7 +3597,7 @@ startup if existing and saved on exit if modified. The Bochs BIOS doesn't
 this feature yet.
 </para>
 <note><para>
-  If you use the BIOS-bochs-legacy romimage BIOS option, you cannot use a PCI
+  If you use a SeaBIOS binary in romimage BIOS option, you must use a PCI
   enabled VGA ROM BIOS.
 </para></note>
 </section>
@@ -3753,8 +3607,8 @@ this feature yet.
 Examples:
 <screen>
   vgaromimage: file=bios/VGABIOS-elpin-2.40
-  vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
-  vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest-cirrus
+  vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest.bin
+  vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest-cirrus.bin
 </screen>
 This tells Bochs what VGA ROM BIOS to load (at 0xC0000).
 </para>
@@ -3762,8 +3616,7 @@ This tells Bochs what VGA ROM BIOS to load (at 0xC0000).
 are provided in the source and binary distributions.</para>
 <note><para>
   Please check with the <link linkend="bochsopt-vga">vga option</link> to decide
-  what VGA BIOS to use. If you use the BIOS-bochs-legacy romimage BIOS option,
-  you cannot use a PCI enabled VGA ROM BIOS.
+  what VGA BIOS to use.
 </para></note>
 </section>
 
@@ -3806,11 +3659,11 @@ This defines parameters related to the VGA display
 <para>
 The 'extension' option can be used to specify the VGA display extension.
 With the value 'none' you can use standard VGA with no extension. Other supported
-values are 'vbe' for Bochs VBE (needs <filename>VGABIOS-lgpl-latest</filename> as
+values are 'vbe' for Bochs VBE (needs <filename>VGABIOS-lgpl-latest.bin</filename> as
 VGA BIOS, see <link linkend="bochsopt-vgaromimage">vgaromimage option</link>),
-'cirrus' for Cirrus SVGA support (needs <filename>VGABIOS-lgpl-latest-cirrus</filename>
+'cirrus' for Cirrus SVGA support (needs <filename>VGABIOS-lgpl-latest-cirrus.bin</filename>
 as VGA BIOS) and 'voodoo' for Voodoo Graphics support (needs
-<filename>VGABIOS-lgpl-latest-banshee</filename> as VGA BIOS / see
+<filename>VGABIOS-lgpl-latest-banshee.bin</filename> as VGA BIOS / see
 <xref linkend="voodoo-notes"> for more information).
 </para>
 <para>
@@ -3831,8 +3684,13 @@ value is 1.
 <para>
 The parameter 'ddc' defines the behaviour of the DDC emulation that returns
 the monitor EDID data. By default, the 'builtin' values for 'Bochs Screen'
-are used. Other choices are 'disabled' (no DDC emulation) and 'file'
+are used. Other choices are 'builtin_gui' (limit builtin values based on
+gui capabilities), 'disabled' (no DDC emulation) and 'file'
 (read monitor EDID from file / path name separated with a colon).
+</para>
+<para>
+With the 'vbe_memsize' parameter the size of the memory for the Bochs VBE
+extension can be defined. Valid values are 4, 8, 16 and 32 MB (default is 16 MB).
 </para>
 </section>
 
@@ -3843,12 +3701,10 @@ Example:
 <screen>
   voodoo: enabled=1, model=voodoo1
 </screen>
-This defines the Voodoo Graphics emulation (experimental). Currently
-supported models are 'voodoo1', 'voodoo2', 'banshee' and 'voodoo3'.
-The Voodoo2 support is not yet complete, but almost usable. The Banshee /
-Voodoo3 support is under construction, but basically usable. The 2D/3D cards
-require the vga extension option to be set to 'voodoo'. If the i440BX PCI
-chipset is selected, they can be assigned to AGP (slot #5). The GUI screen
+This defines the Voodoo Graphics emulation. Currently supported models are
+'voodoo1', 'voodoo2', 'banshee' and 'voodoo3'. The 2D/3D cards require the
+vga extension option to be set to 'voodoo'. If the i440BX PCI chipset is
+selected, they can be assigned to AGP (slot #5). The GUI screen
 update timing for all models is controlled by the related
 'vga' options. See <xref linkend="voodoo-notes"> for more information.
 </para>
@@ -3860,6 +3716,7 @@ Examples:
 <screen>
   keyboard: type=mf, serial_delay=150, paste_delay=100000
   keyboard: keymap=gui/keymaps/x11-pc-de.map
+  keyboard: keymap=de
   keyboard: user_shortcut=ctrl-alt-del
 </screen>
 This defines parameters related to the emulated keyboard.
@@ -3893,11 +3750,21 @@ delay until it stops losing characters.
 <para>
 This enables a remap of a physical localized keyboard to a
 virtualized us keyboard, as the PC architecture expects.
+Using a language specifier instead of a file name is also supported.
+A keymap is also required by the paste feature to convert ASCII to BX_KEY values.
 </para>
 <para>
-Keyboard mapping is available for the display libraries x, sdl (Linux port) and
-wx (GTK port). For SDL you have to use keymaps designed for SDL, the wxWidgets GUI
+Keyboard mapping is available for the display libraries x, sdl / sdl2 (Linux port)
+and wx (GTK port). For SDL you have to use keymaps designed for SDL, the wxWidgets GUI
 uses the keymaps for X11.
+</para>
+<para>
+When using a 2 character language specifier the keymap path and file name are
+built from the BXSHARE path, the prefix required by the selected display library
+and the language specifier. If the sdl2 gui is selected and the keymap is set to
+"de", the keymap file name is set to <filename>$BXSHARE/keymaps/sdl2-pc-de.map</filename>.
+The BXSHARE variable is read from the system or Bochs binary and the directory
+separator depends on host OS.
 </para>
 <para><command>user_shortcut</command></para>
 <para>
@@ -3952,8 +3819,8 @@ and the 'toggle' option below).
 <para>
 The default method to toggle the mouse capture at runtime is to press the
 CTRL key and the middle mouse button ('ctrl+mbutton'). This option allows
-to change the method to 'ctrl+f10' (like DOSBox) or 'ctrl+alt' (like QEMU)
-or 'f12'.
+to change the method to 'ctrl+f10' (like DOSBox), 'ctrl+alt' (legacy QEMU),
+'ctrl+alt+g' (QEMU current) or 'f12'.
 </para>
 </section>
 
@@ -4304,12 +4171,13 @@ Examples:
 <screen>
   boot: floppy
   boot: cdrom, disk
-  boot: network, disk
+  boot: network, usb, disk
   boot: cdrom, floppy, disk
 </screen>
 This defines the boot sequence. You can specify up to 3 boot drives,
 which can be 'floppy', 'disk', 'cdrom' or 'network' (boot ROM).
 Legacy 'a' and 'c' are also supported.
+The new boot choice 'usb' is only supported by the i440fx.bin BIOS.
 </para>
 </section>
 
@@ -4362,33 +4230,35 @@ Default is %t%e%d
 </para>
 </section>
 
-<section id="bochsopt-debug-info-error-panic"><title>debug/info/error/panic</title>
+<section id="bochsopt-logevents"><title>debug/info/warn/error/panic</title>
 <para>
 Examples:
 <screen>
   debug: action=ignore, pci=report
   info: action=report
+  warn: action=warn
   error: action=report
   panic: action=ask
 </screen>
 
 During simulation, Bochs encounters certain events that the user might want to
-know about.  These events are divided into four levels of importance: debug,
-info, error, and panic.  Debug messages are usually only useful when writing
+know about.  These events are divided into five levels of importance: debug,
+info, warn, error, and panic.  Debug messages are usually only useful when writing
 Bochs code or when trying to locate a problem.  There may be thousands of debug
 messages per second, so be careful before turning them on.  Info messages tell
-about interesting events that don't happen that frequently.  Bochs produces an
-"error" message when it finds a condition that really shouldn't happen,  but
-doesn't endanger the simulation.  An example of an error might be if the
-emulated software produces an illegal disk command.  Panic messages mean that
-Bochs cannot simulate correctly and should probably shut down.
-A panic can be a configuration problem (like a misspelled bochsrc line) or an
-emulation problem (like an unsupported video mode).
+about interesting events that don't happen that frequently. Warn events can be
+used to show important messages to the user. By default it brings up a
+message box. Bochs produces an "error" message when it finds a condition that
+really shouldn't happen,  but doesn't endanger the simulation.  An example of
+an error might be if the emulated software produces an illegal disk command.
+Panic messages mean that Bochs cannot simulate correctly and should probably
+shut down. A panic can be a configuration problem (like a misspelled bochsrc
+line) or an emulation problem (like an unsupported video mode).
 </para>
 
 <para>
-The debug, info, error, and panic lines in the bochsrc control what Bochs will
-do when it encounters each type of event.  The allowed actions are: fatal
+The debug, info, warn, error, and panic lines in the bochsrc control what Bochs
+will do when it encounters each type of event.  The allowed actions are: fatal
 (terminate Bochs), ask (ask the user what to do), warn (show dialog with message
 and continue), report (print information to the console or log file), or ignore
 (do nothing). The recommended settings are listed in the sample above.
@@ -5007,7 +4877,7 @@ as well as other checks.
 <para>
 Example:
 <screen>
-  usb_ohci: enabled=1, port1=printer:printdata.bin
+  usb_ohci: enabled=1, port1=printer, options1=file:printdata.bin
 </screen>
 This option controls the presence of the USB OHCI host controller with a
 2-port hub. The port<replaceable>X</replaceable> parameter accepts the same device types with the same
@@ -5046,9 +4916,9 @@ companion, and the last pair to the third companion. Currently, there is no way 
 Example:
 <screen>
   usb_xhci: enabled=1, model="uPD720202", n_ports=4
-  usb_xhci: port1="disk:usbdisk.img"                   # defaults to super-speed
-  usb_xhci: port3="disk:usbdisk.img"                   # defaults to high-speed
-  usb_xhci: port1="speed:super, disk:usbdisk.img"      # defaults to the BBB protocol
+  usb_xhci: port1="disk", options1="path:usbdisk.img"  # defaults to super-speed
+  usb_xhci: port3="disk", options3="path:usbdisk.img"  # defaults to high-speed
+  usb_xhci: port1="disk", options1="speed:super, path:usbdisk.img" # defaults to the BBB protocol
   usb_xhci: port1=disk, options1="speed:super, path:usbdisk.img, proto:uasp"
   usb_xhci: port1=disk, options1="speed:super, path:usbdisk.img, proto:bbb"
   usb_xhci: port1=cdrom, options1="speed:super, path:bootcd.iso, proto:uasp"
@@ -5510,7 +5380,7 @@ steps are done before the simulation is running.
 <para>
 During simulation, Bochs usually generates more or less log output. By default, it
 is sent to the console, otherwise to the specified <link linkend="bochsopt-log">log file</link>.
-The amount of output can be controlled with the <link linkend="bochsopt-debug-info-error-panic">log options</link>
+The amount of output can be controlled with the <link linkend="bochsopt-logevents">log options</link>
 in bochsrc, the start menu and the runtime configuration.
 </para>
 <para>
@@ -5554,6 +5424,18 @@ For other arguments, see section <link linkend="bochsrc">bochsrc</link>.
 <row>
   <entry>-log <replaceable>filename</replaceable></entry>
   <entry>specify Bochs log file</entry>
+</row>
+<row>
+  <entry>-dbg</entry>
+  <entry>start Bochs internal debugger on startup</entry>
+</row>
+<row>
+  <entry>-dbg_gui</entry>
+  <entry>start Bochs internal debugger with gui on startup</entry>
+</row>
+<row>
+  <entry>-dbg_gui:globalini</entry>
+  <entry>start Bochs internal debugger gui using ini file from BXSHARE path</entry>
 </row>
 <row>
   <entry>-dbglog <replaceable>filename</replaceable></entry>
@@ -5936,9 +5818,14 @@ features enabled at compile time (3rd column).
 </thead>
 <tbody>
   <row>
-    <entry>bx_generic</entry>
-    <entry>Default Bochs CPU configured with <link linkend="bochsopt-cpuid">CPUID</link> option</entry>
-    <entry>cpu level 5</entry>
+    <entry>i386</entry>
+    <entry>Intel 386SX</entry>
+    <entry>cpu level 3</entry>
+  </row>
+  <row>
+    <entry>i486dx4</entry>
+    <entry>Intel 486DX4</entry>
+    <entry>cpu level 4</entry>
   </row>
   <row>
     <entry>pentium</entry>
@@ -5954,6 +5841,11 @@ features enabled at compile time (3rd column).
     <entry>amd_k6_2_chomper</entry>
     <entry>AMD-K6(tm) 3D processor (Chomper)</entry>
     <entry>cpu level 5</entry>
+  </row>
+  <row>
+    <entry>athlon_xp</entry>
+    <entry>AMD Athlon(tm) XP Processor</entry>
+    <entry>cpu level 6</entry>
   </row>
   <row>
     <entry>p2_klamath</entry>
@@ -6073,6 +5965,16 @@ features enabled at compile time (3rd column).
   <row>
     <entry>tigerlake</entry>
     <entry>11th Gen Intel(R) Core(TM) i5-1135G7 (TigerLake)</entry>
+    <entry>cpu level 6, x86-64, avx</entry>
+  </row>
+  <row>
+    <entry>sapphire_rapids</entry>
+    <entry>Intel(R) Xeon(R) w9-3475X (Sappire Rapids)</entry>
+    <entry>cpu level 6, x86-64, avx</entry>
+  </row>
+  <row>
+    <entry>arrow_lake</entry>
+    <entry>15th Gen Intel(R) Core(TM) Ultra 5 245K (ArrowLake)</entry>
     <entry>cpu level 6, x86-64, avx</entry>
   </row>
 </tbody>
@@ -6804,7 +6706,7 @@ The USB emulation has been tested on numerous Guests. You can find these results
 </para>
 <para>
 <screen>
-  usb_debug: type=none|uhci|ohci|ehci|xhci, reset, enable, start_frame, doorbell, event, non_exist
+  usb_debug: type=none|uhci|ohci|ehci|xhci, reset=1, enable=1, start_frame=1, doorbell=1, event=1, data=1, non_exist=1
 </screen>
 </para>
 <para>
@@ -6843,6 +6745,9 @@ Only one type may be specified. You can only debug one controller type at a time
                 -- When the UHCI controller is to execute a single TD, the debugger will halt the 
                    emulation and display the debugger. 
   'event'       -- When the xHCI controller posts an event on the event ring, the debugger will 
+                   halt the emulation and display the debugger. This is only used in the xHCI controller
+                   type. Other types will ignore this trigger.
+  'data'        -- When the xHCI controller posts an event on the data ring, the debugger will 
                    halt the emulation and display the debugger. This is only used in the xHCI controller
                    type. Other types will ignore this trigger.
   'non_exist'   -- When the guest writes to a non-existent port, the debugger will halt the emulation 
@@ -6982,7 +6887,7 @@ bit will be clear, so the next TD will be processed anyway.
     </para>
     <para>
       You can tell Bochs what to do in case of a panic, by re-configuring the
-      <link linkend="bochsopt-debug-info-error-panic">panic option</link>. If
+      <link linkend="bochsopt-logevents">panic option</link>. If
       you change the action to "ask", Bochs reports what has happened and asks
       you what to do. The appearance of the "ask" feature depends on the display
       library used and the platform. Some display libraries don't support it at all.
@@ -7018,7 +6923,7 @@ bit will be clear, so the next TD will be processed anyway.
     <para>
       If you are using a program written for DOS which seems to use the text-mode but
       doesn't display the text properly, you can try the other VGA BIOS, either
-      <filename>VGABIOS-lgpl-latest</filename> or <filename>VGABIOS-elpin-2.40</filename>,
+      <filename>VGABIOS-lgpl-latest.bin</filename> or <filename>VGABIOS-elpin-2.40</filename>,
       see the <link linkend="bochsopt-vgaromimage">vgaromimage option</link>.
     </para>
 
@@ -7319,6 +7224,12 @@ From here, you may use the following commands:
 
   s     all [count]           for SMP simulation, execute count instructions on all cpus
   step  all [count]
+
+  n                           execute instruction stepping over subroutines
+  next
+  p
+
+  rla   addr                  continue executing until the linear address 'addr' is reached
 
   Ctrl-C                      stop execution, and return to command line prompt
   Ctrl-D                      if at empty line on command line, exit
@@ -9976,7 +9887,7 @@ Bochs VBE Display Drivers for Windows NT/2000
   <screen>
   # Enable CL-GD5446 PCI
   vga: extension=cirrus
-  vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest-cirrus
+  vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest-cirrus.bin
   pci: enabled=1, chipset=i440fx, slot1=cirrus
   </screen>
 
@@ -10006,7 +9917,7 @@ Bochs VBE Display Drivers for Windows NT/2000
   Banshee compatible device with its VGA interface disabled is not
   implemented yet. For both Banshee and Voodoo3 there is now a specific version
   of the LGPL'd VGABIOS with Voodoo Banshee specific code called
-  <filename>VGABIOS-lgpl-latest-banshee</filename>. The binary file is compiled
+  <filename>VGABIOS-lgpl-latest-banshee.bin</filename>. The binary file is compiled
   for the Banshee PCI model, but Bochs modifies the VGABIOS data after loading
   to support the Voodoo3 and AGP models properly.
   </para>
@@ -10014,7 +9925,7 @@ Bochs VBE Display Drivers for Windows NT/2000
   These bochsrc settings should be used for Voodoo Banshee PCI:
   <screen>
   vga: extension=voodoo
-  vgaromimage: file=VGABIOS-lgpl-latest-banshee
+  vgaromimage: file=VGABIOS-lgpl-latest-banshee.bin
   voodoo: model=banshee
   </screen>
   </para>
@@ -11313,7 +11224,7 @@ cpu: count=1, ips=50000000, reset_on_triple_fault=1, ignore_bad_msrs=1
 cpu: cpuid_limit_winnt=0
 clock: sync=realtime, time0=local
 memory: guest=512, host=512
-vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus.bin
 vga: extension=cirrus, update_freq=5
 pci: enabled=1, chipset=i440fx, slot1=cirrus
 </screen>
@@ -11334,7 +11245,7 @@ cpu: count=1, ips=55000000, reset_on_triple_fault=1, ignore_bad_msrs=1
 cpu: cpuid_limit_winnt=0
 clock: sync=realtime, time0=local
 memory: guest=512, host=512
-vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus.bin
 vga: extension=cirrus, update_freq=5
 pci: enabled=1, chipset=i440fx, slot1=cirrus
 </screen>
@@ -11405,7 +11316,7 @@ cpu: count=1, ips=75000000, reset_on_triple_fault=1, ignore_bad_msrs=1
 cpu: cpuid_limit_winnt=0
 clock: sync=realtime, time0=local
 memory: guest=512, host=512
-vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus.bin
 vga: extension=cirrus, update_freq=5
 pci: enabled=1, chipset=i440fx, slot1=cirrus
 </screen>
@@ -11438,7 +11349,7 @@ cpu: count=1, ips=100000000, reset_on_triple_fault=1, ignore_bad_msrs=1
 cpu: cpuid_limit_winnt=0
 clock: sync=realtime, time0=local
 memory: guest=1024, host=1024
-vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus.bin
 vga: extension=cirrus, update_freq=5
 pci: enabled=1, chipset=i440fx, slot1=cirrus
 </screen>
@@ -11463,7 +11374,7 @@ cpu: count=1, ips=150000000, reset_on_triple_fault=1, ignore_bad_msrs=1
 cpu: cpuid_limit_winnt=0
 clock: sync=realtime, time0=local
 memory: guest=2048, host=2048
-vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus.bin
 vga: extension=cirrus, update_freq=5
 pci: enabled=1, chipset=i440fx, slot1=cirrus
 </screen>
@@ -11493,7 +11404,7 @@ cpu: count=1, ips=325000000, reset_on_triple_fault=1, ignore_bad_msrs=1
 cpu: cpuid_limit_winnt=0
 clock: sync=realtime, time0=local
 memory: guest=2048, host=2048
-vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=D:/path/to/your/bios/VGABIOS-lgpl-latest-cirrus.bin
 vga: extension=cirrus, update_freq=5
 pci: enabled=1, chipset=i440fx, slot1=cirrus
 </screen>
@@ -11605,7 +11516,7 @@ ata1: enabled=0
 ata2: enabled=0
 ata3: enabled=0
 romimage: file=bios/BIOS-bochs-latest
-vgaromimage: file=bios/VGABIOS-lgpl-latest
+vgaromimage: file=bios/VGABIOS-lgpl-latest.bin
 megs: 64
 parport1: enabled=1, file="lp.pipe"
 com1: enabled=0
@@ -11615,7 +11526,7 @@ floppy_bootsig_check: disabled=0
 vga: update_freq=5
 keyboard_serial_delay: 250
 keyboard_paste_delay: 100000
-cpu: ips=3000000
+cpu: model=pentium_mmx, ips=3000000
 clock: sync=realtime, time0=0
 mouse: enabled=0
 private_colormap: enabled=0

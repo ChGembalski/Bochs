@@ -9,7 +9,7 @@
 //
 //  Authors: Beth Kon <bkon@us.ibm.com>
 //
-//  Copyright (C) 2017-2024  The Bochs Project
+//  Copyright (C) 2017-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -36,6 +36,8 @@
 #if BX_SUPPORT_PCI
 
 #include "hpet.h"
+
+#include "bx_debug/debug.h"
 
 /* HPET will set up timers to fire after a certain period of time.
  * These values can be used to clamp this period to reasonable/supported values.
@@ -150,8 +152,14 @@ static bool hpet_read(bx_phy_address a20addr, unsigned len, void *data, void *pa
     value2 = theHPET->read_aligned(a20addr + 4);
     *((Bit64u *)data) = (value1 | (value2 << 32));
     return true;
+  } else if (len == 2) {
+    BX_ERROR(("Unsupported HPET read at address 0x" FMT_PHY_ADDRX " with len = 2", a20addr));
+    *((Bit16u *)data) = 0x0000;
+  } else if (len == 1) {
+    BX_ERROR(("Unsupported HPET read at address 0x" FMT_PHY_ADDRX " with len = 1", a20addr));
+    *((Bit8u *)data) = 0x00;
   } else {
-    BX_PANIC(("Unsupported HPET read at address 0x" FMT_PHY_ADDRX, a20addr));
+    BX_PANIC(("Unsupported HPET read at address 0x" FMT_PHY_ADDRX " with len = %i", a20addr, len));
   }
   return true;
 }
@@ -173,8 +181,12 @@ static bool hpet_write(bx_phy_address a20addr, unsigned len, void *data, void *p
     Bit64u val64 = *((Bit64u*) data);
     theHPET->write_aligned(a20addr, (Bit32u)val64, false);
     theHPET->write_aligned(a20addr + 4, (Bit32u)(val64 >> 32), true);
+  } else if (len == 2) {
+    BX_ERROR(("Unsupported HPET write at address 0x" FMT_PHY_ADDRX " with len = 2", a20addr));
+  } else if (len == 1) {
+    BX_ERROR(("Unsupported HPET write at address 0x" FMT_PHY_ADDRX " with len = 1", a20addr));
   } else {
-    BX_PANIC(("Unsupported HPET write at address 0x" FMT_PHY_ADDRX, a20addr));
+    BX_PANIC(("Unsupported HPET write at address 0x" FMT_PHY_ADDRX " with len = %i", a20addr, len));
   }
   return true;
 }
@@ -391,7 +403,7 @@ void bx_hpet_c::hpet_set_timer(HPETTimer *t)
   }
   if (diff < HPET_MIN_ALLOWED_PERIOD) diff = HPET_MIN_ALLOWED_PERIOD;
   if (diff > HPET_MAX_ALLOWED_PERIOD) diff = HPET_MAX_ALLOWED_PERIOD;
-  BX_DEBUG(("Timer %d to fire in 0x%lX ticks", t->tn, diff));
+  BX_DEBUG(("Timer %d to fire in 0x" FMT_LL "X ticks", t->tn, diff));
   bx_pc_system.activate_timer_nsec(t->timer_id, ticks_to_ns(diff), 0);
 }
 

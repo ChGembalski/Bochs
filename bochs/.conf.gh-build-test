@@ -47,12 +47,15 @@ case $which_config in
       --enable-e1000 \
       --enable-plugins \
       --enable-show-ips \
+      --enable-debugger \
+      --enable-debugger-gui \
       --with-all-libs
     ;;
   nothing)
     ./configure \
       --enable-cpu-level=3 \
       --disable-fpu \
+      --disable-3dnow \
       --disable-pci \
       --with-nogui
     ;;
@@ -105,6 +108,7 @@ case $which_config in
     ./configure \
       --enable-all-optimizations \
       --enable-cpu-level=6 \
+      --enable-3dnow \
       --enable-vmx=1 \
       --enable-pci \
       --enable-clgd54xx \
@@ -118,12 +122,15 @@ case $which_config in
       --enable-es1370 \
       --enable-ne2000 \
       --enable-e1000 \
+      --enable-debugger \
+      --enable-debugger-gui \
       --enable-show-ips
     ;;
   x86-64)
     ./configure \
       --enable-all-optimizations \
       --enable-cpu-level=6 \
+      --enable-3dnow \
       --enable-x86-64 \
       --enable-pci \
       --enable-clgd54xx \
@@ -137,6 +144,8 @@ case $which_config in
       --enable-es1370 \
       --enable-ne2000 \
       --enable-e1000 \
+      --enable-debugger \
+      --enable-debugger-gui \
       --enable-show-ips
     ;;
   *) echo "Unknown config \"$1\" selected!" ;;

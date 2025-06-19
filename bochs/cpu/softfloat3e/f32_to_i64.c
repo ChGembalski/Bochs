@@ -36,10 +36,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdbool.h>
 #include <stdint.h>
 #include "internals.h"
+#include "primitives.h"
 #include "specialize.h"
 #include "softfloat.h"
 
-int64_t f32_to_i64(float32_t a, uint8_t roundingMode, bool exact, struct softfloat_status_t *status)
+int64_t f32_to_i64(float32 a, uint8_t roundingMode, bool exact, struct softfloat_status_t *status)
 {
     bool sign;
     int16_t exp;
@@ -53,8 +54,9 @@ int64_t f32_to_i64(float32_t a, uint8_t roundingMode, bool exact, struct softflo
     sign = signF32UI(a);
     exp  = expF32UI(a);
     sig  = fracF32UI(a);
-    if (softfloat_denormalsAreZeros(status))
-        if (!exp && sig) sig = 0;
+    if (softfloat_denormalsAreZeros(status)) {
+        if (!exp && sig) return 0;
+    }
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
     shiftDist = 0xBE - exp;

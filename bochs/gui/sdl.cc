@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2024  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -189,7 +189,13 @@ static Bit32u sdl_sym_to_bx_key(SDLKey sym)
     case SDLK_BACKSPACE:            return BX_KEY_BACKSPACE;
     case SDLK_TAB:                  return BX_KEY_TAB;
     case SDLK_RETURN:               return BX_KEY_ENTER;
-    case SDLK_PAUSE:                return BX_KEY_PAUSE;
+    case SDLK_PAUSE:
+      if (bx_gui->get_modifier_keys() & BX_MOD_KEY_CTRL) {
+        return BX_KEY_CTRL_BREAK;
+      } else {
+        return BX_KEY_PAUSE;
+      }
+      break;
     case SDLK_ESCAPE:               return BX_KEY_ESC;
     case SDLK_SPACE:                return BX_KEY_SPACE;
     case SDLK_QUOTE:                return BX_KEY_SINGLE_QUOTE;
@@ -305,7 +311,7 @@ static Bit32u sdl_sym_to_bx_key(SDLKey sym)
 
 /* Miscellaneous function keys */
     case SDLK_PRINT:                return BX_KEY_PRINT;
-    case SDLK_BREAK:                return BX_KEY_PAUSE;
+    case SDLK_BREAK:                return BX_KEY_CTRL_BREAK;
     case SDLK_MENU:                 return BX_KEY_MENU;
 
     default:
@@ -469,7 +475,7 @@ void bx_sdl_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   // load keymap for sdl
   if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-    bx_keymap.loadKeymap(convertStringToSDLKey);
+    bx_keymap.loadKeymap("sdl", convertStringToSDLKey);
   }
 
   if (!gui_ci) {
@@ -492,16 +498,16 @@ void bx_sdl_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
     }
   }
 
-  if (gui_nokeyrepeat) {
+  if (gui_opts.nokeyrepeat) {
     SDL_EnableKeyRepeat(0, 0);
   }
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
-  if (enh_dbg_gui_enabled) {
+  if (bx_dbg.debugger_active && bx_dbg.debugger_gui) {
     SIM->set_debug_gui(1);
 #ifdef WIN32
     if (gui_ci) {
-      sdl_enh_dbg_global_ini = enh_dbg_global_ini;
+      sdl_enh_dbg_global_ini = bx_dbg.dbg_gui_globalini;
       // on Windows the debugger gui must run in a separate thread
       DWORD threadID;
       CreateThread(NULL, 0, DebugGuiThread, NULL, 0, &threadID);
@@ -509,7 +515,7 @@ void bx_sdl_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
       BX_PANIC(("Config interface 'win32config' is required for gui debugger"));
     }
 #else
-    init_debug_dialog(enh_dbg_global_ini);
+    init_debug_dialog(bx_dbg.dbg_gui_globalini);
 #endif
   }
 #endif
@@ -538,7 +544,7 @@ void bx_sdl_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u yc,
     buf = (Uint32 *)sdl_screen->pixels + (headerbar_height + yc) * pitch + xc;
   } else {
     pitch = sdl_fullscreen->pitch/4;
-    buf = (Uint32 *)sdl_fullscreen->pixels + yc * pitch + xc;
+    buf = (Uint32 *)sdl_fullscreen->pixels + yc * pitch + xc + sdl_fullscreen->offset/4;
   }
   fgcolor = sdl_palette[fc];
   bgcolor = sdl_palette[bc];
@@ -761,10 +767,20 @@ void bx_sdl_gui_c::handle_events(void)
           SDLKey keysym = sdl_event.key.keysym.sym;
           Bit8u ascii = (Bit8u)sdl_event.key.keysym.unicode;
           if (((keysym >= SDLK_SPACE) && (keysym < SDLK_DELETE)) ||
-              (keysym == SDLK_RETURN) || (keysym == SDLK_BACKSPACE)) {
+              (keysym == SDLK_RETURN) || (keysym == SDLK_KP_ENTER) ||
+              (keysym == SDLK_BACKSPACE)) {
             if (ascii < 0x80) {
               console_key_enq(ascii);
             }
+#ifdef __ANDROID__
+            if (keysym == SDLK_RETURN) {
+              console_key_enq(13);
+            }
+#else
+            if (keysym == SDLK_KP_ENTER) {
+              console_key_enq(13);
+            }
+#endif
           }
           break;
         }
@@ -778,6 +794,8 @@ void bx_sdl_gui_c::handle_events(void)
             mouse_toggle = mouse_toggle_check(BX_MT_KEY_F10, 1);
           } else if (sdl_event.key.keysym.sym == SDLK_F12) {
             mouse_toggle = mouse_toggle_check(BX_MT_KEY_F12, 1);
+          } else if (sdl_event.key.keysym.sym == SDLK_g) {
+            mouse_toggle = mouse_toggle_check(BX_MT_KEY_G, 1);
           }
           if (mouse_toggle) {
             toggle_mouse_enable();
@@ -898,12 +916,12 @@ void bx_sdl_gui_c::handle_events(void)
           mouse_toggle_check(BX_MT_KEY_F10, 0);
         } else if (sdl_event.key.keysym.sym == SDLK_F12) {
           mouse_toggle_check(BX_MT_KEY_F12, 0);
+        } else if (sdl_event.key.keysym.sym == SDLK_g) {
+          mouse_toggle_check(BX_MT_KEY_G, 0);
         }
 
-        // filter out release of Windows/Fullscreen toggle and unsupported keys
-        if ((sdl_event.key.keysym.sym != SDLK_SCROLLOCK)
-           && (sdl_event.key.keysym.sym < SDLK_LAST))
-        {
+        // filter out release of unsupported keys
+        if (sdl_event.key.keysym.sym < SDLK_LAST) {
           // convert sym->bochs code
           if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
             key_event = sdl_sym_to_bx_key(sdl_event.key.keysym.sym);
@@ -1431,7 +1449,7 @@ void bx_sdl_gui_c::set_mouse_mode_absxy(bool mode)
 #if BX_SHOW_IPS
 void bx_sdl_gui_c::show_ips(Bit32u ips_count)
 {
-  if (!gui_hide_ips && !sdl_ips_update) {
+  if (!gui_opts.hide_ips && !sdl_ips_update) {
     ips_count /= 1000;
     sprintf(sdl_ips_text, "IPS: %u.%3.3uM", ips_count / 1000, ips_count % 1000);
     sdl_ips_update = 1;

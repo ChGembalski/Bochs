@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2003-2023  The Bochs Project
+//  Copyright (C) 2003-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -25,16 +25,11 @@
 
 #include "win32dialog.h"
 #include "bochs.h"
-#include "bx_debug/debug.h"
 #include "param_names.h"
 #include "gui.h"
 #include "win32res.h"
 #include "win32paramdlg.h"
 #include "plugin.h"
-#if BX_USE_WIN32USBDEBUG
-  #include "win32usb.h"
-  static int win32_usbi_callback(int type, int wParam, int lParam);
-#endif
 
 #if BX_USE_WIN32CONFIG
 
@@ -45,9 +40,6 @@ PLUGIN_ENTRY_FOR_MODULE(win32config)
 {
   if (mode == PLUGIN_INIT) {
     SIM->register_configuration_interface("win32config", win32_ci_callback, NULL);
-#if BX_USE_WIN32USBDEBUG
-    SIM->register_usb_interface(win32_usbi_callback, NULL);
-#endif
     SIM->set_notify_callback(win32_notify_callback, NULL);
   } else if (mode == PLUGIN_PROBE) {
     return (int)PLUGTYPE_CI;
@@ -129,7 +121,9 @@ static BOOL CALLBACK LogAskProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPara
         SendMessage(GetDlgItem(hDlg, IDASKLIST), LB_ADDSTRING, 0, (LPARAM)"Kill simulation");
         SendMessage(GetDlgItem(hDlg, IDASKLIST), LB_ADDSTRING, 0, (LPARAM)"Abort (dump core)");
 #if BX_DEBUGGER
-        SendMessage(GetDlgItem(hDlg, IDASKLIST), LB_ADDSTRING, 0, (LPARAM)"Continue and return to debugger");
+        if (bx_dbg.debugger_active) {
+          SendMessage(GetDlgItem(hDlg, IDASKLIST), LB_ADDSTRING, 0, (LPARAM)"Continue and return to debugger");
+        }
 #endif
         SendMessage(GetDlgItem(hDlg, IDASKLIST), LB_SETCURSEL, 2, 0);
       } else {
@@ -470,9 +464,6 @@ edit_opts_t start_options[] = {
   {"Logfile", "log"},
   {"Log Options", "#logopts"},
   {"CPU", "cpu"},
-#if BX_CPU_LEVEL >= 4
-  {"CPUID", "cpuid"},
-#endif
   {"Memory", "memory"},
   {"Clock & CMOS", "clock_cmos"},
   {"PCI", "pci"},
@@ -575,6 +566,8 @@ static BOOL CALLBACK MainMenuDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM 
           }
         case IDEDITCFG:
           i = SendMessage(GetDlgItem(hDlg, IDEDITBOX), LB_GETCURSEL, 0, 0);
+          if (i == -1)
+            break;
           if (runtime) {
             pname = runtime_options[i].param;
           } else {
@@ -789,13 +782,8 @@ static int win32_ci_callback(void *userdata, ci_command_t command)
       if (!bx_gui->has_gui_console()) {
         if (MainMenuDialog(GetBochsWindow(), 1) < 0) {
           bx_user_quit = 1;
-#if !BX_DEBUGGER
-          bx_atexit();
-          SIM->quit_sim(1);
-#else
-          bx_dbg_exit(1);
-#endif
-          return -1;
+        } else {
+          return 1;
         }
       }
       break;
@@ -804,35 +792,5 @@ static int win32_ci_callback(void *userdata, ci_command_t command)
   }
   return 0;
 }
-
-#if BX_USE_WIN32USBDEBUG
-static int win32_usbi_callback(int type, int wParam, int lParam) {
-  if (!bx_gui->has_gui_console()) {
-    if (SIM->get_param_enum(BXPN_USB_DEBUG_TYPE)->get() > 0) {
-      // if "start_frame" is 0, do the debug_window
-      // if "start_frame" is 1, wait for the trigger from the HC
-      //  (set the value to 2, then return, allowing the trigger to envoke it)
-      // if "start_frame" is 2, the HC triggered the debug
-      if (SIM->get_param_num(BXPN_USB_DEBUG_START_FRAME)->get() == BX_USB_DEBUG_SOF_SET) {
-        SIM->get_param_num(BXPN_USB_DEBUG_START_FRAME)->set(BX_USB_DEBUG_SOF_TRIGGER);
-        bx_gui->replace_bitmap(bx_gui->usb_hbar_id, bx_gui->usb_trigger_bmap_id);
-      } else {
-        bx_gui->replace_bitmap(bx_gui->usb_hbar_id, bx_gui->usb_bmap_id);
-        if (win32_usb_start(GetBochsWindow(), type, wParam, lParam) < 0) {
-          bx_user_quit = 1;
-  #if !BX_DEBUGGER
-          bx_atexit();
-          SIM->quit_sim(1);
-  #else
-          bx_dbg_exit(1);
-  #endif
-          return -1;
-        }
-      }
-    }
-  }
-  return 0;
-}
-#endif
 
 #endif // BX_USE_WIN32CONFIG

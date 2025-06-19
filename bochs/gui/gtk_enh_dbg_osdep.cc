@@ -112,6 +112,7 @@ GtkWidget *HelpTitle;
 GtkWidget *ContMI;
 GtkWidget *StepMI;
 GtkWidget *StepNMI;
+GtkWidget *StepOverMI;
 GtkWidget *BreakMI;
 GtkWidget *SetBrkMI;
 GtkWidget *WatchWrMI;
@@ -154,7 +155,7 @@ GtkWidget *sep8;        // separators around the ListViews
 GtkWidget *sep9;
 
     // GTK widgets
-GtkWidget *CmdBtn[5];                   // "command" buttonrow
+GtkWidget *CmdBtn[NBUTTONS];                   // "command" buttonrow
 GtkWidget *CpuBtn[BX_MAX_SMP_THREADS_SUPPORTED];        // "CPU" buttonrow
 GtkWidget *CpuB_label[BX_MAX_SMP_THREADS_SUPPORTED];    // "labels" on CPU buttons
 
@@ -172,7 +173,7 @@ GtkWidget *LV[3];       // Register, ASM, MemDump / ListViews (TreeViews)
 // GTK-specific settings
 gint win_x = -1, win_y = -1, win_w, win_h;
 bool window_init = 0;
-char fontname[80];
+char fontname[81];
 bool font_init = 0;
 
 // HIHI put all these colors in an array, and use #defines for them
@@ -231,8 +232,13 @@ bool ShowAskDialog()
     if (dialog == NULL)
     {
         dialog = gtk_dialog_new ();
+#if BX_HAVE_GTK_VERSION == 2
         gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
         gtk_dialog_add_button (GTK_DIALOG (dialog), GTK_STOCK_OK, GTK_RESPONSE_OK);
+#else
+        gtk_dialog_add_button (GTK_DIALOG (dialog), g_dgettext("gtk30", "_Cancel"), GTK_RESPONSE_CANCEL);
+        gtk_dialog_add_button (GTK_DIALOG (dialog), g_dgettext("gtk30", "_OK"), GTK_RESPONSE_OK);
+#endif
         gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
     }
 // HIHI should the "transient" line be INSIDE the dialog creation "if"? -- when I tried it, it crashed?
@@ -302,6 +308,7 @@ void InitMenus()
     ContMI = gtk_menu_item_new_with_label("Continue [c]\t\t\t\t\tF5");
     StepMI = gtk_menu_item_new_with_label("Step [s]\t\t\t\t\t\tF11");
     StepNMI = gtk_menu_item_new_with_label("Step #...\t\t\t\t\t\tF9");
+    StepOverMI = gtk_menu_item_new_with_label("Step Over\t\t\t\t\t\tF8");
     BreakMI = gtk_menu_item_new_with_label("Break\t\t\t\t\t\tCtrl+C");
     SetBrkMI = gtk_menu_item_new_with_label("Breakpoint (ASM selected)\t\tF6");
     WatchWrMI = gtk_menu_item_new_with_label("Watch Write (PhysDump selected)\tShift+F6");
@@ -370,6 +377,7 @@ void InitMenus()
     gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), ContMI);
     gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), StepMI);
     gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), StepNMI);
+    gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), StepOverMI);
     gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), BreakMI);
     gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), sep1);
     gtk_menu_shell_append(GTK_MENU_SHELL(CmdMenu), SetBrkMI);
@@ -586,7 +594,11 @@ int GetASMTopIdx()
 //    Database = (GtkListStore *) gtk_tree_view_get_model( GTK_TREE_VIEW(LV[ASM_WND]) );
 
     AsmPgSize = 0;
-    va = gtk_tree_view_get_vadjustment ( GTK_TREE_VIEW(LV[ASM_WND]) );
+#if BX_HAVE_GTK_VERSION == 2
+    va = gtk_tree_view_get_vadjustment(GTK_TREE_VIEW(LV[ASM_WND]));
+#else
+    va = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(LV[ASM_WND]));
+#endif
     // calculate the number of vertical "pixels" in one row (as a fraction of the scroll range)
     if (AsmLineCount == 0)
         return 0;
@@ -601,7 +613,11 @@ int GetASMTopIdx()
 // -- it does not technically have to really be a pixel count
 void ScrollASM(int pixels)
 {
-    GtkAdjustment *va = gtk_tree_view_get_vadjustment ( GTK_TREE_VIEW(LV[ASM_WND]) );
+#if BX_HAVE_GTK_VERSION == 2
+    GtkAdjustment *va = gtk_tree_view_get_vadjustment(GTK_TREE_VIEW(LV[ASM_WND]));
+#else
+    GtkAdjustment *va = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(LV[ASM_WND]));
+#endif
     gtk_adjustment_set_value(GTK_ADJUSTMENT(va), gtk_adjustment_get_value(va) + pixels);
 }
 
@@ -691,7 +707,9 @@ void VSizeChange()
     if (ShowIOWindows == FALSE)
     {
         gtk_widget_hide(IOVbox);
+//#if BX_HAVE_GTK_VERSION == 2
         gtk_table_resize(GTK_TABLE(TreeTbl), 3, 1);  // IO windows do not exist, so total table rows = 3
+//#endif
     }
     else
     {
@@ -701,7 +719,9 @@ void VSizeChange()
         gcp = gtk_entry_get_text(GTK_ENTRY(IEntry));
         strcpy (tmpcb, gcp);
         gtk_entry_set_text(GTK_ENTRY(IEntry),"");
+//#if BX_HAVE_GTK_VERSION == 2
         gtk_table_resize(GTK_TABLE(TreeTbl), 4, 1);  // IO windows exist, so total table rows = 4
+//#endif
         gtk_widget_show(IOVbox);
         gtk_widget_grab_focus(IEntry);  // Input window loses focus while it is hidden
         gtk_entry_set_text(GTK_ENTRY(IEntry),tmpcb);
@@ -832,7 +852,11 @@ void StartListUpdate(int listnum)
     static int PrevDV = -1;             // type of previous Dump window that was displayed
     GtkListStore *Database;
     // set the scroll position back to the very top
-    GtkAdjustment *va = gtk_tree_view_get_vadjustment ( GTK_TREE_VIEW(LV[listnum]) );
+#if BX_HAVE_GTK_VERSION == 2
+    GtkAdjustment *va = gtk_tree_view_get_vadjustment(GTK_TREE_VIEW(LV[listnum]));
+#else
+    GtkAdjustment *va = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(LV[listnum]));
+#endif
     gtk_adjustment_set_value (GTK_ADJUSTMENT(va), 0);
     // then clear the database for the list that is updating
     Database = (GtkListStore *) gtk_tree_view_get_model( GTK_TREE_VIEW(LV[listnum]) );
@@ -1112,16 +1136,37 @@ bool NewFont()
         return FALSE;
     // need to know the current font, to highlight it
     g_object_get(G_OBJECT(LV_Rend[0]), "font", &ofn, NULL);
+#if BX_HAVE_GTK_VERSION == 2
     GtkWidget *widget = gtk_font_selection_dialog_new("Choose primary font");
     gtk_font_selection_dialog_set_font_name(GTK_FONT_SELECTION_DIALOG(widget), ofn);
-    if (gtk_dialog_run(GTK_DIALOG (widget)) == GTK_RESPONSE_OK) {
+    if (gtk_dialog_run(GTK_DIALOG(widget)) == GTK_RESPONSE_OK) {
         char *nfn = gtk_font_selection_dialog_get_font_name(GTK_FONT_SELECTION_DIALOG(widget));
         strncpy(fontname, nfn, 80);
         g_free(nfn);
         update_font();
     }
-    g_free(ofn);
     gtk_widget_destroy(widget);
+#else
+    GtkWidget *dialog = gtk_dialog_new();
+    gtk_window_set_title(GTK_WINDOW(dialog), "Select Font");
+    gtk_dialog_add_button(GTK_DIALOG(dialog),  g_dgettext("gtk30", "_OK"), GTK_RESPONSE_OK);
+    gtk_dialog_add_button(GTK_DIALOG(dialog),  g_dgettext("gtk30", "_Cancel"), GTK_RESPONSE_CANCEL);
+    gtk_dialog_set_default_response(GTK_DIALOG (dialog), GTK_RESPONSE_OK);
+    GtkWidget *widget = gtk_font_chooser_widget_new();
+    gtk_widget_show(widget);
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(dialog))), widget, TRUE, TRUE, 0);
+    gtk_font_chooser_set_font(GTK_FONT_CHOOSER(widget), ofn);
+    gtk_widget_show(dialog);
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
+        char *nfn = gtk_font_chooser_get_font(GTK_FONT_CHOOSER(widget));
+        strncpy(fontname, nfn, 80);
+        g_free(nfn);
+        update_font();
+    }
+    gtk_widget_destroy(widget);
+    gtk_widget_destroy(dialog);
+#endif
+    g_free(ofn);
 
     return TRUE;
 }
@@ -1377,8 +1422,13 @@ void Close_cb(GtkWidget *widget, gpointer data)
     gtk_widget_destroy(PTree);
     g_object_unref(PTree);
     g_object_unref(LV[2]);
+#if BX_HAVE_GTK_VERSION == 2
     gdk_cursor_unref(SizeCurs);
     gdk_cursor_unref(DockCurs);
+#else
+    g_object_unref(SizeCurs);
+    g_object_unref(DockCurs);
+#endif
 
     if (!SIM->is_wx_selected()) {
       gtk_main_quit();
@@ -1674,7 +1724,14 @@ gboolean LEB_MouseUp(GtkWidget *widget, GdkEventButton *event, gpointer data)
         else    // complete a Docking operation
         {
             // get "local" x mouse coordinate value (main window relative)
+#if BX_HAVE_GTK_VERSION == 2
             gdk_window_get_pointer(gtk_widget_get_window(LVEvtBox), &x, &zip, NULL);
+#else
+            GdkDisplay* display = gdk_display_get_default();
+            GdkSeat* seat = gdk_display_get_default_seat(display);
+            GdkDevice* pointer = gdk_seat_get_pointer(seat);
+            gdk_window_get_device_position(gtk_widget_get_window(LVEvtBox), pointer, &x, &zip, NULL);
+#endif
             // verify that mouseup was within a LV window
             if (x >= 0 && cy >= 0 && x < totwidth && cy < heightLV)
             {
@@ -1715,8 +1772,9 @@ void AttachSignals()
     g_signal_connect (G_OBJECT(CmdBtn[0]), "clicked", G_CALLBACK(nbCmd_cb), (gpointer) (glong) BtnLkup[0]);
     g_signal_connect (G_OBJECT(CmdBtn[1]), "clicked", G_CALLBACK(nbCmd_cb), (gpointer) (glong) BtnLkup[1]);
     g_signal_connect (G_OBJECT(CmdBtn[2]), "clicked", G_CALLBACK(nbCmd_cb), (gpointer) (glong) BtnLkup[2]);
-    g_signal_connect (G_OBJECT(CmdBtn[3]), "clicked", G_CALLBACK(Cmd_cb), (gpointer) (glong) BtnLkup[3]);
-    g_signal_connect (G_OBJECT(CmdBtn[4]), "clicked", G_CALLBACK(nbCmd_cb), (gpointer) (glong) BtnLkup[4]);
+    g_signal_connect (G_OBJECT(CmdBtn[3]), "clicked", G_CALLBACK(nbCmd_cb), (gpointer) (glong) BtnLkup[3]);
+    g_signal_connect (G_OBJECT(CmdBtn[4]), "clicked", G_CALLBACK(Cmd_cb), (gpointer) (glong) BtnLkup[4]);
+    g_signal_connect (G_OBJECT(CmdBtn[5]), "clicked", G_CALLBACK(nbCmd_cb), (gpointer) (glong) BtnLkup[5]);
 
     i = BX_SMP_PROCESSORS;
     if (i > 1)
@@ -1729,6 +1787,7 @@ void AttachSignals()
     g_signal_connect (G_OBJECT(ContMI), "activate", G_CALLBACK(nbCmd_cb), (gpointer) CMD_CONT);
     g_signal_connect (G_OBJECT(StepMI), "activate", G_CALLBACK(nbCmd_cb), (gpointer) CMD_STEP1);
     g_signal_connect (G_OBJECT(StepNMI), "activate", G_CALLBACK(nbCmd_cb), (gpointer) CMD_STEPN);
+    g_signal_connect (G_OBJECT(StepOverMI), "activate", G_CALLBACK(nbCmd_cb), (gpointer) CMD_STEPOVER);
     g_signal_connect (G_OBJECT(BreakMI), "activate", G_CALLBACK(nbCmd_cb), (gpointer) CMD_BREAK);
     g_signal_connect (G_OBJECT(SetBrkMI), "activate", G_CALLBACK(Cmd_cb), (gpointer) CMD_BRKPT);
     Cmd2MI[CMD_BRKPT - CMD_IDX_LO + 1] = SetBrkMI;
@@ -1822,7 +1881,13 @@ static gboolean VGAWrefreshTick(GtkWidget *widget)
         gint y;     // enter pre-dock mode
         int i, j;
         --SizingDelay;
-        gdk_display_get_pointer (display, NULL, &x, &y, NULL);  // absolute x and y mouse coords
+#if BX_HAVE_GTK_VERSION == 2
+        gdk_display_get_pointer(display, NULL, &x, &y, NULL);  // absolute x and y mouse coords
+#else
+        GdkSeat* seat = gdk_display_get_default_seat(display);
+        GdkDevice* pointer = gdk_seat_get_pointer(seat);
+        gdk_device_get_position(pointer, NULL, &x, &y);
+#endif
         i = x - xClick;
         j = y - yClick;     // calculate the pixel delta from the mousedown event to now
         if (i < 0) i= -i;
@@ -2184,7 +2249,11 @@ bool OSInit()
       gtk_window_move(GTK_WINDOW(window), win_x, win_y);
     }
 
+#if BX_HAVE_GTK_VERSION == 2
     MainVbox = gtk_vbox_new(FALSE, 0);      // vbox that contains EVERYTHING
+#else
+    MainVbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+#endif
 
     gtk_container_add(GTK_CONTAINER(window), MainVbox);
 
@@ -2192,7 +2261,11 @@ bool OSInit()
     InitMenus();
 
     // build the StatusBar
+#if BX_HAVE_GTK_VERSION == 2
     StatHbox = gtk_hbox_new(FALSE, 3);
+#else
+    StatHbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+#endif
     Stat[0] = gtk_label_new("Break");
     gtk_label_set_width_chars (GTK_LABEL(Stat[0]), 7);
     Stat[1] = gtk_label_new("CPU:");
@@ -2200,9 +2273,15 @@ bool OSInit()
     Stat[2] = gtk_label_new("t=0");
     gtk_label_set_width_chars (GTK_LABEL(Stat[2]), 19);
     Stat[3] = gtk_label_new("IOPL");
+#if BX_HAVE_GTK_VERSION == 2
     StatVSep1 = gtk_vseparator_new();
     StatVSep2 = gtk_vseparator_new();
     StatVSep3 = gtk_vseparator_new();
+#else
+    StatVSep1 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+    StatVSep2 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+    StatVSep3 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+#endif
     gtk_box_pack_start(GTK_BOX(StatHbox), Stat[0], FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(StatHbox), StatVSep1, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(StatHbox), Stat[1], FALSE, FALSE, 0);
@@ -2211,25 +2290,46 @@ bool OSInit()
     gtk_box_pack_start(GTK_BOX(StatHbox), StatVSep3, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(StatHbox), Stat[3], TRUE, TRUE, 0);
     // set LEFT, instead of the default centered "justification" of status text
+#if BX_HAVE_GTK_VERSION == 2
     gtk_misc_set_alignment(GTK_MISC(Stat[0]), (gfloat) 0., (gfloat) 0.5);
     gtk_misc_set_alignment(GTK_MISC(Stat[1]), (gfloat) 0., (gfloat) 0.5);
     gtk_misc_set_alignment(GTK_MISC(Stat[2]), (gfloat) 0., (gfloat) 0.5);
     gtk_misc_set_alignment(GTK_MISC(Stat[3]), (gfloat) 0., (gfloat) 0.5);
+#else
+    gtk_widget_set_halign(GTK_WIDGET(Stat[0]), GTK_ALIGN_START);
+    gtk_widget_set_valign(GTK_WIDGET(Stat[0]), GTK_ALIGN_CENTER);
+    gtk_widget_set_halign(GTK_WIDGET(Stat[1]), GTK_ALIGN_START);
+    gtk_widget_set_valign(GTK_WIDGET(Stat[1]), GTK_ALIGN_CENTER);
+    gtk_widget_set_halign(GTK_WIDGET(Stat[2]), GTK_ALIGN_START);
+    gtk_widget_set_valign(GTK_WIDGET(Stat[2]), GTK_ALIGN_CENTER);
+    gtk_widget_set_halign(GTK_WIDGET(Stat[3]), GTK_ALIGN_START);
+    gtk_widget_set_valign(GTK_WIDGET(Stat[3]), GTK_ALIGN_CENTER);
+#endif
 
     gtk_box_pack_start(GTK_BOX(MainVbox), menubar, FALSE, FALSE, 0);
     gtk_box_pack_end(GTK_BOX(MainVbox), StatHbox, FALSE, FALSE, 0);
 
     // build the table that holds the TreeView/Input&Output windows
     TreeTbl = gtk_table_new(4, 1, TRUE);    // proportion the remaining space in quarters, vertically
+#if BX_HAVE_GTK_VERSION == 2
     sep8 = gtk_vseparator_new();            // vertical separators between the ListViews
     sep9 = gtk_vseparator_new();
+#else
+//    TreeTbl = gtk_grid_new();              // TODO
+    sep8 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+    sep9 = gtk_separator_new(GTK_ORIENTATION_VERTICAL);
+#endif
     VSepEvtBox1 = gtk_event_box_new();      // seps need event boxes to catch "Enter" events
     VSepEvtBox2 = gtk_event_box_new();
     gtk_container_add (GTK_CONTAINER(VSepEvtBox1), sep8);
     gtk_container_add (GTK_CONTAINER(VSepEvtBox2), sep9);
     gtk_widget_add_events(VSepEvtBox1, GDK_ENTER_NOTIFY_MASK);      // masks must be set immediately after creation
     gtk_widget_add_events(VSepEvtBox2, GDK_ENTER_NOTIFY_MASK);
+#if BX_HAVE_GTK_VERSION == 2
     IOVbox = gtk_vbox_new(FALSE, 0);        // stack the Input Entry and Output TextView vertically
+#else
+    IOVbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+#endif
 
     // create Input window
     IEntry = gtk_entry_new();
@@ -2252,15 +2352,23 @@ bool OSInit()
 
     gtk_box_pack_start(GTK_BOX(IOVbox), ScrlWinOut, TRUE, TRUE, 0);
     gtk_box_pack_end(GTK_BOX(IOVbox), IEntry, FALSE, FALSE, 0);
+#if BX_HAVE_GTK_VERSION == 2
     LVHbox = gtk_hbox_new(FALSE, 0);        // to hold the ListView windows
+#else
+    LVHbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#endif
     LVEvtBox = gtk_event_box_new();     // need to catch "leave" and "move" events for ListViews
     gtk_container_add (GTK_CONTAINER(LVEvtBox), LVHbox);
     gtk_widget_add_events(LVEvtBox, GDK_LEAVE_NOTIFY_MASK | GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK);
 
     // make Command and CPU Button rows
+#if BX_HAVE_GTK_VERSION == 2
     CmdBHbox = gtk_hbox_new(TRUE, 0);
+#else
+    CmdBHbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#endif
 
-    for (i=0 ; i < 5 ; i++)
+    for (i=0; i < NBUTTONS; i++)
     {
         CmdBtn[i] = gtk_button_new();
         tmpLbl = gtk_label_new ("");
@@ -2274,7 +2382,11 @@ bool OSInit()
     // CPU button row does not exist for only 1 cpu
     if (BX_SMP_PROCESSORS > 1)
     {
+#if BX_HAVE_GTK_VERSION == 2
         CpuBHbox = gtk_hbox_new(TRUE, 0);
+#else
+        CpuBHbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+#endif
         gtk_box_pack_start(GTK_BOX(MainVbox), CpuBHbox, FALSE, FALSE, 0);
         i = 0;
         strcpy (bigbuf, "<b>CPU0</b>");     // Handle CPU0 specially -- it is "selected"
@@ -2293,8 +2405,13 @@ bool OSInit()
 
     gtk_box_pack_end(GTK_BOX(MainVbox), TreeTbl, TRUE, TRUE, 0);
 
+//#if BX_HAVE_GTK_VERSION == 2
     gtk_table_attach_defaults(GTK_TABLE(TreeTbl), LVEvtBox, 0, 1, 0, 3);  // order = LRTB
     gtk_table_attach_defaults(GTK_TABLE(TreeTbl), IOVbox, 0, 1, 3, 4);
+//#else
+//    gtk_grid_attach(GTK_GRID(TreeTbl), LVEvtBox, 0, 0, 3, 3);  // order = LTWH
+//    gtk_grid_attach(GTK_GRID(TreeTbl), IOVbox, 0, 3, 3, 1);
+//#endif
     VSizeChange();
 
     // build the 3 ListView windows
@@ -2347,10 +2464,17 @@ bool OSInit()
     gtk_event_box_set_visible_window (GTK_EVENT_BOX(VSepEvtBox2), FALSE);
     gtk_event_box_set_above_child (GTK_EVENT_BOX(VSepEvtBox2), TRUE);
     // build the sizing/docking cursors
-    SizeCurs = gdk_cursor_new (GDK_SB_H_DOUBLE_ARROW);
-    DockCurs = gdk_cursor_new (GDK_CROSSHAIR);
+#if BX_HAVE_GTK_VERSION == 2
+    SizeCurs = gdk_cursor_new(GDK_SB_H_DOUBLE_ARROW);
+    DockCurs = gdk_cursor_new(GDK_CROSSHAIR);
     gdk_cursor_ref(SizeCurs);
     gdk_cursor_ref(DockCurs);
+#else
+    SizeCurs = gdk_cursor_new_for_display(gdk_display_get_default(), GDK_SB_H_DOUBLE_ARROW);
+    DockCurs = gdk_cursor_new_for_display(gdk_display_get_default(), GDK_CROSSHAIR);
+    g_object_ref(SizeCurs);
+    g_object_ref(DockCurs);
+#endif
 
     if (!font_init) {
       char *fn;

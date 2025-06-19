@@ -2,7 +2,7 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "*" ]
   pull_request:
     branches: [ "master" ]
 
@@ -13,6 +13,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install libltdl-dev libx11-dev libgtk-3-dev libreadline-dev
 
     - name: configure for release
       run: cd bochs && ./.conf.gh-build-test release && make

@@ -1,29 +1,269 @@
-Changes after 2.8:
+Changes after 3.0:
+
+  This CHANGES file updated with commits merged till 11 May 2025, please refer to git log for more recent updates
+
+Detailed change log :
+
+- General
+  - Added new log level "warn" for important infos shown with a message box.
+    In the code BX_WARN is used and it is configurable like other log levels.
+
+- CPU emulation and instrumentation
+  - CPU: Implemented MOVRS ISA support: MOVRS, AVX10.2 MOVRS, AMX MOVRS, (AMX TRANSPOSE MOVRS still not implemented)
+  - Added new BX_INSTR_CPUID instrumentation callback, see instrumentation.txt doc for description
+
+- Bochs Debugger
+  - Added new command line option "-dbg_gui" to start Bochs debugger with gui.
+    The dbg_gui option also supports "-dbg_gui:globalini" extension to use ini file from BXSHARE path for GUI debugger.
+    Old "gui_debug" bochsrc option is deprecated and should not used anymore.
+  - New 'step over' button in Bochs debugger GUI to execute an instruction stepping over subroutines
+  - New 'rla' command added to Bochs debugger
+    Usage: rla <addr> - continue until reaching the linear address <addr>
+  - Fix FPU/MMX state display in GUI debugger
+  - Speed up Bochs emulation with debugger enabled by ~10%
+
+- Configure and compile
+  - Fixed compilation with --enable-avx but without --enable-evex
+  - Compilation fix for MacOS in keymap.cc
+  - Updated MSVCPP project files
+
+- Config interface
+  - On Windows make sure file name parameters use backslash as separator
+  - Removed backward compatibility mode for USB device options
+
+- Memory
+  - Added support for overlapping r/o memory handlers (used for PCI ROM)
+  - Added support for mapping PCI ROM to expansion ROM space
+
+- I/O Devices
+  - PCI (general)
+    - Rewrite of the IRQ signal handling for PCI / ACPI
+    - Added advanced PCI option "altdevmap" to make real i440FX BIOS work
+    - Ignore writes to ROM adddress if no ROM present
+  - PCI (i440BX AGP)
+    - AGP aperture access now correctly implemented
+    - Fixed BCTRL and NBXCFG register
+    - Mask out lower bits of the AGP GART entries
+    - Enable 16-bit writes to APM control port (used by real BIOS)
+    - Added extended SMRAM control stub
+  - ACPI
+    - Fixed ACPI timer in normal and realtime mode
+  - HPET
+    - Return 0x00 on reads with a size less than dword and ignore the writes
+  - CMOS
+    - Make sure that a panic before CMOS init doesn't damage the CMOS image
+  - VGA / DDC
+    - DDC: Fixed using EDID data from specified file
+    - DDC: Added mode choice 'builtin_gui' to limit builtin values based on gui capabilities
+    - VGA core: Added stub for the feature control register. Currently writing to bit 3 only (should turn off display if set).
+    - VGA core: Don't report invalid CRTC register if used by extension.
+    - Bochs VBE: Skip address wrap during display update
+    - Fix graphics snapshot in low resolution modes
+  - Voodoo / Banshee
+    - Added hardware cursor support for graphics snapshot (Cirrus/Voodoo)
+    - Voodoo3: Split mem_read() with len > 8 in two 64-bit reads
+    - Voodoo3: Fixed display timing in VGA mode with half dot clock
+    - Banshee: Added missing 'double width' support for banked mode
+  - Hard Drive
+    - Fix the reading of the HOB registers
+    - Add the 0x46 (GET_CONFIG) command. This allows ReactOS 0.4.15 to boot in normal mode (LiveCD)
+    - The SENSE was not being cleared between commands. If one command failed, 
+      the next successful command would still show the failed SENSE values.
+  - Floppy
+    - Floppy reset fixes found while testing real hardware
+      - Main status register only returns BUSY bit set during reset
+      - Command register writes are ignored during reset
+    - Attempt to make the FDC more like real hardware (Ben Lunt)
+      - Modify the source to return in milliseconds and then convert to microseconds for the timer
+      - Set DOR to normal operation after a reset via the Data Rate Select Register (0x3F4)
+      - Adjust the timing value to a smaller value (makes the floppy access faster)
+      - Real hardware sets the LOCK bit on by default
+      - Real hardware does not set the CHANGE DISK bit at reset
+      - Fix the `Illegal size for FIFO` error. Zero is a legal size on input, which translate to a size of 1.
+      - Fixed the `DUMP_REGISTERS` command to show the EOT value.
+  - Networking
+    - E1000: Added loopback mode for diagnostics
+  - USB
+    - UHCI fix: USBCMD and USBSTS register accept byte writes
+    - Changing device connected to USB port on the command line works again.
+      Port options are reset in that case.
+  - Keyboard
+    - Change a Panic to an Error when trying to add a byte to the out-buffer
+    - Added the 0xE1 (Secondary ID) command
+
+- GUI and display libraries
+  - Fixed buffer overflow when using keymap feature
+
+- BIOS
+  - ACPI fixes for the i440BX chipset
+  - Fixed some not working hotkeys
+  - PCI BIOS now sets expansion ROM space to R/W during POST
+  - Fixed HPET entry in ACPI tables
+  - Fixes in AGP i/o and memory regions init
+  - Fixed CHS assignment in int13_edd function
+  - Fixed floppy media state for legacy drive types
+  - Legacy BIOS now can be used with a PCI VGABIOS
+
+- Misc
+  - Added Linux manual page for the bxhub utility
+
+-------------------------------------------------------------------------
+Changes in 3.0 (Frebruary 16, 2025):
 
 Brief summary :
+ - Include Bochs debugger support in all release binaries.
+   Bochs internal debugger and Bochs GUI debugger are compiled in by default and
+   there are no special Bochs binaries with internal debugger support anymore.
  - Integrated softfloat3e library replacing older softfloat2a fpu-emulation code
- - USB: Added the USB Debugger support for xHCI and UHCI
+ - Bugfixes for CPU emulation correctness (critical bugfixes for VMX, WAITPKG, LASS,
+   XSAVEC/XSAVES, CPUID and SHA1 ISA implementation)
+ - Added emulation of missing AMD 3DNow! instructions
+ - Implemented AVX512_FP16 Intel instruction set based on softfloat3e library
+   (enabled in Xeon Sapphire Rapids CPU definition)
+ - Implemented MONITORLESS MWAIT instructions support
+ - Implemented initial support for AVX10_1 + AVX10_2 ISA extensions and AVX10
+   CPUID leaf 0x24 (AVX10_1 first to be enabled in Xeon Granite Rapids)
+ - Implemented AMX-TF32 and AMX-AVX512 ISA extensions
+ - Implemented RAO-INT ISA and MSR_IMM ISA extensions
+ - CPUID: Added new CPU definitions: for i386, i486DX4, AMD Athlon XP and Intel Core i5 Arrow Lake CPUs
+ - CPUID: Support for enabling/disabling of one or more CPU features from CPUID
+   configuration (see "add_features" and "exclude_features" in bochsrc sample and documentation)
+ ! CPUID: Old bx_generic CPUID model is deprecated with all associated .bochsrc
+   CPUID configuration options, use pre-defined CPU models instead
+ - Several fixes and improvements for the Cirrus and Voodoo emulation
+ - USB: Added the USB Debugger support for xHCI and UHCI (Windows / GTK3)
+ - Added USB boot option (requires i440fx.bin BIOS)
+ - LGPL'd VGABIOS updated to version 0.9c (Cirrus / VBE fixes and extensions)
+ - Added i440fx.bin BIOS written by Ben Lunt (https://github.com/fysnet/i440fx)
+ - Documentation updates and fixes after transition to GIT
 
 Detailed change log :
 
 - CPU
+  - Bugfixes for CPU emulation correctness (critical bugfixes for VMX, WAITPKG,
+    LASS, XSAVEC/XSAVES, CPUID and SHA1 ISA implementation)
   - Integrated softfloat3e library replacing older softfloat2a fpu-emulation code
-  - Implemented AVX512_FP16 Intel instruction set based on softfloat3e library (enabled in Xeon Sapphire Rapids CPU definition)
+  - Implemented AVX512_FP16 Intel instruction set based on softfloat3e library
+    (enabled in Xeon Sapphire Rapids CPU definition)
+  - Implemented MONITORLESS MWAIT instructions support
+  - Implemented initial support for AVX10_1 + AVX10_2 ISA extensions and AVX10
+    CPUID leaf 0x24 (AVX10_1 first to be enabled in Xeon Granite Rapids)
+  - Implemented AMX-TF32 and AMX-AVX512 ISA extensions
+  - Implemented RAO-INT ISA extension
+  - Implemented MSR_IMM ISA extension
+  - VMX: Implemented VMX support for the IA32_SPEC_CTRL MSR
+  - UINTR: Implemented FLEXIBLE UIRET support
+  - Added emulation of missing AMD 3DNow! instructions
+
+- CPUID: 
+  - Added i386 CPU definition
+    - Model=3, supports x87 FPU only, the FPU support can be disabled using 'exclude_features' option
+  - Added i486DX4 CPU definition
+    - Model=4, supports x87 FPU and VME only
+  - Added AMD Athlon(tm) XP CPU definition
+    - Model=6, supports P6 with 3DNow! + 3DNow! Ext and SSE
+  - Added Arrow Lake CPU definition
+    - Features AVX-VNNI, AVX-IFMA, AVX-VNNI-INT8, AVX-VNNI-INT16, AVX_NE_CONVERT,
+      GFNI, VAES/VPCLMULQDQ, SHA512, SM3/SM4, CMPCCXADD, LASS, SERIALIZE, UINTR
+  - Support for enabling/disabling of one or more CPU features from CPUID
+    configuration (see "add_features" and "exclude_features" in bochsrc sample and documentation)
+  - Old bx_generic CPUID model is deprecated with all associated .bochsrc CPUID
+    configuration options, use pre-defined CPU models instead
+
+- Bochs Debugger
+  - Include Bochs debugger support in all release binaries.
+    Bochs internal debugger and Bochs GUI debugger are compiled in by default and
+    there are no special Bochs binaries with internal debugger support anymore.
+    The debugger could be enabled if -dbg or -debugger option is included in the Bochs command line.
+    Without these options, normal high performance execution invoked and impact
+    on simulation performance is minimal.
+    Note that simulation performance in debugger mode is still substantially lower.
+  - Implemented 64-bit paging support in GUI debugger page table dump
 
 - Configure and compile
   - Fixed compilation of plugin version with debugger enabled on Windows
   - Removed legacy libltdl code and force using library installed on host system
   - GTK-based gui debugger can now use GTK3 if GTK2 is not installed
+  - Updated Android build manual, config files and scripts
+
+- Config interface
+  - Added USB boot option (requires BIOS from https://github.com/fysnet/i440fx)
 
 - GUI and display libraries
   - Debugger gui can now use ini file from BXSHARE path when using gui option
     extension "gui_debug:globalini" (sdl, sdl2, win32, x11)
+  - Debugger gui now updates the memory dump window if necessary
+  - Added bitmap change support for the wxWidgets toolbar / Improved wxWidgets
+    toolbar functionality
+  - Fullscreen mode fixes for the legacy SDL and win32 gui
+  - Fixed SDL2 fullscreen toggle
+  - SDL/SDL2: Added support for keypad enter key in gui console mode
+  - Fixed legacy SDL key handling issues
+    - Scroll lock release now works again (Formerly used as fullscreen toggle)
+    - Fix Pause / Ctrl+Break key handling (possibly SDL issue)
+    - Fixed enter key in gui console mode on Android
+  - Keymap: Added support for using language specifier instead of file name
+  - Added mouse capture toggle choice "ctrl+alt+g" (currently used by Qemu)
 
 - I/O Devices
+  - VGA / Bochs VBE support
+    - VGA core: added support for read/write modes in odd/even (text) mode
+    - VGA core: fixed write mode 3 with data rotation
+    - Added VBE memory size option (requires latest VGABIOS)
+  - Cirrus SVGA
+    - Added support for hardware cursor in VGA mode
+    - Fixed text mode cursor blinking / text mode cursor rendering issues
+    - VGA fixes to make original VGABIOS work correctly with WinXP
+    - Fixed Cirrus PCI issues found with Windows 3.11 driver (missing /
+      unreadable text in 8 bpp and 16 bpp modes)
+    - Added support for graphics controller mode extensions in VGA mode
+      Now the GD5446 PCI driver and the GD5430 ISA driver work correctly
+    - Fixes for write mode 4 & 5 and PCI reads from MMIO space
+    - Fixed lags caused by incorrect redraw value for backward BitBlt
+  - Voodoo / Banshee
+    - 3D core: Implemented trilinear filtering and fixed level of detail calculations
+    - Banshee: Fixes for address wrap handling during display update
+      Original Banshee / Voodoo3 VGABIOS reporting wrong number of image pages in
+      VBE mode info of at least mode 640x480x8 (Issue found with vbetest program)
+    - Added JSR and RET functions to CMDFIFO (Voodoo2/Banshee/Voodoo3)
+    - Fixed Voodoo3 issue found with Diablo II game
+    - Fixed Banshee / Voodoo3 issues with Windows 3.11 driver
+    - Fix big-endian support in Banshee / Voodoo3 mem_read code
+    - Implement 6 byte reads support for Voodoo 3
+    - Banshee/Voodoo3: Added 16 bpp to 32 bpp pixel format conversion for screen-to-screen bitblt operation
+    - Banshee: added host-to-screen stretching BitBlt support
+    - Banshee/Voodoo3: Added support for combined desktop / overlay mode with
+      chroma key check support
+    - Banshee/Voodoo3: Added YUV planar space write support
+    - Fixed deadlock after restore with Voodoo1 active
   - USB
     - Now includes the USB Debugger support for the xHCI and UHCI controllers
   - Sound
+    - SB16: Don't raise IRQ at DSP reset
+    - SB16: Calculate DSP DMA timer period based on DSP block size
+    - Sound drivers: Moving audio buffers to waveout class fixes wavemode 2 & 3
     - Added PCM playback/recording support using PulseAudio simple API
+    - ES1370: fixing status register access makes mixer work
+  - Networking
+    - Added support for using libslirp library instead of builtin slirp code
+    - Updated builtin slirp based on libslirp 4.8.0 (including IPv6 support)
+  - Mouse
+    - If not in wheel-mouse mode, don't report the wheel button event
+  - Hard drive / HD image
+    - Fix corruption of vmdk files > 4 GB in size
+
+- BIOS
+  - Fixed crash of Windows 98 SE setup with BIOS-bochs-latest (Ported some ACPI code from SeaBIOS)
+  - Allow BIOS ROM size up to 4MB to accommodate OVMF
+  - Added panic in legacy BIOS in case no VGA BIOS ROM is found at C000:0000
+  - Bochs BIOS: Fixed unwanted side effects caused by some helper functions
+  - LGPL'd VGABIOS updated to version 0.9c (Cirrus / VBE fixes and extensions)
+    - Now using ".bin" file extension for all VGABIOS images
+  - Added i440fx.bin BIOS written by Ben Lunt (https://github.com/fysnet/i440fx)
+
+- Misc
+  - bximage: added simple partition table viewer to the info function
+  - Documentation updates and fixes after transition to GIT
 
 -------------------------------------------------------------------------
 Changes in 2.8 (March 10, 2024):

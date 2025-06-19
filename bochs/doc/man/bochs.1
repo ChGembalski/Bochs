@@ -1,5 +1,5 @@
 .\"Document Author:  Timothy R. Butler   -   tbutler@uninetsolutions.com"
-.TH bochs 1 "26 Mar 2024" "bochs @version@" "The Bochs Project"
+.TH bochs 1 "07 Mar 2025" "bochs @version@" "The Bochs Project"
 .\"SKIP_SECTION"
 .SH NAME
 bochs \- Portable x86 Emulator.
@@ -63,6 +63,23 @@ Display available features / devices and exit
 .BI \-h,\ --help\ cpu
 Display supported CPU models and exit
 .LP
+The following options are available if Bochs is compiled with debugger support.
+.TP
+.BI \-dbg
+Start Bochs internal debugger on startup
+.TP
+.BI \-dbg_gui
+Start Bochs internal debugger with gui on startup
+.TP
+.BI \-dbg_gui:globalini
+Start Bochs internal debugger gui using ini file from BXSHARE path
+.TP
+.BI \-rc\ filename
+Execute debugger commands stored in file
+.TP
+.BI \-dbglog
+Specify Bochs internal debugger log file name
+.LP
 You can override the settings from the configuration file
 with command line arguments, using the  same  syntax  as the
 bochsrc file. If you have  any spaces in your command line
@@ -87,7 +104,7 @@ The latest version of this program can be found at:
 	https://bochs.sourceforge.io/getcurrent.html
 .\"SKIP_SECTION"
 .SH SEE ALSO
-bochsrc(5), bochs-dlx(1), bximage(1)
+bochsrc(5), bochs-dlx(1), bximage(1), bxhub(1)
 .PP
 .nf
 The Bochs IA-32 Emulator site on the World Wide Web:

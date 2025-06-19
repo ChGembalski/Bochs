@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2023  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -28,6 +28,8 @@
 #include "cmos.h"
 #include "virt_timer.h"
 #include "utctime.h"
+
+#include "bx_debug/debug.h"
 
 #define LOG_THIS theCmosDevice->
 
@@ -305,7 +307,8 @@ void bx_cmos_c::save_image(void)
   int fd, ret;
 
   // save CMOS to image file if requested.
-  if (SIM->get_param_bool(BXPN_CMOSIMAGE_ENABLED)->get()) {
+  if (SIM->get_param_bool(BXPN_CMOSIMAGE_ENABLED)->get() &&
+      (BX_CMOS_THIS s.max_reg >= 63)) {
     fd = open(SIM->get_param_string(BXPN_CMOSIMAGE_PATH)->getptr(), O_CREAT | O_WRONLY | O_TRUNC
 #ifdef O_BINARY
        | O_BINARY
@@ -794,21 +797,21 @@ void bx_cmos_c::update_clock()
   time_calendar = utctime(& BX_CMOS_THIS s.timeval);
 
   // update seconds
-  BX_CMOS_THIS s.reg[REG_SEC] = bin_to_bcd(time_calendar->tm_sec, BX_CMOS_THIS s.rtc_mode_binary);
+  BX_CMOS_THIS s.reg[REG_SEC] = bin_to_bcd((Bit8u)time_calendar->tm_sec, BX_CMOS_THIS s.rtc_mode_binary);
 
   // update minutes
-  BX_CMOS_THIS s.reg[REG_MIN] = bin_to_bcd(time_calendar->tm_min, BX_CMOS_THIS s.rtc_mode_binary);
+  BX_CMOS_THIS s.reg[REG_MIN] = bin_to_bcd((Bit8u)time_calendar->tm_min, BX_CMOS_THIS s.rtc_mode_binary);
 
   // update hours
   if (BX_CMOS_THIS s.rtc_mode_12hour) {
-    hour = time_calendar->tm_hour;
+    hour = (Bit8u)time_calendar->tm_hour;
     val_bcd = (hour > 11) ? 0x80 : 0x00;
     if (hour > 11) hour -= 12;
     if (hour == 0) hour = 12;
     val_bcd |= bin_to_bcd(hour, BX_CMOS_THIS s.rtc_mode_binary);
     BX_CMOS_THIS s.reg[REG_HOUR] = val_bcd;
   } else {
-    BX_CMOS_THIS s.reg[REG_HOUR] = bin_to_bcd(time_calendar->tm_hour, BX_CMOS_THIS s.rtc_mode_binary);
+    BX_CMOS_THIS s.reg[REG_HOUR] = bin_to_bcd((Bit8u)time_calendar->tm_hour, BX_CMOS_THIS s.rtc_mode_binary);
   }
 
   // update day of the week

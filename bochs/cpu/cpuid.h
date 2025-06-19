@@ -72,6 +72,8 @@ public:
 
   void dump_features() const;
 
+  void sanity_checks() const;
+
 #if BX_CPU_LEVEL >= 5
   virtual int rdmsr(Bit32u index, Bit64u *msr) { return -1; }
   virtual int wrmsr(Bit32u index, Bit64u  msr) { return -1; }
@@ -81,14 +83,9 @@ public:
   VMCS_Mapping* get_vmcs() { return &vmcs_map; }
 #endif
 
-protected:
-  BX_CPU_C *cpu;
-
-  unsigned nprocessors;
-  unsigned ncores;
-  unsigned nthreads;
-
-  Bit32u ia_extensions_bitmask[BX_ISA_EXTENSIONS_ARRAY_SIZE];
+#if BX_SUPPORT_EVEX
+  unsigned avx10_level() const;
+#endif
 
   BX_CPP_INLINE void enable_cpu_extension(unsigned extension) {
     assert(extension < BX_ISA_EXTENSION_LAST);
@@ -100,6 +97,15 @@ protected:
     assert(extension < BX_ISA_EXTENSION_LAST);
     ia_extensions_bitmask[extension / 32] &= ~(1 << (extension % 32));
   }
+
+protected:
+  BX_CPU_C *cpu;
+
+  unsigned nprocessors;
+  unsigned ncores;
+  unsigned nthreads;
+
+  Bit32u ia_extensions_bitmask[BX_ISA_EXTENSIONS_ARRAY_SIZE];
 
   void get_leaf_0(unsigned max_leaf, const char *vendor_string, cpuid_function_t *leaf, unsigned limited_max_leaf = 0x02) const;
   void get_ext_cpuid_brand_string_leaf(const char *brand_string, Bit32u function, cpuid_function_t *leaf) const;
@@ -118,6 +124,10 @@ protected:
   void get_std_cpuid_amx_tmul_leaf(Bit32u subfunction, cpuid_function_t *leaf) const;
 #endif
 
+  void get_std_cpuid_avx10_leaf(Bit32u subfunction, cpuid_function_t *leaf) const;
+
+  void get_std_cpuid_monitor_mwait_leaf(cpuid_function_t *leaf, Bit32u edx_power_states) const;
+
   Bit32u get_std_cpuid_leaf_1_ecx(Bit32u extra = 0) const;
   Bit32u get_std_cpuid_leaf_1_edx_common(Bit32u extra = 0) const;
   Bit32u get_std_cpuid_leaf_1_edx(Bit32u extra = 0) const;
@@ -125,9 +135,10 @@ protected:
   Bit32u get_std_cpuid_leaf_7_ecx(Bit32u extra = 0) const;
   Bit32u get_std_cpuid_leaf_7_edx(Bit32u extra = 0) const;
   Bit32u get_std_cpuid_leaf_7_subleaf_1_eax(Bit32u extra = 0) const;
+  Bit32u get_std_cpuid_leaf_7_subleaf_1_ecx() const;
   Bit32u get_std_cpuid_leaf_7_subleaf_1_edx(Bit32u extra = 0) const;
 
-  Bit32u get_ext_cpuid_leaf_1_ecx_intel(Bit32u extra = 0) const;
+  Bit32u get_ext_cpuid_leaf_1_ecx(Bit32u extra = 0) const;
   Bit32u get_ext_cpuid_leaf_1_edx_amd(Bit32u extra = 0) const;
   Bit32u get_ext_cpuid_leaf_1_edx_intel() const;
 
@@ -160,6 +171,7 @@ protected:
 };
 
 extern const char *get_cpu_feature_name(unsigned feature);
+extern int match_cpu_feature(const char *name); // return feature enum or -1 if not found
 
 typedef bx_cpuid_t* (*bx_create_cpuid_method)(BX_CPU_C *cpu);
 
@@ -552,7 +564,7 @@ typedef bx_cpuid_t* (*bx_create_cpuid_method)(BX_CPU_C *cpu);
 //   [18:18]  LKGS instruction support
 //   [19:19]  WRMSRNS instruction
 //   [20:20]  NMI source reporting
-//   [21:21]  AMX-FB16 support
+//   [21:21]  AMX-FP16 support
 //   [22:22]  HRESET and CPUID leaf 0x20 support
 //   [23:23]  AVX IFMA support
 //   [25:24]  reserved
@@ -560,7 +572,7 @@ typedef bx_cpuid_t* (*bx_create_cpuid_method)(BX_CPU_C *cpu);
 //   [27:27]  MSRLIST: RDMSRLIST/WRMSRLIST instructions and the IA32_BARRIER MSR
 //   [29:28]  reserved
 //   [30:30]  Prevent INVD execution after BIOS is done
-//   [31:28]  reserved
+//   [31:31]  MOVRS instructions
 
 #define BX_CPUID_STD7_SUBLEAF1_EAX_SHA512                 (1 <<  0)
 #define BX_CPUID_STD7_SUBLEAF1_EAX_SM3                    (1 <<  1)
@@ -593,23 +605,30 @@ typedef bx_cpuid_t* (*bx_create_cpuid_method)(BX_CPU_C *cpu);
 #define BX_CPUID_STD7_SUBLEAF1_EAX_RESERVED28             (1 << 28)
 #define BX_CPUID_STD7_SUBLEAF1_EAX_RESERVED29             (1 << 29)
 #define BX_CPUID_STD7_SUBLEAF1_EAX_INVD_DISABLE           (1 << 30)
-#define BX_CPUID_STD7_SUBLEAF1_EAX_RESERVED31             (1 << 31)
+#define BX_CPUID_STD7_SUBLEAF1_EAX_MOVRS                  (1 << 31)
 
 // CPUID defines - features CPUID[0x00000007].EBX  [subleaf 1]
 // -----------------------------
 //   [0:0]    IA32_PPIN and IA32_PPIN_CTL MSRs
 //   [1:1]    TSE: PBNDKB instruction and existence of the IA32_TSE_CAPABILITY MSR
-//   [31:1]   reserved
+//   [2:2]    reserved
+//   [3:3]    CPUIDMAXVAL_LIM_RMV: IA32_MISC_ENABLE[22] cannot be set to 1 to limit the value returned by CPUID.00H:EAX[7:0]
+//   [31:4]   reserved
 
 // ...
 #define BX_CPUID_STD7_SUBLEAF1_EBX_PPIN                   (1 <<  0)
 #define BX_CPUID_STD7_SUBLEAF1_EBX_TSE                    (1 <<  1)
+#define BX_CPUID_STD7_SUBLEAF1_EBX_RESERVED2              (1 <<  2)
+#define BX_CPUID_STD7_SUBLEAF1_EBX_CPUIDMAXVAL_LIM_RMV    (1 <<  3)
 // ...
 
 // CPUID defines - features CPUID[0x00000007].ECX  [subleaf 1]
 // -----------------------------
-//   [31:0]  reserved
+//   [0:4]    reserved
+//   [5:5]    Support immediate forms of RDMSR and WRMSRNS instructions
+//   [31:5]   reserved
 
+#define BX_CPUID_STD7_SUBLEAF1_ECX_MSR_IMM                (1 <<  5)
 // ...
 
 // CPUID defines - features CPUID[0x00000007].EDX  [subleaf 1]
@@ -621,12 +640,19 @@ typedef bx_cpuid_t* (*bx_create_cpuid_method)(BX_CPU_C *cpu);
 //   [8:8]    AMX-COMPLEX instructions
 //   [9:9]    reserved
 //   [10:10]  AVX-VNNI-INT16 instructions
-//   [13:11]  reserved
+//   [12:11]  reserved
+//   [13:13]  User Timer support
 //   [14:14]  PREFETCHITI: PREFETCHIT0/T1 instruction
 //   [15:15]  USER_MSR: support for URDMSR/UWRMSR instructions
 //   [16:16]  reserved
-//   [17:17]  UIRET sets UIF to the RFLAGS[1] image loaded from the stack
+//   [17:17]  Flexible UIRET: UIRET sets UIF to the RFLAGS[1] image loaded from the stack
 //   [18:18]  CET_SSS
+//   [19:19]  AVX10 support and CPUID leaf 0x24
+//   [20:20]  reserved
+//   [21:21]  APX support
+//   [22:22]  reserved
+//   [23:23]  MWAIT and CPUID LEAF5 support (to be used by VMM)
+//   [31:24]  reserved
 
 #define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED0              (1 <<  0)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED1              (1 <<  1)
@@ -641,13 +667,41 @@ typedef bx_cpuid_t* (*bx_create_cpuid_method)(BX_CPU_C *cpu);
 #define BX_CPUID_STD7_SUBLEAF1_EDX_AVX_VNNI_INT16         (1 << 10)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED11             (1 << 11)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED12             (1 << 12)
-#define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED13             (1 << 13)
+#define BX_CPUID_STD7_SUBLEAF1_EDX_USER_TIMER             (1 << 13)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_PREFETCHI              (1 << 14)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_USER_MSR               (1 << 15)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED16             (1 << 16)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_UIRET_UIF              (1 << 17)
 #define BX_CPUID_STD7_SUBLEAF1_EDX_CET_SSS                (1 << 18)
+#define BX_CPUID_STD7_SUBLEAF1_EDX_AVX10                  (1 << 19)
+#define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED20             (1 << 20)
+#define BX_CPUID_STD7_SUBLEAF1_EDX_APX                    (1 << 21)
+#define BX_CPUID_STD7_SUBLEAF1_EDX_RESERVED22             (1 << 22)
+#define BX_CPUID_STD7_SUBLEAF1_EDX_MWAIT_AND_LEAF5        (1 << 23)
 // ...
+
+// CPUID defines - AMX extensions CPUID[0x0000001E].EAX
+// ------------------------------
+//   [0:0] AMX-INT8
+//   [1:1] AMX-BF16
+//   [2:2] AMX-COMPLEX
+//   [3:3] AMX-FP16
+//   [4:4] AMX-FP8
+//   [5:5] AMX-TRANSPOSE
+//   [6:6] AMX-TF32 (FP19)
+//   [7:7] AMX-AVX512
+//   [8:8] AMX-MOVRS
+//  [31:9] reserved
+
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_INT8              (1 <<  0)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_BF16              (1 <<  1)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_COMPLEX           (1 <<  2)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_FP16              (1 <<  3)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_FP8               (1 <<  4)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_TRANSPOSE         (1 <<  5)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_TF32              (1 <<  6)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_AVX512            (1 <<  7)
+#define BX_CPUID_AMX_EXTENSIONS_EAX_AMX_MOVRS             (1 <<  8)
 
 // CPUID defines - STD2 features CPUID[0x80000001].EDX
 // -----------------------------

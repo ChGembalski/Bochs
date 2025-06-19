@@ -49,7 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | IEC/IEEE Standard for Binary Floating-Point Arithmetic.
 *----------------------------------------------------------------------------*/
 
-float32_t f32_scalef(float32_t a, float32_t b, struct softfloat_status_t *status)
+float32 f32_scalef(float32 a, float32 b, struct softfloat_status_t *status)
 {
     bool signA;
     int16_t expA;
@@ -125,9 +125,7 @@ float32_t f32_scalef(float32_t a, float32_t b, struct softfloat_status_t *status
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
     if (expB <= 0x7E) {
-        if (! expB)
-            softfloat_raiseFlags(status, softfloat_flag_denormal);
-        scale = -signB;
+        scale = -int(signB);
     }
     else {
         shiftCount = expB - 0x9E;

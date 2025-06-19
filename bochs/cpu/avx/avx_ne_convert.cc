@@ -28,28 +28,30 @@
 
 #if BX_SUPPORT_AVX
 
+#include "softfloat3e/include/softfloat.h"
+
 // FP32: s|eeeeeeee|mmmmmmmmmmmmmmmmmmmmmmm
 // BF16: s|eeeeeeee|mmmmmmm
 //  F16: s|eeeee|mmmmmmmmmm
 
-float_status_t prepare_ne_softfloat_status_helper()
+softfloat_status_t prepare_ne_softfloat_status_helper(bool denormals_are_zeros = false)
 {
-  float_status_t status;
+  softfloat_status_t status;
 
-  status.float_rounding_mode = softfloat_round_near_even;
-  status.float_exception_flags = 0;
-  status.float_exception_masks = float_all_exceptions_mask;
-  status.float_suppress_exception = float_all_exceptions_mask;
-  status.flush_underflow_to_zero = true;
-  // input denormals not converted to zero and handled normally
-  status.denormals_are_zeros = false;
+  status.softfloat_roundingMode = softfloat_round_near_even;
+  status.softfloat_exceptionFlags = 0;
+  status.softfloat_exceptionMasks = softfloat_all_exceptions_mask;
+  status.softfloat_suppressException = softfloat_all_exceptions_mask;
+  status.softfloat_flush_underflow_to_zero = true;
+  // by default input denormals not converted to zero and handled normally
+  status.softfloat_denormals_are_zeros = denormals_are_zeros;
 
   return status;
 }
 
 float32 convert_ne_fp16_to_fp32(float16 op)
 {
-  static float_status_t status = prepare_ne_softfloat_status_helper();
+  static softfloat_status_t status = prepare_ne_softfloat_status_helper();
   return f16_to_f32(op, &status);
 }
 
@@ -88,7 +90,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VBCSTNESH2PS_VpsWshM(bxInstruction_c *i)
   BX_NEXT_INSTR(i);
 }
 
-void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEEBF162PS_VpsWbf16R(bxInstruction_c *i)
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEEBF162PS_VpsWphR(bxInstruction_c *i)
 {
   assert(i->src() == BX_VECTOR_TMP_REGISTER);
   BxPackedAvxRegister reg = BX_READ_AVX_REG(i->src());
@@ -101,7 +103,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEEBF162PS_VpsWbf16R(bxInstruction_c *
   BX_NEXT_INSTR(i);
 }
 
-void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEOBF162PS_VpsWbf16R(bxInstruction_c *i)
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEOBF162PS_VpsWphR(bxInstruction_c *i)
 {
   assert(i->src() == BX_VECTOR_TMP_REGISTER);
   BxPackedAvxRegister reg = BX_READ_AVX_REG(i->src());
@@ -140,7 +142,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEOPH2PS_VpsWphR(bxInstruction_c *i)
   BX_NEXT_INSTR(i);
 }
 
-void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEPS2BF16_Vbf16WpsR(bxInstruction_c *i)
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::VCVTNEPS2BF16_VphWpsR(bxInstruction_c *i)
 {
   BxPackedAvxRegister src = BX_READ_AVX_REG(i->src()), dst;
   unsigned len = i->getVL();

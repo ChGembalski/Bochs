@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2024  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -675,14 +675,16 @@ void bx_win32_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
     }
   }
 
-  win32_nokeyrepeat = gui_nokeyrepeat;
-  hideIPS = gui_hide_ips;
+  win32_nokeyrepeat = gui_opts.nokeyrepeat;
+#if BX_SHOW_IPS
+  hideIPS = gui_opts.hide_ips;
+#endif
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
-  if (enh_dbg_gui_enabled) {
+  if (bx_dbg.debugger_active && bx_dbg.debugger_gui) {
     if (gui_ci) {
       gui_debug = TRUE;
       SIM->set_debug_gui(1);
-      win32_enh_dbg_global_ini = enh_dbg_global_ini;
+      win32_enh_dbg_global_ini = bx_dbg.dbg_gui_globalini;
     } else {
       BX_PANIC(("Config interface 'win32config' is required for gui debugger"));
     }
@@ -757,7 +759,7 @@ void bx_win32_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   // load keymap tables
   if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-    bx_keymap.loadKeymap(NULL);  // I have no function to convert X windows symbols
+    bx_keymap.loadKeymap("x11", NULL);  // I have no function to convert X windows symbols
   }
 
   if (gui_ci) {
@@ -963,8 +965,9 @@ DWORD WINAPI UIThread(LPVOID)
     SendMessage(hwndTB, TB_BUTTONSTRUCTSIZE, (WPARAM) sizeof(TBBUTTON), 0);
     SendMessage(hwndTB, TB_SETBITMAPSIZE, 0, (LPARAM)MAKELONG(32, 32));
 
-    hwndSB = CreateStatusWindow(WS_CHILD | WS_VISIBLE, "",
-                                stInfo.mainWnd, 0x7712);
+    hwndSB = CreateWindowEx(0, STATUSCLASSNAME, (PCTSTR)NULL,
+                            WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, stInfo.mainWnd,
+                            (HMENU) 0x7712, stInfo.hInstance, NULL);
     if (hwndSB) {
       unsigned elements;
       SB_Edges[0] = SIZE_OF_SB_MOUSE_MESSAGE + SIZE_OF_SB_ELEMENT;
@@ -1245,16 +1248,16 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
     if (stretch_factor == 1) {
       BitBlt(hdc, ps.rcPaint.left, ps.rcPaint.top,
-             ps.rcPaint.right - ps.rcPaint.left + 1,
-             ps.rcPaint.bottom - ps.rcPaint.top + 1, hdcMem,
+             ps.rcPaint.right - ps.rcPaint.left,
+             ps.rcPaint.bottom - ps.rcPaint.top, hdcMem,
              ps.rcPaint.left, ps.rcPaint.top, SRCCOPY);
     } else {
       StretchBlt(hdc, ps.rcPaint.left, ps.rcPaint.top,
-                 ps.rcPaint.right - ps.rcPaint.left + 1,
-                 ps.rcPaint.bottom - ps.rcPaint.top + 1, hdcMem,
+                 ps.rcPaint.right - ps.rcPaint.left,
+                 ps.rcPaint.bottom - ps.rcPaint.top, hdcMem,
                  ps.rcPaint.left/stretch_factor, ps.rcPaint.top/stretch_factor,
-                 (ps.rcPaint.right - ps.rcPaint.left+1)/stretch_factor,
-                 (ps.rcPaint.bottom - ps.rcPaint.top+1)/stretch_factor, SRCCOPY);
+                 (ps.rcPaint.right - ps.rcPaint.left)/stretch_factor,
+                 (ps.rcPaint.bottom - ps.rcPaint.top)/stretch_factor, SRCCOPY);
     }
     DeleteDC (hdcMem);
     EndPaint (hwnd, &ps);
@@ -1388,6 +1391,8 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
       mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_F10, 1);
     } else if (wParam == VK_F12) {
       mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_F12, 1);
+    } else if (wParam == 'G') {
+      mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_G, 1);
     }
     if (mouse_toggle) {
       mouseCaptureMode = !mouseCaptureMode;
@@ -1487,6 +1492,8 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
         bx_gui->mouse_toggle_check(BX_MT_KEY_F10, 0);
       } else if (wParam == VK_F12) {
         bx_gui->mouse_toggle_check(BX_MT_KEY_F12, 0);
+      } else if (wParam == 'G') {
+        bx_gui->mouse_toggle_check(BX_MT_KEY_G, 0);
       }
       EnterCriticalSection(&stInfo.keyCS);
       enq_key_event(HIWORD (lParam) & 0x01FF, BX_KEY_RELEASED);
@@ -1578,9 +1585,13 @@ void enq_key_event(Bit32u key, Bit32u press_release)
         break;
       case 0x2a:
         shift_pressed_l = FALSE;
+        // after pressing both shift keys there is only one release event
+        if (shift_pressed_r) enq_key_event(0x36, BX_KEY_RELEASED);
         break;
       case 0x36:
         shift_pressed_r = FALSE;
+        // see above
+        if (shift_pressed_l) enq_key_event(0x2a, BX_KEY_RELEASED);
         break;
       case 0x38:
         alt_pressed_l = FALSE;
@@ -1699,9 +1710,6 @@ void bx_win32_gui_c::flush(void)
 {
   EnterCriticalSection(&stInfo.drawCS);
   if (updated_area_valid) {
-    // slight bugfix
-	updated_area.right++;
-	updated_area.bottom++;
 	InvalidateRect(stInfo.simWnd, &updated_area, FALSE);
 	updated_area_valid = FALSE;
   }
@@ -1720,7 +1728,7 @@ void bx_win32_gui_c::clear_screen(void)
   PatBlt(MemoryDC, 0, 0, stretched_x, stretched_y, BLACKNESS);
   SelectObject(MemoryDC, oldObj);
 
-  updateUpdated(0, 0, dimension_x-1, dimension_y-1);
+  updateUpdated(0, 0, dimension_x, dimension_y);
 
   LeaveCriticalSection(&stInfo.drawCS);
 }
@@ -1768,7 +1776,7 @@ void bx_win32_gui_c::draw_char(Bit8u ch, Bit8u fc, Bit8u bc, Bit16u xc, Bit16u y
     if ((ce - cs + 1) < fh) {
       fh = ce - cs + 1;
     }
-    DrawBitmap(hdc, vgafont[map][ch], xc, yc, fw, fh, fx, fy, bc, fc);
+    DrawBitmap(hdc, vgafont[map][ch], xc, yc, fw, fh, fx, cs, bc, fc);
   }
   ReleaseDC(stInfo.simWnd, hdc);
   LeaveCriticalSection(&stInfo.drawCS);
@@ -1839,18 +1847,22 @@ void bx_win32_gui_c::graphics_tile_update(Bit8u *tile, unsigned x0, unsigned y0)
 {
   HDC hdc;
   HGDIOBJ oldObj;
+  unsigned yt = y_tilesize;
 
+  if ((y0 + y_tilesize) > dimension_y) {
+	yt = dimension_y - y0;
+  }
   EnterCriticalSection(&stInfo.drawCS);
   hdc = GetDC(stInfo.simWnd);
 
   oldObj = SelectObject(MemoryDC, MemoryBitmap);
 
-  StretchDIBits(MemoryDC, x0, y0, x_tilesize, y_tilesize, 0, 0,
-    x_tilesize, y_tilesize, tile, bitmap_info, DIB_RGB_COLORS, SRCCOPY);
+  StretchDIBits(MemoryDC, x0, y0, x_tilesize, yt, 0, 0,
+    x_tilesize, yt, tile, bitmap_info, DIB_RGB_COLORS, SRCCOPY);
 
   SelectObject(MemoryDC, oldObj);
 
-  updateUpdated(x0, y0, x0 + x_tilesize - 1, y0 + y_tilesize - 1);
+  updateUpdated(x0, y0, x0 + x_tilesize, y0 + yt);
 
   ReleaseDC(stInfo.simWnd, hdc);
   LeaveCriticalSection(&stInfo.drawCS);
@@ -1872,6 +1884,10 @@ void bx_win32_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
 
   if ((x == dimension_x) && (y == dimension_y) && (bpp == current_bpp))
     return;
+  if (fullscreenMode) {
+	clear_screen();
+	flush();
+  }
   dimension_x = x;
   dimension_y = y;
 
@@ -1886,8 +1902,12 @@ void bx_win32_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
     }
   }
 
-  bitmap_info->bmiHeader.biBitCount = bpp;
   if (bpp != current_bpp) {
+    if (bpp == 15) {
+      bitmap_info->bmiHeader.biBitCount = 16;
+    } else {
+      bitmap_info->bmiHeader.biBitCount = bpp;
+    }
     if (bpp == 16) {
       bitmap_info->bmiHeader.biCompression = BI_BITFIELDS;
       static RGBQUAD red_mask   = {0x00, 0xF8, 0x00, 0x00};
@@ -1906,9 +1926,6 @@ void bx_win32_gui_c::dimension_update(unsigned x, unsigned y, unsigned fheight, 
         bitmap_info->bmiColors[2] = bitmap_info->bmiColors[258];
       }
       bitmap_info->bmiHeader.biCompression = BI_RGB;
-      if (bpp == 15) {
-        bitmap_info->bmiHeader.biBitCount = 16;
-      }
     }
   }
   current_bpp = guest_bpp = bpp;
@@ -2105,7 +2122,7 @@ void DrawBitmap(HDC hdc, HBITMAP hBitmap, int xStart, int yStart, int width,
 
   SelectObject(MemoryDC, oldObj);
 
-  updateUpdated(xStart, yStart, ptSize.x + xStart - 1, ptSize.y + yStart - 1);
+  updateUpdated(xStart, yStart, ptSize.x + xStart, ptSize.y + yStart);
 
   DeleteDC(hdcMem);
 }

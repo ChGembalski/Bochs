@@ -32,8 +32,6 @@
 
 // audio buffer support
 
-bx_audio_buffer_c *audio_buffers[2];
-
 bx_audio_buffer_c::bx_audio_buffer_c(Bit8u _format)
 {
   format = _format;
@@ -174,11 +172,11 @@ void convert_float_to_s16le(float *src, unsigned srcsize, Bit8u *dst)
 Bit32u pcm_callback(void *dev, Bit16u rate, Bit8u *buffer, Bit32u len)
 {
   Bit32u copied = 0;
-  UNUSED(dev);
   UNUSED(rate);
+  bx_soundlow_waveout_c *waveout = (bx_soundlow_waveout_c*)dev;
 
   while (len > 0) {
-    audio_buffer_t *curbuffer = audio_buffers[1]->get_buffer();
+    audio_buffer_t *curbuffer = waveout->get_audio_buffer(1)->get_buffer();
     if (curbuffer == NULL)
       break;
     Bit32u tmplen = curbuffer->size - curbuffer->pos;
@@ -192,7 +190,7 @@ Bit32u pcm_callback(void *dev, Bit16u rate, Bit8u *buffer, Bit32u len)
       len -= tmplen;
     }
     if (curbuffer->pos >= curbuffer->size) {
-      audio_buffers[1]->delete_buffer();
+      waveout->get_audio_buffer(1)->delete_buffer();
     }
   }
   return copied;
@@ -202,18 +200,19 @@ Bit32u pcm_callback(void *dev, Bit16u rate, Bit8u *buffer, Bit32u len)
 
 BX_MUTEX(resampler_mutex);
 BX_MUTEX(mixer_mutex);
+int mixer_mutex_usage = 0;
 
 BX_THREAD_FUNC(resampler_thread, indata)
 {
   bx_soundlow_waveout_c *waveout = (bx_soundlow_waveout_c*)indata;
   while (waveout->resampler_running()) {
     BX_LOCK(resampler_mutex);
-    audio_buffer_t *curbuffer = audio_buffers[0]->get_buffer();
+    audio_buffer_t *curbuffer = waveout->get_audio_buffer(0)->get_buffer();
     BX_UNLOCK(resampler_mutex);
     if (curbuffer != NULL) {
       waveout->resampler(curbuffer, NULL);
       BX_LOCK(resampler_mutex);
-      audio_buffers[0]->delete_buffer();
+      waveout->get_audio_buffer(0)->delete_buffer();
       BX_UNLOCK(resampler_mutex);
     } else {
       BX_MSLEEP(20);
@@ -248,10 +247,8 @@ BX_THREAD_FUNC(mixer_thread, indata)
 bx_soundlow_waveout_c::bx_soundlow_waveout_c()
 {
   put("waveout", "WAVOUT");
-  if (audio_buffers[0] == NULL) {
-    audio_buffers[0] = new bx_audio_buffer_c(BUFTYPE_FLOAT);
-    audio_buffers[1] = new bx_audio_buffer_c(BUFTYPE_UCHAR);
-  }
+  audio_buffers[0] = new bx_audio_buffer_c(BUFTYPE_FLOAT);
+  audio_buffers[1] = new bx_audio_buffer_c(BUFTYPE_UCHAR);
   real_pcm_param = default_pcm_param;
   cb_count = 0;
   pcm_callback_id = -1;
@@ -277,8 +274,12 @@ bx_soundlow_waveout_c::~bx_soundlow_waveout_c()
     }
     if (mix_thread_start) {
       mix_thread_start = 0;
-      BX_MSLEEP(25);
-      BX_FINI_MUTEX(mixer_mutex);
+      BX_MSLEEP(30);
+      if (mixer_mutex_usage > 0) {
+        if (--mixer_mutex_usage == 0) {
+          BX_FINI_MUTEX(mixer_mutex);
+        }
+      }
     }
     if (audio_buffers[0] != NULL) {
       delete audio_buffers[0];
@@ -495,6 +496,7 @@ void bx_soundlow_waveout_c::start_resampler_thread()
 void bx_soundlow_waveout_c::start_mixer_thread()
 {
   BX_INIT_MUTEX(mixer_mutex);
+  mixer_mutex_usage++;
   mix_thread_start = 1;
   BX_THREAD_CREATE(mixer_thread, this, mix_thread_var);
 }

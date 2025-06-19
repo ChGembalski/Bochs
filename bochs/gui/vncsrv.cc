@@ -299,7 +299,7 @@ void bx_vncsrv_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   // load keymap for vncsrv
   if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-    bx_keymap.loadKeymap(convertStringToRfbKey);
+    bx_keymap.loadKeymap("x11", convertStringToRfbKey);
   }
 
   // the ask menu doesn't work on the client side
@@ -1220,6 +1220,8 @@ void dokey(rfbBool down, rfbKeySym key, rfbClientPtr cl)
     mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_F10, down);
   } else if (key == XK_F12) {
     mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_F12, down);
+  } else if (key == XK_g) {
+    mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_G, down);
   }
   if (mouse_toggle) {
     bx_gui->toggle_mouse_enable();

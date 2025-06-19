@@ -36,13 +36,12 @@ amd_k6_2_chomper_t::amd_k6_2_chomper_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_PENTIUM);
   enable_cpu_extension(BX_ISA_MMX);
   enable_cpu_extension(BX_ISA_SYSCALL_SYSRET_LEGACY);
+#if BX_SUPPORT_3DNOW
   enable_cpu_extension(BX_ISA_3DNOW);
+#endif
   enable_cpu_extension(BX_ISA_DEBUG_EXTENSIONS);
   enable_cpu_extension(BX_ISA_VME);
   enable_cpu_extension(BX_ISA_PSE);
-#if BX_PHY_ADDRESS_LONG
-  enable_cpu_extension(BX_ISA_PSE36);
-#endif
 }
 
 void amd_k6_2_chomper_t::get_cpuid_leaf(Bit32u function, Bit32u subfunction, cpuid_function_t *leaf) const
@@ -196,7 +195,6 @@ void amd_k6_2_chomper_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
 // leaf 0x80000005 - L1 Cache and TLB Identifiers //
 void amd_k6_2_chomper_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x800000005 - L1 Cache and TLB Identifiers
   leaf->eax = 0x00000000;
   leaf->ebx = 0x02800140;
   leaf->ecx = 0x20020220;

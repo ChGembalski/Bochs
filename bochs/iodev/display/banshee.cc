@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2017-2024  The Bochs Project
+//  Copyright (C) 2017-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -59,9 +59,8 @@
 // 3dfx Voodoo Banshee / Voodoo3 emulation (partly based on a patch for DOSBox)
 
 // TODO:
-// - 2D host-to-screen stretching support
+// - 2D host-to-screen pattern stretching support
 // - 2D screen-to-screen pattern stretching support
-// - 2D chromaKey support
 // - 2D reversible line drawing
 // - pixel format conversion not supported in all cases
 // - full AGP support
@@ -89,6 +88,8 @@
 #define BX_USE_TERNARY_ROP
 #include "bitblt.h"
 
+#include "bx_debug/debug.h"
+
 #define LOG_THIS theVoodooDevice->
 
 const Bit8u banshee_iomask[256] = {4,0,0,0,7,1,3,1,7,1,3,1,7,1,3,1,7,1,3,1,
@@ -107,6 +108,12 @@ const Bit8u banshee_iomask[256] = {4,0,0,0,7,1,3,1,7,1,3,1,7,1,3,1,7,1,3,1,
 
 const Bit8u pxconv_table[16] = {0x3a,0x02,0x00,0x38,0x38,0x38,0x00,0x00,
                                 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+#define SIGN_EXTEND(type, dst, width, src) \
+do { \
+  struct { type x : width; } s; \
+  dst = s.x = src; \
+} while (0)
 
 #include "voodoo_types.h"
 #include "voodoo_data.h"
@@ -146,17 +153,17 @@ void bx_banshee_c::init_model(void)
   is_agp = SIM->is_agp_device(BX_PLUGIN_VOODOO);
   if (s.model == VOODOO_BANSHEE) {
     if (!is_agp) {
-      strcpy(model, "Experimental 3dfx Voodoo Banshee PCI");
+      strcpy(model, "3dfx Voodoo Banshee PCI");
     } else {
-      strcpy(model, "Experimental 3dfx Voodoo Banshee AGP");
+      strcpy(model, "3dfx Voodoo Banshee AGP");
     }
     DEV_register_pci_handlers2(this, &s.devfunc, BX_PLUGIN_VOODOO, model, is_agp);
     init_pci_conf(0x121a, 0x0003, 0x01, 0x030000, 0x00, BX_PCI_INTA);
   } else if (s.model == VOODOO_3) {
     if (!is_agp) {
-      strcpy(model, "Experimental 3dfx Voodoo 3 PCI");
+      strcpy(model, "3dfx Voodoo 3 PCI");
     } else {
-      strcpy(model, "Experimental 3dfx Voodoo 3 AGP");
+      strcpy(model, "3dfx Voodoo 3 AGP");
     }
     DEV_register_pci_handlers2(this, &s.devfunc, BX_PLUGIN_VOODOO, model, is_agp);
     init_pci_conf(0x121a, 0x0005, 0x01, 0x030000, 0x00, BX_PCI_INTA);
@@ -254,6 +261,7 @@ void bx_banshee_c::reset(unsigned type)
   if (theVoodooVga != NULL) {
     theVoodooVga->banshee_set_vclk3((Bit32u)v->vidclk);
   }
+  ddc.init();
 
   // Deassert IRQ
   set_irq_level(0);
@@ -324,6 +332,16 @@ void bx_banshee_c::register_state(void)
   new bx_shadow_num_c(banshee, "blt_clipy1_1", &v->banshee.blt.clipy1[1]);
   new bx_shadow_num_c(banshee, "blt_h2s_pitch", &v->banshee.blt.h2s_pitch);
   new bx_shadow_num_c(banshee, "blt_h2s_pxstart", &v->banshee.blt.h2s_pxstart);
+  BXRS_PARAM_BOOL(banshee, overlay_enabled, v->banshee.overlay.enabled);
+  new bx_shadow_num_c(banshee, "overlay_format", &v->banshee.overlay.format);
+  new bx_shadow_num_c(banshee, "overlay_start", &v->banshee.overlay.start, BASE_HEX);
+  new bx_shadow_num_c(banshee, "overlay_pitch", &v->banshee.overlay.pitch);
+  new bx_shadow_num_c(banshee, "overlay_x0", &v->banshee.overlay.x0);
+  new bx_shadow_num_c(banshee, "overlay_y0", &v->banshee.overlay.y0);
+  new bx_shadow_num_c(banshee, "overlay_x1", &v->banshee.overlay.x1);
+  new bx_shadow_num_c(banshee, "overlay_y1", &v->banshee.overlay.y1);
+  new bx_shadow_num_c(banshee, "overlay_fx", &v->banshee.overlay.fx);
+  new bx_shadow_num_c(banshee, "overlay_fy", &v->banshee.overlay.fy);
 }
 
 void bx_banshee_c::after_restore_state(void)
@@ -370,18 +388,27 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
   Bit16u index, pitch;
   Bit16u hwcx = v->banshee.hwcursor.x;
   Bit16u hwcy = v->banshee.hwcursor.y;
-  Bit8u hwcw = 63;
+  Bit8u hwcwm1 = 63;
   int i;
+  bool overlay2d = false;
 
+  if (info->snapshot_mode) {
+    tile_ptr = bx_gui->get_snapshot_buffer();
+    w = s.vdraw.width;
+    h = s.vdraw.height;
+  } else {
+    tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
+  }
   if (v->banshee.double_width) {
     hwcx <<= 1;
-    hwcw <<= 1;
+    hwcwm1 <<= 1;
   }
-  if ((xc <= hwcx) && ((int)(xc + X_TILESIZE) > (hwcx - hwcw)) &&
-      (yc <= hwcy) && ((int)(yc + Y_TILESIZE) > (hwcy - 63))) {
-    if ((v->banshee.io[io_vidProcCfg] & 0x181) == 0x81) {
+  if ((xc <= hwcx) && ((int)(xc + w) > (hwcx - hwcwm1)) &&
+      (yc <= hwcy) && ((int)(yc + h) > (hwcy - 63))) {
+    if ((v->banshee.io[io_vidProcCfg] & 0x81) == 0x81) {
       start = v->banshee.io[io_vidDesktopStartAddr];
       pitch = v->banshee.io[io_vidDesktopOverlayStride] & 0x7fff;
+      overlay2d = v->banshee.overlay.enabled;
     } else {
       start = v->fbi.rgboffs[0];
       pitch = (v->banshee.io[io_vidDesktopOverlayStride] >> 16) & 0x7fff;
@@ -390,19 +417,18 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
     if (v->banshee.desktop_tiled) {
       pitch *= 128;
     }
-    tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
 
-    if ((hwcx - hwcw) < (int)xc) {
+    if ((hwcx - hwcwm1) < (int)xc) {
       cx = xc;
       if ((hwcx - xc + 1) > w) {
         cw = w;
       } else {
         cw = hwcx - xc + 1;
       }
-      px = hwcw - (hwcx - xc);
+      px = hwcwm1 - (hwcx - xc);
     } else {
-      cx = hwcx - hwcw;
-      cw = w - (hwcx - hwcw - xc);
+      cx = hwcx - hwcwm1;
+      cw = (hwcx < (xc + w)) ? hwcwm1 + 1 : w - (hwcx - hwcwm1 - xc);
       px = 0;
     }
     if ((hwcy - 63) < (int)yc) {
@@ -415,7 +441,7 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
       py = 63 - (hwcy - yc);
     } else {
       cy = hwcy - 63;
-      ch = h - (hwcy - 63 - yc);
+      ch = (hwcy < (yc + h)) ? 64 : h - (hwcy - 63 - yc);
       py = 0;
     }
     tile_ptr += ((cy - yc) * info->pitch);
@@ -457,8 +483,17 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
               }
               break;
             case 16:
-              index = *(vid_ptr++);
-              index |= *(vid_ptr++) << 8;
+              index = *(vid_ptr);
+              index |= *(vid_ptr + 1) << 8;
+              if (overlay2d &&
+                  (x >= v->banshee.overlay.x0) &&
+                  (x <= v->banshee.overlay.x1) &&
+                  (y >= v->banshee.overlay.y0) &&
+                  (y <= v->banshee.overlay.y1) &&
+                  chromakey_check(index, 16)) {
+                index = (Bit16u)get_overlay_pixel(x, y, 16);
+              }
+              vid_ptr += 2;
               colour = v->fbi.pen[index];
               break;
             case 24:
@@ -466,6 +501,14 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
               colour = *vid_ptr;
               colour |= (*(vid_ptr + 1)) << 8;
               colour |= (*(vid_ptr + 2)) << 16;
+              if (overlay2d &&
+                  (x >= v->banshee.overlay.x0) &&
+                  (x <= v->banshee.overlay.x1) &&
+                  (y >= v->banshee.overlay.y0) &&
+                  (y <= v->banshee.overlay.y1) &&
+                  chromakey_check(colour, v->banshee.disp_bpp)) {
+                colour = get_overlay_pixel(x, y, v->banshee.disp_bpp);
+              }
               break;
           }
           if (ccode == 3) colour ^= 0xffffff;
@@ -498,6 +541,471 @@ void bx_banshee_c::draw_hwcursor(unsigned xc, unsigned yc, bx_svga_tileinfo_t *i
       tile_ptr += info->pitch;
     }
   }
+}
+
+Bit32u bx_banshee_c::get_overlay_pixel(unsigned xc, unsigned yc, Bit8u bpp)
+{
+  Bit16u index = 0;
+  Bit32u value = 0;
+  unsigned ox, oy;
+  Bit16s r = 0, g = 0, b = 0;
+  Bit8u *vid_ptr, data[4], px;
+  Bit16s Y[2];
+  Bit8s U, V;
+
+  ox = (unsigned)((double)(xc - v->banshee.overlay.x0) * v->banshee.overlay.fx);
+  oy = (unsigned)((double)(yc - v->banshee.overlay.y0) * v->banshee.overlay.fy);
+  px = ox & 1;
+  ox &= ~1;
+  vid_ptr = &v->fbi.ram[v->banshee.overlay.start & v->fbi.mask] + (ox << 1)
+            + (oy * v->banshee.overlay.pitch);
+  for (unsigned i = 0; i < 4; i++) {
+    data[i] = *(vid_ptr + i);
+  }
+  if ((v->banshee.overlay.format == 5) || (v->banshee.overlay.format == 6)) {
+    if (v->banshee.overlay.format == 5) {
+      Y[0] = data[0] - 0x10;
+      U = data[1] - 0x80;
+      Y[1] = data[2] - 0x10;
+      V = data[3] - 0x80;
+    } else {
+      U = data[0] - 0x80;
+      Y[0] = data[1] - 0x10;
+      V = data[2] - 0x80;
+      Y[1] = data[3] - 0x10;
+    }
+    r = Y[px] * 1.164383 + V * 1.596027;
+    g = Y[px] * 1.164383 - U * 0.391762 - V * 0.812968;
+    b = Y[px] * 1.164383 + U * 2.017232;
+    CLAMP(r, 0x00, 0xff);
+    CLAMP(g, 0x00, 0xff);
+    CLAMP(b, 0x00, 0xff);
+    index = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+  } else if ((v->banshee.overlay.format == 1) ||
+             (v->banshee.overlay.format == 7)) {
+    index = data[px << 1];
+    index |= data[(px << 1) + 1] << 8;
+    r = (index & 0xf800) >> 8;
+    g = (index & 0x07e0) >> 3;
+    b = (index & 0x1f) << 3;
+  }
+  if (bpp == 16) {
+    value = index;
+  } else if ((bpp == 24) || (bpp == 32)) {
+    value = (r << 16) | (g << 8) | b;
+  }
+  return value;
+}
+
+bool bx_banshee_c::chromakey_check(Bit32u color, Bit8u bpp)
+{
+  bool pass = false;
+  Bit32u cmin, cmax;
+  Bit8u r, g, b, rmin, rmax, gmin, gmax, bmin, bmax;
+
+  if (!((v->banshee.io[io_vidProcCfg] >> 5) & 1))
+    return true;
+
+  cmin = v->banshee.io[io_vidChromaMin];
+  cmax = v->banshee.io[io_vidChromaMax];
+  if (bpp == 15) {
+    color &= 0x7fff;
+    r = (color >> 10);
+    g = (color >> 5) & 0x1f;
+    b = color & 0x1f;
+    rmin = (cmin >> 10) & 0x1f;
+    rmax = (cmax >> 10) & 0x1f;
+    gmin = (cmin >> 5) & 0x1f;
+    gmax = (cmax >> 5) & 0x1f;
+    bmin = cmin & 0x1f;
+    bmax = cmax & 0x1f;
+  } else if (bpp == 16) {
+    color &= 0xffff;
+    r = (color >> 11);
+    g = (color >> 5) & 0x3f;
+    b = color & 0x1f;
+    rmin = (cmin >> 11) & 0x1f;
+    rmax = (cmax >> 11) & 0x1f;
+    gmin = (cmin >> 5) & 0x3f;
+    gmax = (cmax >> 5) & 0x3f;
+    bmin = cmin & 0x1f;
+    bmax = cmax & 0x1f;
+  } else {
+    r = (color >> 16) & 0xff;
+    g = (color >> 8) & 0xff;
+    b = color & 0xff;
+    rmin = (cmin >> 16) & 0xff;
+    rmax = (cmax >> 16) & 0xff;
+    gmin = (cmin >> 8) & 0xff;
+    gmax = (cmax >> 8) & 0xff;
+    bmin = cmin & 0xff;
+    bmax = cmax & 0xff;
+  }
+  pass = ((r >= rmin) && (r <= rmax) && (g >= gmin) && (g <= gmax) &&
+          (b >= bmin) && (b <= bmax));
+  if ((v->banshee.io[io_vidProcCfg] >> 6) & 1) {
+    pass = !pass;
+  }
+  return pass;
+}
+
+bool bx_banshee_c::update(void)
+{
+  Bit32u start;
+  unsigned iHeight, iWidth, riHeight, riWidth;
+  unsigned pitch, xc, yc, xti, yti;
+  unsigned r, c, w, h;
+  int i;
+  Bit32u colour;
+  Bit8u *vid_ptr, *vid_ptr2;
+  Bit8u *tile_ptr, *tile_ptr2;
+  Bit8u bpp;
+  Bit16u index;
+  bx_svga_tileinfo_t info;
+
+  if ((v->banshee.io[io_vidProcCfg] & 0x81) == 0x81) {
+    BX_LOCK(render_mutex);
+    bpp = v->banshee.disp_bpp;
+    start = v->banshee.io[io_vidDesktopStartAddr];
+    pitch = v->banshee.io[io_vidDesktopOverlayStride] & 0x7fff;
+    if (v->banshee.desktop_tiled) {
+      pitch *= 128;
+    }
+    if (v->banshee.overlay.enabled) {
+      v->banshee.overlay.start = v->reg[leftOverlayBuf].u;
+      v->banshee.overlay.pitch = (v->banshee.io[io_vidDesktopOverlayStride] >> 16) & 0x7fff;
+      if (v->banshee.overlay_tiled) {
+        v->banshee.overlay.pitch *= 128;
+      }
+    }
+    iWidth = s.vdraw.width;
+    iHeight = s.vdraw.height;
+    if (v->banshee.half_mode) {
+      riHeight = iHeight / 2;
+      if (v->banshee.double_width) {
+        riWidth = iWidth / 2;
+      } else {
+        riWidth = iWidth;
+      }
+    } else {
+      riHeight = iHeight;
+      riWidth = iWidth;
+    }
+    start &= v->fbi.mask;
+    Bit8u *disp_ptr = &v->fbi.ram[start];
+    if ((start + pitch * (riHeight - 1) + riWidth) > (v->fbi.mask + 1)) {
+      BX_ERROR(("skip address wrap during update() (start = 0x%08x)", start));
+      BX_UNLOCK(render_mutex);
+      return false;
+    }
+    if (bx_gui->graphics_tile_info_common(&info)) {
+      if (info.snapshot_mode) {
+        vid_ptr = disp_ptr;
+        tile_ptr = bx_gui->get_snapshot_buffer();
+        if (tile_ptr != NULL) {
+          for (yc = 0; yc < iHeight; yc++) {
+            vid_ptr2  = vid_ptr;
+            tile_ptr2 = tile_ptr;
+            for (xc = 0; xc < iWidth; xc++) {
+              memcpy(tile_ptr2, vid_ptr2, (bpp >> 3));
+              if (!v->banshee.double_width || (xc & 1)) {
+                vid_ptr2 += (bpp >> 3);
+              }
+              tile_ptr2 += (info.bpp >> 3);
+            }
+            if (!v->banshee.half_mode || (yc & 1)) {
+              vid_ptr += pitch;
+            }
+            tile_ptr += info.pitch;
+          }
+          if (v->banshee.hwcursor.enabled) {
+            draw_hwcursor(0, 0, &info);
+          }
+        }
+      } else if (info.is_indexed) {
+        if ((bpp == 8) && (info.bpp == 8)) {
+          for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
+            for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
+              if (GET_TILE_UPDATED (xti, yti)) {
+                if (v->banshee.half_mode) {
+                  if (v->banshee.double_width) {
+                    vid_ptr = disp_ptr + ((yc >> 1) * pitch + (xc >> 1));
+                  } else {
+                    vid_ptr = disp_ptr + ((yc >> 1) * pitch + xc);
+                  }
+                } else {
+                  vid_ptr = disp_ptr + (yc * pitch + xc);
+                }
+                tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
+                for (r=0; r<h; r++) {
+                  vid_ptr2  = vid_ptr;
+                  tile_ptr2 = tile_ptr;
+                  for (c=0; c<w; c++) {
+                    *(tile_ptr2++) = *(vid_ptr2);
+                    if (!v->banshee.double_width || (c & 1)) {
+                      vid_ptr2++;
+                    }
+                  }
+                  if (!v->banshee.half_mode || (r & 1)) {
+                    vid_ptr += pitch;
+                  }
+                  tile_ptr += info.pitch;
+                }
+                if (v->banshee.hwcursor.enabled) {
+                  draw_hwcursor(xc, yc, &info);
+                }
+                set_tile_updated(xti, yti, 0);
+                bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
+              }
+            }
+          }
+        } else {
+          BX_ERROR(("current guest pixel format is unsupported on indexed colour host displays"));
+        }
+      } else {
+        switch (bpp) {
+          case 8:
+            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
+              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
+                if (GET_TILE_UPDATED(xti, yti)) {
+                  if (v->banshee.half_mode) {
+                    if (v->banshee.double_width) {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + (xc >> 1));
+                    } else {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + xc);
+                    }
+                  } else {
+                    vid_ptr = disp_ptr + (yc * pitch + xc);
+                  }
+                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
+                  for (r=0; r<h; r++) {
+                    vid_ptr2  = vid_ptr;
+                    tile_ptr2 = tile_ptr;
+                    for (c=0; c<w; c++) {
+                      colour = v->fbi.clut[*(vid_ptr2)];
+                      if (!v->banshee.double_width || (c & 1)) {
+                        vid_ptr2++;
+                      }
+                      colour = MAKE_COLOUR(
+                        colour & 0xff0000, 24, info.red_shift, info.red_mask,
+                        colour & 0x00ff00, 16, info.green_shift, info.green_mask,
+                        colour & 0x0000ff, 8, info.blue_shift, info.blue_mask);
+                      if (info.is_little_endian) {
+                        for (i=0; i<info.bpp; i+=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      } else {
+                        for (i=info.bpp-8; i>-8; i-=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      }
+                    }
+                    if (!v->banshee.half_mode || (r & 1)) {
+                      vid_ptr += pitch;
+                    }
+                    tile_ptr += info.pitch;
+                  }
+                  if (v->banshee.hwcursor.enabled) {
+                    draw_hwcursor(xc, yc, &info);
+                  }
+                  set_tile_updated(xti, yti, 0);
+                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
+                }
+              }
+            }
+            break;
+          case 16:
+            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
+              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
+                if (GET_TILE_UPDATED(xti, yti)) {
+                  if (v->banshee.half_mode) {
+                    if (v->banshee.double_width) {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + xc);
+                    } else {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + (xc << 1));
+                    }
+                  } else {
+                    vid_ptr = disp_ptr + (yc * pitch + (xc << 1));
+                  }
+                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
+                  for (r=0; r<h; r++) {
+                    vid_ptr2  = vid_ptr;
+                    tile_ptr2 = tile_ptr;
+                    for (c=0; c<w; c++) {
+                      index = *(vid_ptr2);
+                      index |= *(vid_ptr2 + 1) << 8;
+                      if (v->banshee.overlay.enabled &&
+                          ((xc + c) >= v->banshee.overlay.x0) &&
+                          ((xc + c) <= v->banshee.overlay.x1) &&
+                          ((yc + r) >= v->banshee.overlay.y0) &&
+                          ((yc + r) <= v->banshee.overlay.y1) &&
+                          chromakey_check(index, bpp)) {
+                        index = (Bit16u)get_overlay_pixel(xc + c, yc + r, bpp);
+                      }
+                      if (!v->banshee.double_width || (c & 1)) {
+                        vid_ptr2 += 2;
+                      }
+                      colour = MAKE_COLOUR(
+                        v->fbi.pen[index] & 0x0000ff, 8, info.blue_shift, info.blue_mask,
+                        v->fbi.pen[index] & 0x00ff00, 16, info.green_shift, info.green_mask,
+                        v->fbi.pen[index] & 0xff0000, 24, info.red_shift, info.red_mask);
+                      if (info.is_little_endian) {
+                        for (i=0; i<info.bpp; i+=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      } else {
+                        for (i=info.bpp-8; i>-8; i-=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      }
+                    }
+                    if (!v->banshee.half_mode || (r & 1)) {
+                      vid_ptr += pitch;
+                    }
+                    tile_ptr += info.pitch;
+                  }
+                  if (v->banshee.hwcursor.enabled) {
+                    draw_hwcursor(xc, yc, &info);
+                  }
+                  set_tile_updated(xti, yti, 0);
+                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
+                }
+              }
+            }
+            break;
+          case 24:
+            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
+              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
+                if (GET_TILE_UPDATED(xti, yti)) {
+                  if (v->banshee.half_mode) {
+                    if (v->banshee.double_width) {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + 3 * (xc >> 1));
+                    } else {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + 3 * xc);
+                    }
+                  } else {
+                    vid_ptr = disp_ptr + (yc * pitch + 3*xc);
+                  }
+                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
+                  for (r=0; r<h; r++) {
+                    vid_ptr2  = vid_ptr;
+                    tile_ptr2 = tile_ptr;
+                    for (c=0; c<w; c++) {
+                      colour = *vid_ptr2;
+                      colour |= (*(vid_ptr2 + 1)) << 8;
+                      colour |= (*(vid_ptr2 + 2)) << 16;
+                      if (v->banshee.overlay.enabled &&
+                          ((xc + c) >= v->banshee.overlay.x0) &&
+                          ((xc + c) <= v->banshee.overlay.x1) &&
+                          ((yc + r) >= v->banshee.overlay.y0) &&
+                          ((yc + r) <= v->banshee.overlay.y1) &&
+                          chromakey_check(colour, bpp)) {
+                        colour = get_overlay_pixel(xc + c, yc + r, bpp);
+                      }
+                      if (!v->banshee.double_width || (c & 1)) {
+                        vid_ptr2 += 3;
+                      }
+                      colour = MAKE_COLOUR(
+                        colour, 24, info.red_shift, info.red_mask,
+                        colour, 16, info.green_shift, info.green_mask,
+                        colour, 8, info.blue_shift, info.blue_mask);
+                      if (info.is_little_endian) {
+                        for (i=0; i<info.bpp; i+=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      } else {
+                        for (i=info.bpp-8; i>-8; i-=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      }
+                    }
+                    if (!v->banshee.half_mode || (r & 1)) {
+                      vid_ptr += pitch;
+                    }
+                    tile_ptr += info.pitch;
+                  }
+                  if (v->banshee.hwcursor.enabled) {
+                    draw_hwcursor(xc, yc, &info);
+                  }
+                  set_tile_updated(xti, yti, 0);
+                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
+                }
+              }
+            }
+            break;
+          case 32:
+            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
+              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
+                if (GET_TILE_UPDATED(xti, yti)) {
+                  if (v->banshee.half_mode) {
+                    if (v->banshee.double_width) {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + (xc << 1));
+                    } else {
+                      vid_ptr = disp_ptr + ((yc >> 1) * pitch + (xc << 2));
+                    }
+                  } else {
+                    vid_ptr = disp_ptr + (yc * pitch + (xc << 2));
+                  }
+                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
+                  for (r=0; r<h; r++) {
+                    vid_ptr2  = vid_ptr;
+                    tile_ptr2 = tile_ptr;
+                    for (c=0; c<w; c++) {
+                      colour = *vid_ptr2;
+                      colour |= (*(vid_ptr2 + 1)) << 8;
+                      colour |= (*(vid_ptr2 + 2)) << 16;
+                      if (v->banshee.overlay.enabled &&
+                          ((xc + c) >= v->banshee.overlay.x0) &&
+                          ((xc + c) <= v->banshee.overlay.x1) &&
+                          ((yc + r) >= v->banshee.overlay.y0) &&
+                          ((yc + r) <= v->banshee.overlay.y1) &&
+                          chromakey_check(colour, bpp)) {
+                        colour = get_overlay_pixel(xc + c, yc + r, bpp);
+                      }
+                      if (!v->banshee.double_width || (c & 1)) {
+                        vid_ptr2 += 4;
+                      }
+                      colour = MAKE_COLOUR(
+                        colour, 24, info.red_shift, info.red_mask,
+                        colour, 16, info.green_shift, info.green_mask,
+                        colour, 8, info.blue_shift, info.blue_mask);
+                      if (info.is_little_endian) {
+                        for (i=0; i<info.bpp; i+=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      } else {
+                        for (i=info.bpp-8; i>-8; i-=8) {
+                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                        }
+                      }
+                    }
+                    if (!v->banshee.half_mode || (r & 1)) {
+                      vid_ptr += pitch;
+                    }
+                    tile_ptr += info.pitch;
+                  }
+                  if (v->banshee.hwcursor.enabled) {
+                    draw_hwcursor(xc, yc, &info);
+                  }
+                  set_tile_updated(xti, yti, 0);
+                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
+                }
+              }
+            }
+            break;
+          default:
+            BX_ERROR(("Ignoring reserved pixel format"));
+        }
+      }
+    } else {
+      BX_PANIC(("cannot get svga tile info"));
+    }
+    s.vdraw.gui_update_pending = 0;
+    BX_UNLOCK(render_mutex);
+  } else {
+    bx_voodoo_base_c::update();
+  }
+  return false;
 }
 
 Bit32u bx_banshee_c::get_retrace(bool hv)
@@ -726,11 +1234,15 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
         mode_change = true;
       }
       if (mode_change) {
+        v->banshee.overlay.enabled = ((v->banshee.io[reg] & 0x100) != 0);
         if ((v->banshee.io[reg] & 0x180) == 0x080) {
           BX_INFO(("2D desktop mode enabled"));
         } else if ((v->banshee.io[reg] & 0x180) == 0x100) {
           BX_INFO(("3D overlay mode enabled"));
           v->vtimer_running = 1;
+        } else if ((v->banshee.io[reg] & 0x180) == 0x180) {
+          BX_ERROR(("Desktop / overlay mode not yet complete"));
+          v->banshee.overlay.format = (v->banshee.io[reg] >> 21) & 0x07;
         }
       }
       v->banshee.hwcursor.enabled = ((v->banshee.io[reg] >> 27) & 1);
@@ -745,12 +1257,19 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
         }
       }
       if ((v->banshee.io[reg] >> 2) & 1) {
-        BX_ERROR(("vidProcCfg: overlay stereo mode not supported yet"));
+        BX_ERROR(("vidProcCfg: overlay stereo mode not supported"));
       }
-      if ((v->banshee.io[reg] >> 5) & 1) {
-        BX_ERROR(("vidProcCfg: chromaKey mode not supported yet"));
+      if ((v->banshee.io[reg] >> 14) & 1) {
+        v->banshee.overlay.fx = (double)(v->banshee.io[io_vidOverlayDudx] & 0xfffff) / (double)(1 << 20);
+      } else {
+        v->banshee.overlay.fx = 1.000;
       }
-      if ((v->banshee.io[reg] >> 16) & 3) {
+      if ((v->banshee.io[reg] >> 15) & 1) {
+        v->banshee.overlay.fy = (double)(v->banshee.io[io_vidOverlayDvdy] & 0xfffff) / (double)(1 << 20);
+      } else {
+        v->banshee.overlay.fy = 1.000;
+      }
+      if (((v->banshee.io[reg] >> 16) & 3) != ((old >> 16) & 3)) {
         BX_ERROR(("vidProcCfg: overlay filter mode %d not supported yet", (v->banshee.io[reg] >> 16) & 3));
       }
       v->banshee.desktop_tiled = ((v->banshee.io[reg] >> 24) & 1);
@@ -816,6 +1335,36 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
       v->fbi.height = (value >> 12) & 0xfff;
       break;
 
+    case io_vidOverlayStartCoord:
+      v->banshee.io[reg] = value;
+      v->banshee.overlay.x0 = value & 0xfff;
+      v->banshee.overlay.y0 = (value >> 12) & 0xfff;
+      v->banshee.overlay.redraw = true;
+      break;
+
+    case io_vidOverlayEndScreen:
+      v->banshee.io[reg] = value;
+      v->banshee.overlay.x1 = value & 0xfff;
+      v->banshee.overlay.y1 = (value >> 12) & 0xfff;
+      v->banshee.overlay.redraw = true;
+      break;
+
+    case io_vidOverlayDudx:
+      v->banshee.io[reg] = value;
+      if ((v->banshee.io[io_vidProcCfg] >> 14) & 1) {
+        v->banshee.overlay.fx = (double)(value & 0xfffff) / (double)(1 << 20);
+        v->banshee.overlay.redraw = true;
+      }
+      break;
+
+    case io_vidOverlayDvdy:
+      v->banshee.io[reg] = value;
+      if ((v->banshee.io[io_vidProcCfg] >> 15) & 1) {
+        v->banshee.overlay.fy = (double)(value & 0xfffff) / (double)(1 << 20);
+        v->banshee.overlay.redraw = true;
+      }
+      break;
+
     case io_vgab0:  case io_vgab4:  case io_vgab8:  case io_vgabc:
     case io_vgac0:  case io_vgac4:  case io_vgac8:  case io_vgacc:
     case io_vgad0:  case io_vgad4:  case io_vgad8:  case io_vgadc:
@@ -831,7 +1380,7 @@ void bx_banshee_c::write(Bit32u address, Bit32u value, unsigned io_len)
     case io_vidDesktopStartAddr:
     case io_vidDesktopOverlayStride:
       if ((v->banshee.io[io_vidProcCfg] & 0x01) && (v->banshee.io[reg] != value)) {
-        v->fbi.video_changed = 1;
+        theVoodooVga->redraw_area(0, 0, s.vdraw.width, s.vdraw.height);
       }
       v->banshee.io[reg] = value;
       break;
@@ -846,7 +1395,18 @@ bool bx_banshee_c::mem_read_handler(bx_phy_address addr, unsigned len,
                                     void *data, void *param)
 {
   bx_banshee_c *class_ptr = (bx_banshee_c*)param;
-  class_ptr->mem_read(addr, len, data);
+  if (len > 8) {
+    Bit64u *data64 = (Bit64u*)data;
+#ifdef BX_LITTLE_ENDIAN
+    class_ptr->mem_read(addr, 8, &data64[0]);
+    class_ptr->mem_read(addr + 8, len - 8, &data64[1]);
+#else
+    class_ptr->mem_read(addr, 8, &data64[1]);
+    class_ptr->mem_read(addr + 8, len - 8, &data64[0]);
+#endif
+  } else {
+    class_ptr->mem_read(addr, len, data);
+  }
   return 1;
 }
 
@@ -886,7 +1446,7 @@ void bx_banshee_c::mem_read(bx_phy_address addr, unsigned len, void *data)
 #endif
       for (unsigned i = 0; i < len; i++) {
         if (pci_conf[0x30] & 0x01) {
-          *data_ptr = pci_rom[(addr & mask) + i];
+          *data_ptr = pci_rom[addr & mask];
         } else {
           *data_ptr = 0xff;
         }
@@ -941,8 +1501,28 @@ void bx_banshee_c::mem_read(bx_phy_address addr, unsigned len, void *data)
     case 2:
       *((Bit16u*)data) = (Bit16u)value;
       break;
+    case 3:
+#ifdef BX_LITTLE_ENDIAN
+      *((Bit16u*)data) = (Bit16u)value;
+      *((Bit8u*)data + 2) = (Bit8u)(value >> 16);
+#else
+      for (unsigned i = 0; i < 3; i++) {
+        *((Bit8u*)data + i) = (Bit8u)(value >> ((2 - i) << 3));
+      }
+#endif
+      break;
     case 4:
       *((Bit32u*)data) = (Bit32u)value;
+      break;
+    case 6:
+#ifdef BX_LITTLE_ENDIAN
+      *((Bit32u*)data) = (Bit32u)value;
+      *((Bit16u*)data + 2) = (Bit16u)(value >> 32);
+#else
+      for (unsigned i = 0; i < 6; i++) {
+        *((Bit8u*)data + i) = (Bit8u)(value >> ((5 - i) << 3));
+      }
+#endif
       break;
     case 8:
       *((Bit64u*)data) = value;
@@ -954,8 +1534,8 @@ void bx_banshee_c::mem_read(bx_phy_address addr, unsigned len, void *data)
 
 void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
 {
-  Bit32u offset = (addr & 0x1ffffff);
-  Bit64u value = 0;
+  Bit32u offset = (addr & 0x1ffffff), value;
+  Bit64u value64 = 0;
   Bit32u mask = 0xffffffff;
 
 #ifdef BX_LITTLE_ENDIAN
@@ -964,13 +1544,14 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
   Bit8u *data_ptr = (Bit8u *) data + (len - 1);
 #endif
   for (unsigned i = 0; i < len; i++) {
-    value |= ((Bit64u)*data_ptr << (i * 8));
+    value64 |= ((Bit64u)*data_ptr << (i * 8));
 #ifdef BX_LITTLE_ENDIAN
     data_ptr++;
 #else // BX_BIG_ENDIAN
     data_ptr--;
 #endif
   }
+  value = (Bit32u)value64;
   if ((addr & ~0x1ffffff) == pci_bar[0].addr) {
     if (offset < 0x80000) {
       write(offset, value, len);
@@ -987,7 +1568,7 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
     } else if (offset < 0xc00000) {
       BX_DEBUG(("reserved write to offset 0x%08x", offset));
     } else if (offset < 0x1000000) {
-      BX_ERROR(("TODO: YUV planar space write to offset 0x%08x", offset));
+      yuv_planar_write(offset, value);
     } else {
       Bit8u temp = v->fbi.lfb_stride;
       v->fbi.lfb_stride = 11;
@@ -996,6 +1577,7 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
           mask = 0x0000ffff;
         } else {
           mask = 0xffff0000;
+          value <<= 16;
         }
       }
       lfb_w((offset & v->fbi.mask) >> 2, value, mask);
@@ -1008,10 +1590,12 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
         cmdfifo_w(&v->fbi.cmdfifo[0], offset, value);
       } else if (len == 8) {
         cmdfifo_w(&v->fbi.cmdfifo[0], offset, value);
-        cmdfifo_w(&v->fbi.cmdfifo[0], offset + 4, value >> 32);
+        cmdfifo_w(&v->fbi.cmdfifo[0], offset + 4, value64 >> 32);
       } else {
         BX_ERROR(("CMDFIFO #0 write with len = %d redirected to LFB", len));
-        mem_write_linear(offset, value, len);
+        mem_write_linear(offset, value64, len);
+        if (!(offset & 3))
+          v->fbi.cmdfifo[0].depth++;
       }
     } else if (v->fbi.cmdfifo[1].enabled && (offset >= v->fbi.cmdfifo[1].base) &&
                (offset < v->fbi.cmdfifo[1].end)) {
@@ -1019,13 +1603,13 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
         cmdfifo_w(&v->fbi.cmdfifo[1], offset, value);
       } else if (len == 8) {
         cmdfifo_w(&v->fbi.cmdfifo[1], offset, value);
-        cmdfifo_w(&v->fbi.cmdfifo[1], offset + 4, value >> 32);
+        cmdfifo_w(&v->fbi.cmdfifo[1], offset + 4, value64 >> 32);
       } else  {
         BX_ERROR(("CMDFIFO #1 write with len = %d redirected to LFB", len));
-        mem_write_linear(offset, value, len);
+        mem_write_linear(offset, value64, len);
       }
     } else {
-      mem_write_linear(offset, value, len);
+      mem_write_linear(offset, value64, len);
     }
   }
 }
@@ -1033,8 +1617,14 @@ void bx_banshee_c::mem_write(bx_phy_address addr, unsigned len, void *data)
 void bx_banshee_c::mem_write_linear(Bit32u offset, Bit64u value, unsigned len)
 {
   Bit8u value8;
-  Bit32u start = v->banshee.io[io_vidDesktopStartAddr] & v->fbi.mask;
-  Bit32u pitch = v->banshee.io[io_vidDesktopOverlayStride] & 0x7fff;
+  Bit32u start, pitch;
+  if ((v->banshee.io[io_vidProcCfg] & 0x181) == 0x101) {
+    start = v->fbi.rgboffs[0];
+    pitch = (v->banshee.io[io_vidDesktopOverlayStride] >> 16) & 0x7fff;
+  } else {
+    start = v->banshee.io[io_vidDesktopStartAddr] & v->fbi.mask;
+    pitch = v->banshee.io[io_vidDesktopOverlayStride] & 0x7fff;
+  }
   unsigned i, w, x, y;
 
   if (offset >= v->fbi.lfb_base) {
@@ -1052,19 +1642,23 @@ void bx_banshee_c::mem_write_linear(Bit32u offset, Bit64u value, unsigned len)
     v->fbi.ram[offset + i] = value8;
   }
   if ((offset >= start) && (pitch > 0)) {
-    offset -= start;
-    x = (offset % pitch) / (v->banshee.disp_bpp >> 3);
-    y = offset / pitch;
-    w = len / (v->banshee.disp_bpp >> 3);
-    if (v->banshee.half_mode) {
-      y <<= 1;
+    if ((v->banshee.io[io_vidProcCfg] & 0x181) == 0x101) {
+      v->fbi.video_changed = 1;
+    } else {
+      offset -= start;
+      x = (offset % pitch) / (v->banshee.disp_bpp >> 3);
+      y = offset / pitch;
+      w = len / (v->banshee.disp_bpp >> 3);
+      if (v->banshee.half_mode) {
+        y <<= 1;
+      }
+      if (v->banshee.double_width) {
+        x <<= 1;
+        w <<= 1;
+      }
+      if (w == 0) w = 1;
+      theVoodooVga->redraw_area(x, y, w, 1);
     }
-    if (v->banshee.double_width) {
-      x <<= 1;
-      w <<= 1;
-    }
-    if (w == 0) w = 1;
-    theVoodooVga->redraw_area(x, y, w, 1);
   }
   BX_UNLOCK(render_mutex);
 }
@@ -1147,7 +1741,9 @@ void bx_banshee_c::agp_reg_write(Bit8u reg, Bit32u value)
     case cmdBump0:
     case cmdBump1:
       if (value > 0) {
-        BX_ERROR(("cmdBump%d not implemented (value = 0x%04x)", fifo_idx, (Bit16u)value));
+        BX_LOCK(cmdfifo_mutex);
+        v->fbi.cmdfifo[fifo_idx].amin += value * 4;
+        BX_UNLOCK(cmdfifo_mutex);
       }
       break;
     case cmdRdPtrL0:
@@ -1188,6 +1784,46 @@ void bx_banshee_c::agp_reg_write(Bit8u reg, Bit32u value)
       break;
   }
   v->banshee.agp[reg] = value;
+}
+
+void bx_banshee_c::yuv_planar_write(Bit32u offset, Bit32u value)
+{
+  Bit8u plane = (Bit8u)((offset >> 20) & 3);
+  Bit16u stride = v->banshee.agp[yuvStride] & 0x3fff;
+  Bit16u x = (Bit16u)((offset & 0xfffff) % 1024);
+  Bit16u y = (Bit16u)((offset & 0xfffff) / 1024);
+  Bit32u fbaddr = v->banshee.agp[yuvBaseAddress];
+  int i;
+
+  switch (plane) {
+    case 0:
+      fbaddr +=  (y * stride + (x << 1));
+      v->fbi.ram[fbaddr & v->fbi.mask] = value & 0xff;
+      v->fbi.ram[(fbaddr + 2) & v->fbi.mask] = (value >> 8) & 0xff;
+      v->fbi.ram[(fbaddr + 4) & v->fbi.mask] = (value >> 16) & 0xff;
+      v->fbi.ram[(fbaddr + 6) & v->fbi.mask] = (value >> 24) & 0xff;
+      break;
+    case 1:
+      fbaddr += ((y << 1) * stride + (x << 2));
+      for (i = 0; i < 2; i++) {
+        v->fbi.ram[(fbaddr + 1) & v->fbi.mask] = value & 0xff;
+        v->fbi.ram[(fbaddr + 5) & v->fbi.mask] = (value >> 8) & 0xff;
+        v->fbi.ram[(fbaddr + 9) & v->fbi.mask] = (value >> 16) & 0xff;
+        v->fbi.ram[(fbaddr + 13) & v->fbi.mask] = (value >> 24) & 0xff;
+        fbaddr += stride;
+      }
+      break;
+    case 2:
+      fbaddr += ((y << 1) * stride + (x << 2));
+      for (i = 0; i < 2; i++) {
+        v->fbi.ram[(fbaddr + 3) & v->fbi.mask] = value & 0xff;
+        v->fbi.ram[(fbaddr + 7) & v->fbi.mask] = (value >> 8) & 0xff;
+        v->fbi.ram[(fbaddr + 11) & v->fbi.mask] = (value >> 16) & 0xff;
+        v->fbi.ram[(fbaddr + 15) & v->fbi.mask] = (value >> 24) & 0xff;
+        fbaddr += stride;
+      }
+      break;
+  }
 }
 
 #define BLT v->banshee.blt
@@ -1297,8 +1933,8 @@ void bx_banshee_c::blt_reg_write(Bit8u reg, Bit32u value)
       BLT.src_h = (BLT.reg[reg] >> 16) & 0x1fff;
       break;
     case blt_srcXY:
-      BLT.src_x = BLT.reg[reg] & 0x1fff;
-      BLT.src_y = (BLT.reg[reg] >> 16) & 0x1fff;
+      SIGN_EXTEND(Bit16s, BLT.src_x, 13, BLT.reg[reg]);
+      SIGN_EXTEND(Bit16s, BLT.src_y, 13, BLT.reg[reg] >> 16);
       break;
     case blt_colorBack:
       BLT.bgcolor[0] = BLT.reg[reg] & 0xff;
@@ -1317,16 +1953,8 @@ void bx_banshee_c::blt_reg_write(Bit8u reg, Bit32u value)
       BLT.dst_h = (BLT.reg[reg] >> 16) & 0x1fff;
       break;
     case blt_dstXY:
-      if ((BLT.reg[reg] >> 15) & 1) {
-        BLT.dst_x = (Bit16s)(BLT.reg[reg] & 0xffff);
-      } else {
-        BLT.dst_x = BLT.reg[reg] & 0x1fff;
-      }
-      if (BLT.reg[reg] >> 31) {
-        BLT.dst_y = (Bit16s)(BLT.reg[reg] >> 16);
-      } else {
-        BLT.dst_y = (BLT.reg[reg] >> 16) & 0x1fff;
-      }
+      SIGN_EXTEND(Bit16s, BLT.dst_x, 13, BLT.reg[reg]);
+      SIGN_EXTEND(Bit16s, BLT.dst_y, 13, BLT.reg[reg] >> 16);
       break;
     case blt_command:
       old_cmd = BLT.cmd;
@@ -1401,6 +2029,7 @@ void bx_banshee_c::blt_reg_write(Bit8u reg, Bit32u value)
 
 void bx_banshee_c::blt_launch_area_setup()
 {
+  Bit16u src_w, src_h;
   Bit32u pbytes;
   Bit8u pxpack, pxsize = 0, pxstart;
 
@@ -1417,10 +2046,17 @@ void bx_banshee_c::blt_launch_area_setup()
       break;
     case 3:
     case 4:
+      if (BLT.cmd == 3) {
+        src_w = BLT.dst_w;
+        src_h = BLT.dst_h;
+      } else {
+        src_w = BLT.src_w;
+        src_h = BLT.src_h;
+      }
       pxpack = (BLT.reg[blt_srcFormat] >> 22) & 3;
       if (BLT.src_fmt == 0) {
         BLT.h2s_pxstart = BLT.reg[blt_srcXY] & 0x1f;
-        pbytes = (BLT.dst_w + BLT.h2s_pxstart + 7) >> 3;
+        pbytes = (src_w + BLT.h2s_pxstart + 7) >> 3;
       } else {
         BLT.h2s_pxstart = BLT.reg[blt_srcXY] & 0x03;
         if (BLT.src_fmt == 1) {
@@ -1430,7 +2066,7 @@ void bx_banshee_c::blt_launch_area_setup()
         } else {
           BX_ERROR(("Source format %d not handled yet", BLT.src_fmt));
         }
-        pbytes = BLT.dst_w * pxsize + BLT.h2s_pxstart;
+        pbytes = src_w * pxsize + BLT.h2s_pxstart;
       }
       switch (pxpack) {
         case 1:
@@ -1447,14 +2083,14 @@ void bx_banshee_c::blt_launch_area_setup()
           pbytes = 0;
           pxstart = BLT.h2s_pxstart;
           if (BLT.src_fmt == 0) {
-            for (int i = 0; i < BLT.dst_h; i++) {
-              pbytes += ((((BLT.dst_w + pxstart + 7) >> 3) + 3) & ~3);
+            for (int i = 0; i < src_h; i++) {
+              pbytes += ((((src_w + pxstart + 7) >> 3) + 3) & ~3);
               pxstart += (Bit8u)(BLT.reg[blt_srcFormat] << 3);
               pxstart &= 0x1f;
             }
           } else {
-            for (int i = 0; i < BLT.dst_h; i++) {
-              pbytes += ((BLT.dst_w * pxsize + pxstart + 3) & ~3);
+            for (int i = 0; i < src_h; i++) {
+              pbytes += ((src_w * pxsize + pxstart + 3) & ~3);
               pxstart += (Bit8u)BLT.reg[blt_srcFormat];
               pxstart &= 0x03;
             }
@@ -1550,7 +2186,12 @@ void bx_banshee_c::blt_execute()
             blt_host_to_screen();
           }
         } else {
-          BX_ERROR(("TODO: 2D Host to screen stretch blt"));
+          if (BLT.pattern_blt) {
+            BX_ERROR(("TODO: 2D Host to screen stretch pattern blt"));
+          } else {
+            BLT.busy = 1;
+            blt_host_to_screen_stretch();
+          }
         }
         delete [] BLT.lamem;
         BLT.lamem = NULL;
@@ -1639,7 +2280,7 @@ void bx_banshee_c::blt_complete()
   bool yinc = (cmd >> 11) & 1;
   int x, y, w, h;
 
-  if ((v->banshee.io[io_vidProcCfg] & 0x101) == 0x101) {
+  if ((v->banshee.io[io_vidProcCfg] & 0x181) == 0x101) {
     if (v->banshee.overlay_tiled) {
       vpitch *= 128;
     }
@@ -1649,46 +2290,46 @@ void bx_banshee_c::blt_complete()
     }
   }
   if ((dstart == vstart) && (dpitch == vpitch) && (dpxsize == vpxsize)) {
-    if (BLT.cmd < 6) {
-      if (BLT.x_dir) {
-        x = BLT.dst_x + 1 - BLT.dst_w;
-      } else {
-        x = BLT.dst_x;
-      }
-      if (BLT.y_dir) {
-        y = BLT.dst_y + 1 - BLT.dst_h;
-      } else {
-        y = BLT.dst_y;
-      }
-      w = BLT.dst_w;
-      h = BLT.dst_h;
-    } else {
-      if (BLT.src_x < BLT.dst_x) {
-        x = BLT.src_x;
-        w = BLT.dst_x - BLT.src_x + 1;
-      } else {
-        x = BLT.dst_x;
-        w = BLT.src_x - BLT.dst_x + 1;
-      }
-      if (BLT.src_y < BLT.dst_y) {
-        y = BLT.src_y;
-        h = BLT.dst_y - BLT.src_y + 1;
-      } else {
-        y = BLT.dst_y;
-        h = BLT.src_y - BLT.dst_y + 1;
-      }
-    }
-    if (v->banshee.half_mode) {
-      y <<= 1;
-      h <<= 1;
-    }
-    if (v->banshee.double_width) {
-      x <<= 1;
-      w <<= 1;
-    }
-    if ((v->banshee.io[io_vidProcCfg] & 0x101) == 0x101) {
+    if ((v->banshee.io[io_vidProcCfg] & 0x181) == 0x101) {
       v->fbi.video_changed = 1;
     } else {
+      if (BLT.cmd < 6) {
+        if (BLT.x_dir) {
+          x = BLT.dst_x + 1 - BLT.dst_w;
+        } else {
+          x = BLT.dst_x;
+        }
+        if (BLT.y_dir) {
+          y = BLT.dst_y + 1 - BLT.dst_h;
+        } else {
+          y = BLT.dst_y;
+        }
+        w = BLT.dst_w;
+        h = BLT.dst_h;
+      } else {
+        if (BLT.src_x < BLT.dst_x) {
+          x = BLT.src_x;
+          w = BLT.dst_x - BLT.src_x + 1;
+        } else {
+          x = BLT.dst_x;
+          w = BLT.src_x - BLT.dst_x + 1;
+        }
+        if (BLT.src_y < BLT.dst_y) {
+          y = BLT.src_y;
+          h = BLT.dst_y - BLT.src_y + 1;
+        } else {
+          y = BLT.dst_y;
+          h = BLT.src_y - BLT.dst_y + 1;
+        }
+      }
+      if (v->banshee.half_mode) {
+        y <<= 1;
+        h <<= 1;
+      }
+      if (v->banshee.double_width) {
+        x <<= 1;
+        w <<= 1;
+      }
       theVoodooVga->redraw_area(x, y, w, h);
     }
   }
@@ -1820,9 +2461,58 @@ Bit8u bx_banshee_c::blt_colorkey_check(Bit8u *ptr, Bit8u pxsize, bool dst)
   return pass;
 }
 
+Bit32u bx_banshee_c::blt_yuv_conversion(Bit8u *ptr, Bit16u xc, Bit16u yc,
+                                        Bit16u pitch, Bit8u fmt, Bit8u pxsize)
+{
+  Bit32u value = 0;
+  Bit16s r, g, b;
+  Bit8u *src_ptr, data[4], px;
+  Bit16s Y[2];
+  Bit8s U, V;
+
+  px = xc & 1;
+  xc &= ~1;
+  src_ptr = ptr + (xc << 1) + (yc * pitch);
+  for (unsigned i = 0; i < 4; i++) {
+    data[i] = *(src_ptr + i);
+  }
+  if (fmt == 8) {
+    Y[0] = data[0] - 0x10;
+    U = data[1] - 0x80;
+    Y[1] = data[2] - 0x10;
+    V = data[3] - 0x80;
+  } else {
+    U = data[0] - 0x80;
+    Y[0] = data[1] - 0x10;
+    V = data[2] - 0x80;
+    Y[1] = data[3] - 0x10;
+  }
+  r = Y[px] * 1.164383 + V * 1.596027;
+  g = Y[px] * 1.164383 - U * 0.391762 - V * 0.812968;
+  b = Y[px] * 1.164383 + U * 2.017232;
+  CLAMP(r, 0x00, 0xff);
+  CLAMP(g, 0x00, 0xff);
+  CLAMP(b, 0x00, 0xff);
+  if (pxsize == 2) {
+#ifdef BX_LITTLE_ENDIAN
+    value = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+#else
+    value = ((b >> 3) << 27) | ((g >> 2) << 21) | ((r >> 3) << 16);
+#endif
+  } else if ((pxsize == 3) || (pxsize == 4)) {
+#ifdef BX_LITTLE_ENDIAN
+    value = (r << 16) | (g << 8) | b;
+#else
+    value = (b << 24) | (g << 16) | (r << 8);
+#endif
+  }
+  return value;
+}
+
 void bx_banshee_c::blt_rectangle_fill()
 {
   Bit32u dpitch = BLT.dst_pitch;
+  Bit32u dbase = BLT.dst_base;
   Bit8u dpxsize = (BLT.dst_fmt > 1) ? (BLT.dst_fmt - 1) : 1;
   Bit8u *dst_ptr, *dst_ptr1;
   Bit8u colorkey_en = BLT.reg[blt_commandExtra] & 3;
@@ -1838,8 +2528,13 @@ void bx_banshee_c::blt_rectangle_fill()
     BLT.busy = 0;
     return;
   }
+  if (dbase + (dy + h - 1) * dpitch + (dx + w - 1) * dpxsize > v->fbi.mask) {
+    BX_ERROR(("skip address wrap during blt_rectangle_fill()"));
+    BLT.busy = 0;
+    return;
+  }
   BX_LOCK(render_mutex);
-  dst_ptr = &v->fbi.ram[BLT.dst_base + dy * dpitch + dx * dpxsize];
+  dst_ptr = &v->fbi.ram[dbase + dy * dpitch + dx * dpxsize];
   for (y = 0; y < h; y++) {
     dst_ptr1 = dst_ptr;
     for (x = 0; x < w; x++) {
@@ -1957,15 +2652,18 @@ void bx_banshee_c::blt_screen_to_screen()
   Bit8u *src_ptr = &v->fbi.ram[BLT.src_base];
   Bit8u *dst_ptr, *dst_ptr1, *src_ptr1;
   Bit8u pxpack = (BLT.reg[blt_srcFormat] >> 22) & 3;
+  Bit8u spxsize = (BLT.src_fmt > 1) ? (BLT.src_fmt - 1) : 1;
   int dpxsize = (BLT.dst_fmt > 1) ? (BLT.dst_fmt - 1) : 1;
+  bool yuv_src = ((BLT.src_fmt & 0x0e) == 8);
   Bit8u *color;
   Bit8u colorkey_en = BLT.reg[blt_commandExtra] & 3;
   int spitch;
   int dpitch = BLT.dst_pitch;
   int bkw_adj = 0;
-  int ncols, nrows, dx, dy, sx, sy, w, h;
+  int ncols, nrows, dx, dy, sx, sy, w, h, x, y;
   Bit8u smask, rop = 0;
   bool set;
+  Bit32u src_val;
 
   sx = BLT.src_x;
   sy = BLT.src_y;
@@ -1974,7 +2672,8 @@ void bx_banshee_c::blt_screen_to_screen()
   w = BLT.dst_w;
   h = BLT.dst_h;
   BX_DEBUG(("Screen to screen blt: %d x %d  ROP0 %02X", w, h, BLT.rop[0]));
-  if ((BLT.src_fmt != 0) && (BLT.dst_fmt != BLT.src_fmt)) {
+  if ((BLT.src_fmt != 0) && (BLT.dst_fmt != BLT.src_fmt) &&
+      !(BLT.src_fmt == 3 && BLT.dst_fmt == 5) && !yuv_src) {
     BX_ERROR(("Pixel format conversion not supported yet"));
   }
   if (!blt_apply_clipwindow(&sx, &sy, &dx, &dy, &w, &h)) {
@@ -1986,6 +2685,10 @@ void bx_banshee_c::blt_screen_to_screen()
     spitch = (BLT.dst_w + 7) / 8;
   } else {
     spitch = BLT.src_pitch;
+  }
+  if (yuv_src) {
+    // YUYV / UYVY
+    spxsize = 2;
   }
   dst_ptr = &v->fbi.ram[BLT.dst_base + dy * dpitch + dx * dpxsize];
   if (BLT.x_dir) {
@@ -2028,7 +2731,7 @@ void bx_banshee_c::blt_screen_to_screen()
       dst_ptr += dpitch;
     } while (--nrows);
   } else if (colorkey_en > 0) {
-    src_ptr += (sy * abs(spitch) + sx * abs(dpxsize));
+    src_ptr += (sy * abs(spitch) + sx * spxsize);
     nrows = h;
     do {
       src_ptr1 = src_ptr;
@@ -2047,6 +2750,43 @@ void bx_banshee_c::blt_screen_to_screen()
       } while (--ncols);
       src_ptr += spitch;
       dst_ptr += dpitch;
+    } while (--nrows);
+  } else if (BLT.src_fmt == 3 && BLT.dst_fmt == 5) {
+    src_ptr += (sy * abs(spitch) + sx * spxsize);
+    nrows = h;
+    do {
+      src_ptr1 = src_ptr;
+      dst_ptr1 = dst_ptr;
+      ncols = w;
+      do {
+#ifdef BX_LITTLE_ENDIAN
+        BLT.rop_fn[0](dst_ptr1, (Bit8u*)&v->fbi.pen[*(Bit16u*)src_ptr1], dpitch, spitch, abs(dpxsize), 1);
+#else
+        Bit32u color32 = bx_bswap32(v->fbi.pen[bx_bswap16(*(Bit16u*)src_ptr1)]);
+        BLT.rop_fn[0](dst_ptr1, (Bit8u*)&color32, dpitch, spitch, abs(dpxsize), 1);
+#endif
+        src_ptr1 += spxsize;
+        dst_ptr1 += dpxsize;
+      } while (--ncols);
+      src_ptr += spitch;
+      dst_ptr += dpitch;
+    } while (--nrows);
+  } else if (yuv_src) {
+    nrows = h;
+    y = sy;
+    do {
+      dst_ptr1 = dst_ptr;
+      ncols = w;
+      x = sx;
+      do {
+        src_val = blt_yuv_conversion(src_ptr, x, y, spitch, BLT.src_fmt, dpxsize);
+        src_ptr1 = (Bit8u*)&src_val;
+        BLT.rop_fn[0](dst_ptr1, src_ptr1, dpitch, spitch, abs(dpxsize), 1);
+        dst_ptr1 += dpxsize;
+        x++;
+      } while (--ncols);
+      dst_ptr += dpitch;
+      y++;
     } while (--nrows);
   } else {
     src_ptr += (sy * abs(spitch) + sx * abs(dpxsize) + bkw_adj);
@@ -2156,7 +2896,9 @@ void bx_banshee_c::blt_screen_to_screen_pattern()
 void bx_banshee_c::blt_screen_to_screen_stretch()
 {
   Bit8u *dst_ptr, *dst_ptr1, *src_ptr, *src_ptr1;
+  Bit8u spxsize = (BLT.src_fmt > 1) ? (BLT.src_fmt - 1) : 1;
   Bit8u dpxsize = (BLT.dst_fmt > 1) ? (BLT.dst_fmt - 1) : 1;
+  bool yuv_src = ((BLT.src_fmt & 0x0e) == 8);
   int spitch = BLT.src_pitch;
   int dpitch = BLT.dst_pitch;
   Bit8u colorkey_en = BLT.reg[blt_commandExtra] & 3;
@@ -2164,6 +2906,7 @@ void bx_banshee_c::blt_screen_to_screen_stretch()
   int nrows, stepy;
   int dx, dy, x2, x3, y2, y3, w0, h0, w1, h1;
   double fx, fy;
+  Bit32u src_val;
 
   w0 = BLT.src_w;
   h0 = BLT.src_h;
@@ -2171,13 +2914,17 @@ void bx_banshee_c::blt_screen_to_screen_stretch()
   h1 = BLT.dst_h;
   BX_DEBUG(("Screen to screen stretch blt: : %d x %d -> %d x %d  ROP0 %02X",
             w0, h0, w1, h1, BLT.rop[0]));
-  if (BLT.dst_fmt != BLT.src_fmt) {
+  if ((BLT.dst_fmt != BLT.src_fmt) && !yuv_src) {
     BX_ERROR(("Pixel format conversion not supported yet"));
   }
   BX_LOCK(render_mutex);
   dy = BLT.dst_y;
+  if (yuv_src) {
+    // YUYV / UYVY
+    spxsize = 2;
+  }
   dst_ptr = &v->fbi.ram[BLT.dst_base + dy * dpitch + BLT.dst_x * dpxsize];
-  src_ptr = &v->fbi.ram[BLT.src_base + BLT.src_y * spitch + BLT.src_x * dpxsize];
+  src_ptr = &v->fbi.ram[BLT.src_base + BLT.src_y * spitch + BLT.src_x * spxsize];
   if (BLT.y_dir) {
     spitch *= -1;
     dpitch *= -1;
@@ -2196,7 +2943,12 @@ void bx_banshee_c::blt_screen_to_screen_stretch()
       if (blt_clip_check(dx, dy)) {
         x3 = (int)((double)x2 / fx + 0.49f);
         y3 = (int)((double)y2 / fy + 0.49f);
-        src_ptr1 = src_ptr + (y3 * spitch + x3 * dpxsize);
+        if (yuv_src) {
+          src_val = blt_yuv_conversion(src_ptr, x3, y3, spitch, BLT.src_fmt, dpxsize);
+          src_ptr1 = (Bit8u*)&src_val;
+        } else {
+          src_ptr1 = src_ptr + (y3 * spitch + x3 * spxsize);
+        }
         if (colorkey_en & 1) {
           rop = blt_colorkey_check(src_ptr1, dpxsize, 0);
         }
@@ -2484,6 +3236,69 @@ void bx_banshee_c::blt_host_to_screen_pattern()
   BX_UNLOCK(render_mutex);
 }
 
+void bx_banshee_c::blt_host_to_screen_stretch()
+{
+  Bit8u *dst_ptr, *dst_ptr1, *src_ptr, *src_ptr1;
+  Bit8u dpxsize = (BLT.dst_fmt > 1) ? (BLT.dst_fmt - 1) : 1;
+  int spitch = BLT.h2s_pitch;
+  int dpitch = BLT.dst_pitch;
+  Bit8u colorkey_en = BLT.reg[blt_commandExtra] & 3;
+  Bit8u rop = 0;
+  int nrows, stepy;
+  int dx, dy, x2, x3, y2, y3, w0, h0, w1, h1;
+  double fx, fy;
+
+  w0 = BLT.src_w;
+  h0 = BLT.src_h;
+  w1 = BLT.dst_w;
+  h1 = BLT.dst_h;
+  BX_DEBUG(("Host to screen stretch blt: : %d x %d -> %d x %d  ROP0 %02X",
+            w0, h0, w1, h1, BLT.rop[0]));
+  if (BLT.dst_fmt != BLT.src_fmt) {
+    BX_ERROR(("Pixel format conversion not supported yet"));
+  }
+  BX_LOCK(render_mutex);
+  dy = BLT.dst_y;
+  dst_ptr = &v->fbi.ram[BLT.dst_base + dy * dpitch + BLT.dst_x * dpxsize];
+  src_ptr = &BLT.lamem[0];
+  if (BLT.y_dir) {
+    spitch *= -1;
+    dpitch *= -1;
+    stepy = -1;
+  } else {
+    stepy = 1;
+  }
+  fx = (double)w1 / (double)w0;
+  fy = (double)h1 / (double)h0;
+  y2 = 0;
+  nrows = h1;
+  do {
+    dst_ptr1 = dst_ptr;
+    x2 = 0;
+    for (dx = BLT.dst_x; dx < (BLT.dst_x + w1); dx++) {
+      if (blt_clip_check(dx, dy)) {
+        x3 = (int)((double)x2 / fx + 0.49f);
+        y3 = (int)((double)y2 / fy + 0.49f);
+        src_ptr1 = src_ptr + (y3 * spitch + x3 * dpxsize);
+        if (colorkey_en & 1) {
+          rop = blt_colorkey_check(src_ptr1, dpxsize, 0);
+        }
+        if (colorkey_en & 2) {
+          rop |= blt_colorkey_check(dst_ptr1, dpxsize, 1);
+        }
+        BLT.rop_fn[rop](dst_ptr1, src_ptr1, dpitch, dpxsize, dpxsize, 1);
+      }
+      dst_ptr1 += dpxsize;
+      x2++;
+    }
+    dst_ptr += dpitch;
+    dy += stepy;
+    y2++;
+  } while (--nrows);
+  blt_complete();
+  BX_UNLOCK(render_mutex);
+}
+
 void bx_banshee_c::blt_line(bool pline)
 {
   Bit32u dpitch = BLT.dst_pitch;
@@ -2495,6 +3310,7 @@ void bx_banshee_c::blt_line(bool pline)
   int i, deltax, deltay, numpixels, d, dinc1, dinc2;
   int x, xinc1, xinc2, y, yinc1, yinc2;
   int x0, y0, x1, y1;
+  bool reversible = ((BLT.reg[blt_command] >> 9) & 1);
   bool lstipple = ((BLT.reg[blt_command] >> 12) & 1);
   Bit8u lpattern = BLT.reg[blt_lineStipple];
   Bit8u lrepeat = (BLT.reg[blt_lineStyle] & 0xff);
@@ -2511,6 +3327,9 @@ void bx_banshee_c::blt_line(bool pline)
     BX_DEBUG(("Polyline: %d/%d  -> %d/%d  ROP0 %02X", x0, y0, x1, y1, BLT.rop[0]));
   } else {
     BX_DEBUG(("Line: %d/%d  -> %d/%d  ROP0 %02X", x0, y0, x1, y1, BLT.rop[0]));
+  }
+  if (reversible) {
+    BX_DEBUG(("Reversible lines not implemented yet"));
   }
   deltax = abs(x1 - x0);
   deltay = abs(y1 - y0);
@@ -2594,16 +3413,16 @@ void bx_banshee_c::blt_line(bool pline)
   BX_UNLOCK(render_mutex);
 }
 
-int calc_line_xpos(int x1, int y1, int x2, int y2, int yc, bool r)
+int calc_line_xpos(int x1, int y1, int x2, int y2, int yc)
 {
   int i, deltax, deltay, numpixels,
       d, dinc1, dinc2,
       x, xinc1, xinc2,
       y, yinc1, yinc2;
-  int xl = -1, xr = -1;
+  int xl = -1;
 
   if (x1 == x2) {
-    xl = xr = x1;
+    xl = x1;
   } else {
     deltax = abs(x2 - x1);
     deltay = abs(y2 - y1);
@@ -2641,10 +3460,9 @@ int calc_line_xpos(int x1, int y1, int x2, int y2, int yc, bool r)
     for (i = 0; i < numpixels; i++) {
       if (y == yc) {
         if (xl == -1) {
-          xl = xr = x;
+          xl = x;
         } else {
           if (x < xl) xl = x;
-          if (x > xr) xr = x;
         }
       }
       if (d < 0) {
@@ -2658,7 +3476,7 @@ int calc_line_xpos(int x1, int y1, int x2, int y2, int yc, bool r)
       }
     }
   }
-  return (r ? xr : xl);
+  return xl;
 }
 
 void bx_banshee_c::blt_polygon_fill(bool force)
@@ -2697,11 +3515,11 @@ void bx_banshee_c::blt_polygon_fill(bool force)
       y1 = BLT.pgn_r1y;
     }
     for (y = y0; y < y1; y++) {
-      x0 = calc_line_xpos(BLT.pgn_l0x, BLT.pgn_l0y, BLT.pgn_l1x, BLT.pgn_l1y, y, 0);
+      x0 = calc_line_xpos(BLT.pgn_l0x, BLT.pgn_l0y, BLT.pgn_l1x, BLT.pgn_l1y, y);
       if (y <= BLT.pgn_r0y) {
-        x1 = calc_line_xpos(BLT.pgn_l0x, BLT.pgn_l0y, BLT.pgn_r0x, BLT.pgn_r0y, y, 1);
+        x1 = calc_line_xpos(BLT.pgn_l0x, BLT.pgn_l0y, BLT.pgn_r0x, BLT.pgn_r0y, y);
       } else {
-        x1 = calc_line_xpos(BLT.pgn_r0x, BLT.pgn_r0y, BLT.pgn_r1x, BLT.pgn_r1y, y, 1);
+        x1 = calc_line_xpos(BLT.pgn_r0x, BLT.pgn_r0y, BLT.pgn_r1x, BLT.pgn_r1y, y);
       }
       if (BLT.pattern_blt) {
         if (!patrow0) {
@@ -2716,32 +3534,7 @@ void bx_banshee_c::blt_polygon_fill(bool force)
         }
       }
       dst_ptr1 = dst_ptr + y * dpitch + x0 * dpxsize;
-      if (blt_clip_check(x0, y)) {
-        if (colorkey_en & 2) {
-          rop = blt_colorkey_check(dst_ptr1, dpxsize, 1);
-        }
-        if (BLT.pattern_blt) {
-          if (patmono) {
-            mask = 0x80 >> ((x0 + BLT.patsx) & 7);
-            set = (*pat_ptr1 & mask) > 0;
-            if (set) {
-              color = &BLT.fgcolor[0];
-            } else {
-              color = &BLT.bgcolor[0];
-            }
-            if ((set) || !BLT.transp) {
-              BLT.rop_fn[rop](dst_ptr1, color, dpitch, dpxsize, dpxsize, 1);
-            }
-          } else {
-            color = (pat_ptr1 + ((x0 + BLT.patsx) & 7) * dpxsize);
-            BLT.rop_fn[rop](dst_ptr1, color, dpitch, dpxsize, dpxsize, 1);
-          }
-        } else {
-          BLT.rop_fn[rop](dst_ptr1, BLT.fgcolor, dpitch, dpxsize, dpxsize, 1);
-        }
-      }
-      dst_ptr1 += dpxsize;
-      for (x = x0 + 1; x < x1; x++) {
+      for (x = x0; x < x1; x++) {
         if (blt_clip_check(x, y)) {
           if (colorkey_en & 2) {
             rop = blt_colorkey_check(dst_ptr1, dpxsize, 1);
@@ -2836,15 +3629,16 @@ bool bx_voodoo_vga_c::init_vga_extension(void)
   if (model < VOODOO_BANSHEE) {
     theVoodooDevice = new bx_voodoo_1_2_c();
     theVoodooDevice->init();
-    init_iohandlers(read_handler, write_handler);
+    init_iohandlers(read_handler, write_handler, "vga video");
   } else {
     theVoodooDevice = new bx_banshee_c();
     theVoodooDevice->init();
     BX_VVGA_THIS s.memory = v->fbi.ram;
     BX_VVGA_THIS s.memsize = v->fbi.mask + 1;
-    init_iohandlers(banshee_vga_read_handler, banshee_vga_write_handler);
+    init_iohandlers(banshee_vga_read_handler, banshee_vga_write_handler, "banshee");
     DEV_register_iowrite_handler(this, banshee_vga_write_handler, 0x0102, "banshee", 1);
     DEV_register_iowrite_handler(this, banshee_vga_write_handler, 0x46e8, "banshee", 1);
+    BX_VVGA_THIS s.CRTC.max_reg = 0x26;
     BX_VVGA_THIS s.max_xres = 1920;
     BX_VVGA_THIS s.max_yres = 1440;
     v->banshee.disp_bpp = 8;
@@ -2966,19 +3760,24 @@ Bit32u bx_voodoo_vga_c::get_retrace()
 
 void bx_voodoo_vga_c::get_crtc_params(bx_crtc_params_t *crtcp, Bit32u *vclock)
 {
-  *vclock = BX_VVGA_THIS s.vclk[BX_VVGA_THIS s.misc_output.clock_select];
-  crtcp->htotal = BX_VVGA_THIS s.CRTC.reg[0] + ((v->banshee.crtc[0x1a] & 0x01) << 8) + 5;
-  crtcp->vtotal = BX_VVGA_THIS s.CRTC.reg[6] + ((BX_VVGA_THIS s.CRTC.reg[7] & 0x01) << 8) +
-                  ((BX_VVGA_THIS s.CRTC.reg[7] & 0x20) << 4) +
-                  ((v->banshee.crtc[0x1b] & 0x01) << 10) + 2;
-  crtcp->vbstart = BX_VVGA_THIS s.CRTC.reg[21] +
-                   ((BX_VVGA_THIS s.CRTC.reg[7] & 0x08) << 5) +
-                   ((BX_VVGA_THIS s.CRTC.reg[9] & 0x20) << 4) +
-                   ((v->banshee.crtc[0x1b] & 0x10) << 6);
-  crtcp->vrstart = BX_VVGA_THIS s.CRTC.reg[16] +
-                   ((BX_VVGA_THIS s.CRTC.reg[7] & 0x04) << 6) +
-                   ((BX_VVGA_THIS s.CRTC.reg[7] & 0x80) << 2) +
-                   ((v->banshee.crtc[0x1b] & 0x40) << 4);
+  if ((v->banshee.io[io_vgaInit0] & (1 << 6)) != 0) {
+    *vclock = BX_VVGA_THIS s.vclk[BX_VVGA_THIS s.misc_output.clock_select];
+    if (BX_VVGA_THIS s.x_dotclockdiv2) *vclock >>= 1;
+    crtcp->htotal = BX_VVGA_THIS s.CRTC.reg[0] + ((v->banshee.crtc[0x1a] & 0x01) << 8) + 5;
+    crtcp->vtotal = BX_VVGA_THIS s.CRTC.reg[6] + ((BX_VVGA_THIS s.CRTC.reg[7] & 0x01) << 8) +
+                    ((BX_VVGA_THIS s.CRTC.reg[7] & 0x20) << 4) +
+                    ((v->banshee.crtc[0x1b] & 0x01) << 10) + 2;
+    crtcp->vbstart = BX_VVGA_THIS s.CRTC.reg[21] +
+                     ((BX_VVGA_THIS s.CRTC.reg[7] & 0x08) << 5) +
+                     ((BX_VVGA_THIS s.CRTC.reg[9] & 0x20) << 4) +
+                     ((v->banshee.crtc[0x1b] & 0x10) << 6);
+    crtcp->vrstart = BX_VVGA_THIS s.CRTC.reg[16] +
+                     ((BX_VVGA_THIS s.CRTC.reg[7] & 0x04) << 6) +
+                     ((BX_VVGA_THIS s.CRTC.reg[7] & 0x80) << 2) +
+                     ((v->banshee.crtc[0x1b] & 0x40) << 4);
+  } else {
+    bx_vgacore_c::get_crtc_params(crtcp, vclock);
+  }
 }
 
 void bx_voodoo_vga_c::update(void)
@@ -3121,7 +3920,11 @@ void bx_voodoo_vga_c::mem_write(bx_phy_address addr, Bit8u value)
       } else {
         yti = (offset / pitch) / Y_TILESIZE;
       }
-      xti = ((offset % pitch) / (v->banshee.disp_bpp >> 3)) / X_TILESIZE;
+      if (v->banshee.double_width) {
+        xti = ((offset % pitch) / (v->banshee.disp_bpp >> 3)) / (X_TILESIZE / 2);
+      } else {
+        xti = ((offset % pitch) / (v->banshee.disp_bpp >> 3)) / X_TILESIZE;
+      }
       theVoodooDevice->set_tile_updated(xti, yti, 1);
     }
   } else {

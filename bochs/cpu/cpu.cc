@@ -28,6 +28,8 @@
 #include "pc_system.h"
 #include "cpustats.h"
 
+#include "bx_debug/debug.h"
+
 #if BX_SUPPORT_HANDLERS_CHAINING_SPEEDUPS
 
 #define BX_SYNC_TIME_IF_SINGLE_PROCESSOR(allowed_delta) {                               \
@@ -49,6 +51,81 @@
 
 jmp_buf BX_CPU_C::jmp_buf_env;
 
+#if BX_DEBUGGER
+void BX_CPU_C::cpu_loop_debugger(void)
+{
+  BX_CPU_THIS_PTR break_point = 0;
+  BX_CPU_THIS_PTR magic_break = 0;
+  BX_CPU_THIS_PTR stop_reason = STOP_NO_REASON;
+
+  if (setjmp(BX_CPU_THIS_PTR jmp_buf_env)) {
+    // can get here only from exception function or VMEXIT
+    BX_CPU_THIS_PTR icount++;
+    if (BX_SMP_PROCESSORS == 1) BX_TICK1();
+    if (dbg_instruction_epilog()) return;
+  }
+
+  // If the exception() routine has encountered a nasty fault scenario,
+  // the debugger may request that control is returned to it so that
+  // the situation may be examined.
+  if (bx_guard.interrupt_requested) return;
+
+  // We get here either by a normal function call, or by a longjmp
+  // back from an exception() call.  In either case, commit the
+  // new EIP/ESP, and set up other environmental fields.  This code
+  // mirrors similar code below, after the interrupt() call.
+  BX_CPU_THIS_PTR prev_rip = RIP; // commit new EIP
+  BX_CPU_THIS_PTR speculative_rsp = false;
+
+  while (1) {
+
+    // check on events which occurred for previous instructions (traps)
+    // and ones which are asynchronous to the CPU (hardware interrupts)
+    Bit32u handle_event = BX_CPU_THIS_PTR async_event & ~BX_ASYNC_EVENT_STOP_TRACE;
+    if (handle_event) {
+      if (handleAsyncEvent()) {
+        // If request to return to caller ASAP.
+        return;
+      }
+    }
+
+    // stop tracing after every instruction to handle in internal debugger
+    BX_CPU_THIS_PTR async_event |= BX_ASYNC_EVENT_STOP_TRACE;
+
+    bxICacheEntry_c *entry = getICacheEntry();
+    bxInstruction_c *i = entry->i;
+    bxInstruction_c *last = i + (entry->tlen);
+
+    for(;;) {
+      if (BX_CPU_THIS_PTR trace)
+        debug_disasm_instruction(BX_CPU_THIS_PTR prev_rip);
+
+      // want to allow changing of the instruction inside instrumentation callback
+      BX_INSTR_BEFORE_EXECUTION(BX_CPU_ID, i);
+      RIP += i->ilen();
+      BX_CPU_CALL_METHOD(i->execute1, (i)); // might iterate repeat instruction
+#if BX_SUPPORT_HANDLERS_CHAINING_SPEEDUPS == 0
+      BX_CPU_THIS_PTR prev_rip = RIP; // commit new RIP
+      BX_INSTR_AFTER_EXECUTION(BX_CPU_ID, i);
+      BX_CPU_THIS_PTR icount++;
+#endif
+      if (BX_SMP_PROCESSORS == 1) BX_TICK1();
+
+      // note instructions generating exceptions never reach this point
+      if (dbg_instruction_epilog()) return;
+
+      if (BX_CPU_THIS_PTR async_event & ~BX_ASYNC_EVENT_STOP_TRACE) break;
+
+      if (++i == last) {
+        entry = getICacheEntry();
+        i = entry->i;
+        last = i + (entry->tlen);
+      }
+    }
+  }  // while (1)
+}
+#endif // BX_DEBUGGER
+
 void BX_CPU_C::cpu_loop(void)
 {
 #if BX_SUPPORT_HANDLERS_CHAINING_SPEEDUPS
@@ -58,29 +135,17 @@ void BX_CPU_C::cpu_loop(void)
 #endif
 
 #if BX_DEBUGGER
-  BX_CPU_THIS_PTR break_point = 0;
-  BX_CPU_THIS_PTR magic_break = 0;
-  BX_CPU_THIS_PTR stop_reason = STOP_NO_REASON;
+  BX_ASSERT(! bx_dbg.debugger_active);
 #endif
 
   if (setjmp(BX_CPU_THIS_PTR jmp_buf_env)) {
     // can get here only from exception function or VMEXIT
     BX_CPU_THIS_PTR icount++;
     BX_SYNC_TIME_IF_SINGLE_PROCESSOR(0);
-#if BX_DEBUGGER || BX_GDBSTUB
-    if (dbg_instruction_epilog()) return;
-#endif
 #if BX_GDBSTUB
-    if (bx_dbg.gdbstub_enabled) return;
+    if (gdbstub_instruction_epilog() || bx_dbg.gdbstub_enabled) return;
 #endif
   }
-
-  // If the exception() routine has encountered a nasty fault scenario,
-  // the debugger may request that control is returned to it so that
-  // the situation may be examined.
-#if BX_DEBUGGER
-  if (bx_guard.interrupt_requested) return;
-#endif
 
   // We get here either by a normal function call, or by a longjmp
   // back from an exception() call.  In either case, commit the
@@ -101,7 +166,7 @@ void BX_CPU_C::cpu_loop(void)
 #if BX_NEW_DEBUGGER_GUI
   int loop_cnt = 5000;
 #endif /* BX_NEW_DEBUGGER_GUI */
-  
+
   while (1) {
 
     // check on events which occurred for previous instructions (traps)
@@ -152,8 +217,8 @@ void BX_CPU_C::cpu_loop(void)
       BX_SYNC_TIME_IF_SINGLE_PROCESSOR(0);
 
       // note instructions generating exceptions never reach this point
-#if BX_DEBUGGER || BX_GDBSTUB
-      if (dbg_instruction_epilog()) return;
+#if BX_GDBSTUB
+      if (gdbstub_instruction_epilog()) return;
 #endif
 
 #if BX_NEW_DEBUGGER_GUI
@@ -276,6 +341,9 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::linkTrace(bxInstruction_c *i)
 {
   volatile Bit8u stack_anchor = 0;
 
+  if (bx_dbg.debugger_active)
+    return;
+
 #if BX_SUPPORT_SMP
   if (BX_SMP_PROCESSORS > 1)
     return;
@@ -345,6 +413,8 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat(bxInstruction_c *i, BxRepIterationP
     return;
   }
 
+  BX_ASSERT(! bx_dbg.debugger_active || BX_CPU_THIS_PTR async_event);
+
   BX_CPU_THIS_PTR clear_RF();
 
 #if BX_SUPPORT_X86_64
@@ -357,9 +427,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat(bxInstruction_c *i, BxRepIterationP
       }
       if (RCX == 0) return;
 
-#if BX_DEBUGGER == 0
       if (BX_CPU_THIS_PTR async_event)
-#endif
         break; // exit always if debugger enabled
 
       BX_CPU_THIS_PTR icount++;
@@ -378,9 +446,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat(bxInstruction_c *i, BxRepIterationP
       }
       if (ECX == 0) return;
 
-#if BX_DEBUGGER == 0
       if (BX_CPU_THIS_PTR async_event)
-#endif
         break; // exit always if debugger enabled
 
       BX_CPU_THIS_PTR icount++;
@@ -398,9 +464,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat(bxInstruction_c *i, BxRepIterationP
       }
       if (CX == 0) return;
 
-#if BX_DEBUGGER == 0
       if (BX_CPU_THIS_PTR async_event)
-#endif
         break; // exit always if debugger enabled
 
       BX_CPU_THIS_PTR icount++;
@@ -440,9 +504,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat_ZF(bxInstruction_c *i, BxRepIterati
         }
         if (! get_ZF() || RCX == 0) return;
 
-#if BX_DEBUGGER == 0
         if (BX_CPU_THIS_PTR async_event)
-#endif
           break; // exit always if debugger enabled
 
         BX_CPU_THIS_PTR icount++;
@@ -461,9 +523,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat_ZF(bxInstruction_c *i, BxRepIterati
         }
         if (! get_ZF() || ECX == 0) return;
 
-#if BX_DEBUGGER == 0
         if (BX_CPU_THIS_PTR async_event)
-#endif
           break; // exit always if debugger enabled
 
         BX_CPU_THIS_PTR icount++;
@@ -481,9 +541,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat_ZF(bxInstruction_c *i, BxRepIterati
         }
         if (! get_ZF() || CX == 0) return;
 
-#if BX_DEBUGGER == 0
         if (BX_CPU_THIS_PTR async_event)
-#endif
           break; // exit always if debugger enabled
 
         BX_CPU_THIS_PTR icount++;
@@ -503,9 +561,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat_ZF(bxInstruction_c *i, BxRepIterati
         }
         if (get_ZF() || RCX == 0) return;
 
-#if BX_DEBUGGER == 0
         if (BX_CPU_THIS_PTR async_event)
-#endif
           break; // exit always if debugger enabled
 
         BX_CPU_THIS_PTR icount++;
@@ -524,9 +580,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat_ZF(bxInstruction_c *i, BxRepIterati
         }
         if (get_ZF() || ECX == 0) return;
 
-#if BX_DEBUGGER == 0
         if (BX_CPU_THIS_PTR async_event)
-#endif
           break; // exit always if debugger enabled
 
         BX_CPU_THIS_PTR icount++;
@@ -544,9 +598,7 @@ void BX_CPP_AttrRegparmN(2) BX_CPU_C::repeat_ZF(bxInstruction_c *i, BxRepIterati
         }
         if (get_ZF() || CX == 0) return;
 
-#if BX_DEBUGGER == 0
         if (BX_CPU_THIS_PTR async_event)
-#endif
           break; // exit always if debugger enabled
 
         BX_CPU_THIS_PTR icount++;
@@ -581,7 +633,7 @@ void BX_CPU_C::prefetch(void)
 
 #if BX_SUPPORT_X86_64
   if (long64_mode()) {
-    if (! IsCanonicalAccess(RIP, USER_PL)) {
+    if (! IsCanonicalAccess(RIP, BX_EXECUTE, USER_PL)) {
       BX_ERROR(("prefetch: #GP(0): RIP crossed canonical boundary"));
       exception(BX_GP_EXCEPTION, 0);
     }
@@ -685,17 +737,14 @@ void BX_CPU_C::prefetch(void)
   }
 }
 
-#if BX_DEBUGGER || BX_GDBSTUB
+#if BX_DEBUGGER
 bool BX_CPU_C::dbg_instruction_epilog(void)
 {
-#if BX_DEBUGGER
-  bx_address debug_eip = RIP;
-  Bit16u cs = BX_CPU_THIS_PTR sregs[BX_SEG_REG_CS].selector.value;
-
-  BX_CPU_THIS_PTR guard_found.cs  = cs;
-  BX_CPU_THIS_PTR guard_found.eip = debug_eip;
-  BX_CPU_THIS_PTR guard_found.laddr = get_laddr(BX_SEG_REG_CS, debug_eip);
-  BX_CPU_THIS_PTR guard_found.code_32_64 = BX_CPU_THIS_PTR fetchModeMask;
+  // support for 'show' command in debugger
+  extern unsigned dbg_show_mask;
+  if(dbg_show_mask) {
+    bx_dbg_show_symbolic(BX_CPU_ID);
+  }
 
   //
   // Take care of break point conditions generated during instruction execution
@@ -704,19 +753,20 @@ bool BX_CPU_C::dbg_instruction_epilog(void)
   // Check if we hit read/write or time breakpoint
   if (BX_CPU_THIS_PTR break_point) {
     Bit64u tt = bx_pc_system.time_ticks();
+    dbg_get_guard_state(&BX_CPU_THIS_PTR guard_found.guard_state);
     switch (BX_CPU_THIS_PTR break_point) {
     case BREAK_POINT_TIME:
       BX_INFO(("[" FMT_LL "d] Caught time breakpoint", tt));
       BX_CPU_THIS_PTR stop_reason = STOP_TIME_BREAK_POINT;
-      return(1); // on a breakpoint
+      return true; // on a breakpoint
     case BREAK_POINT_READ:
       BX_INFO(("[" FMT_LL "d] Caught read watch point", tt));
       BX_CPU_THIS_PTR stop_reason = STOP_READ_WATCH_POINT;
-      return(1); // on a breakpoint
+      return true; // on a breakpoint
     case BREAK_POINT_WRITE:
       BX_INFO(("[" FMT_LL "d] Caught write watch point", tt));
       BX_CPU_THIS_PTR stop_reason = STOP_WRITE_WATCH_POINT;
-      return(1); // on a breakpoint
+      return true; // on a breakpoint
     default:
       BX_PANIC(("Weird break point condition"));
     }
@@ -725,94 +775,101 @@ bool BX_CPU_C::dbg_instruction_epilog(void)
   if (BX_CPU_THIS_PTR magic_break) {
     BX_INFO(("[" FMT_LL "d] Stopped on MAGIC BREAKPOINT", bx_pc_system.time_ticks()));
     BX_CPU_THIS_PTR stop_reason = STOP_MAGIC_BREAK_POINT;
-    return(1); // on a breakpoint
+    dbg_get_guard_state(&BX_CPU_THIS_PTR guard_found.guard_state);
+    return true; // on a breakpoint
   }
 
   // convenient point to see if user requested debug break or typed Ctrl-C
   if (bx_guard.interrupt_requested) {
-    return(1);
-  }
-
-  // support for 'show' command in debugger
-  extern unsigned dbg_show_mask;
-  if(dbg_show_mask) {
-    bx_dbg_show_symbolic();
+    dbg_get_guard_state(&BX_CPU_THIS_PTR guard_found.guard_state);
+    return true;
   }
 
   // Just committed an instruction, before fetching a new one
   // see if debugger is looking for iaddr breakpoint of any type
-  if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_ALL) {
+  if (bx_guard.guard_for) {
+    bx_address debug_eip = RIP;
+    Bit16u cs = BX_CPU_THIS_PTR sregs[BX_SEG_REG_CS].selector.value;
+    dbg_get_guard_state(&BX_CPU_THIS_PTR guard_found.guard_state);
+
+    if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_ALL) {
 #if (BX_DBG_MAX_VIR_BPOINTS > 0)
-    if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_VIR) {
-      for (unsigned n=0; n<bx_guard.iaddr.num_virtual; n++) {
-        if (bx_guard.iaddr.vir[n].enabled &&
-           (bx_guard.iaddr.vir[n].cs  == cs) &&
-           (bx_guard.iaddr.vir[n].eip == debug_eip))
-        {
-          if (! bx_guard.iaddr.vir[n].condition || bx_dbg_eval_condition(bx_guard.iaddr.vir[n].condition)) {
-            BX_CPU_THIS_PTR guard_found.guard_found = BX_DBG_GUARD_IADDR_VIR;
-            BX_CPU_THIS_PTR guard_found.iaddr_index = n;
-            return(1); // on a breakpoint
-          }
-        }
-      }
-    }
-#endif
-#if (BX_DBG_MAX_LIN_BPOINTS > 0)
-    if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_LIN) {
-      for (unsigned n=0; n<bx_guard.iaddr.num_linear; n++) {
-        if (bx_guard.iaddr.lin[n].enabled &&
-           (bx_guard.iaddr.lin[n].addr == BX_CPU_THIS_PTR guard_found.laddr))
-        {
-          if (! bx_guard.iaddr.lin[n].condition || bx_dbg_eval_condition(bx_guard.iaddr.lin[n].condition)) {
-            BX_CPU_THIS_PTR guard_found.guard_found = BX_DBG_GUARD_IADDR_LIN;
-            BX_CPU_THIS_PTR guard_found.iaddr_index = n;
-            return(1); // on a breakpoint
-          }
-        }
-      }
-    }
-#endif
-#if (BX_DBG_MAX_PHY_BPOINTS > 0)
-    if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_PHY) {
-      bx_phy_address phy;
-      bool valid = dbg_xlate_linear2phy(BX_CPU_THIS_PTR guard_found.laddr, &phy);
-      if (valid) {
-        for (unsigned n=0; n<bx_guard.iaddr.num_physical; n++) {
-          if (bx_guard.iaddr.phy[n].enabled && (bx_guard.iaddr.phy[n].addr == phy))
+      if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_VIR) {
+        for (unsigned n=0; n<bx_guard.iaddr.num_virtual; n++) {
+          if (bx_guard.iaddr.vir[n].enabled &&
+             (bx_guard.iaddr.vir[n].cs  == cs) &&
+             (bx_guard.iaddr.vir[n].eip == debug_eip))
           {
-            if (! bx_guard.iaddr.phy[n].condition || bx_dbg_eval_condition(bx_guard.iaddr.phy[n].condition)) {
-              BX_CPU_THIS_PTR guard_found.guard_found = BX_DBG_GUARD_IADDR_PHY;
+            if (! bx_guard.iaddr.vir[n].condition || bx_dbg_eval_condition(bx_guard.iaddr.vir[n].condition)) {
+              BX_CPU_THIS_PTR guard_found.guard_found = BX_DBG_GUARD_IADDR_VIR;
               BX_CPU_THIS_PTR guard_found.iaddr_index = n;
-              return(1); // on a breakpoint
+              return true; // on a breakpoint
             }
           }
         }
       }
-    }
 #endif
+#if (BX_DBG_MAX_LIN_BPOINTS > 0)
+      if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_LIN) {
+        for (unsigned n=0; n<bx_guard.iaddr.num_linear; n++) {
+          if (bx_guard.iaddr.lin[n].enabled &&
+             (bx_guard.iaddr.lin[n].addr == BX_CPU_THIS_PTR guard_found.guard_state.laddr))
+          {
+            if (! bx_guard.iaddr.lin[n].condition || bx_dbg_eval_condition(bx_guard.iaddr.lin[n].condition)) {
+              BX_CPU_THIS_PTR guard_found.guard_found = BX_DBG_GUARD_IADDR_LIN;
+              BX_CPU_THIS_PTR guard_found.iaddr_index = n;
+              return true; // on a breakpoint
+            }
+          }
+        }
+      }
+#endif
+#if (BX_DBG_MAX_PHY_BPOINTS > 0)
+      if (bx_guard.guard_for & BX_DBG_GUARD_IADDR_PHY) {
+        bx_phy_address phy;
+        bool valid = dbg_xlate_linear2phy(BX_CPU_THIS_PTR guard_found.guard_state.laddr, &phy);
+        if (valid) {
+          for (unsigned n=0; n<bx_guard.iaddr.num_physical; n++) {
+            if (bx_guard.iaddr.phy[n].enabled && (bx_guard.iaddr.phy[n].addr == phy))
+            {
+              if (! bx_guard.iaddr.phy[n].condition || bx_dbg_eval_condition(bx_guard.iaddr.phy[n].condition)) {
+                BX_CPU_THIS_PTR guard_found.guard_found = BX_DBG_GUARD_IADDR_PHY;
+                BX_CPU_THIS_PTR guard_found.iaddr_index = n;
+                return true; // on a breakpoint
+              }
+            }
+          }
+        }
+      }
+#endif
+    }
+
+    // see if debugger requesting icount guard
+    if (bx_guard.guard_for & BX_DBG_GUARD_ICOUNT) {
+      if (get_icount() >= BX_CPU_THIS_PTR guard_found.icount_max) {
+        return true;
+      }
+    }
   }
 
-  // see if debugger requesting icount guard
-  if (bx_guard.guard_for & BX_DBG_GUARD_ICOUNT) {
-    if (get_icount() >= BX_CPU_THIS_PTR guard_found.icount_max) {
-      return(1);
-    }
-  }
+  return false;
+}
 #endif
 
 #if BX_GDBSTUB
+bool BX_CPU_C::gdbstub_instruction_epilog(void)
+{
   if (bx_dbg.gdbstub_enabled) {
     unsigned reason =
 #if BX_SUPPORT_X86_64 == 0
-        bx_gdbstub_check(EIP);
+      bx_gdbstub_check(EIP);
 #else
-        bx_gdbstub_check(RIP);
+      bx_gdbstub_check(RIP);
 #endif
-    if (reason != GDBSTUB_STOP_NO_REASON) return(1);
+    if (reason != GDBSTUB_STOP_NO_REASON)
+      return(1);
   }
-#endif
 
   return(0);
 }
-#endif // BX_DEBUGGER || BX_GDBSTUB
+#endif

@@ -103,28 +103,21 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TILELOADD_TnnnMdq(bxInstruction_c *i)
 
   unsigned tile = i->dst();
 
-  if (tile >= BX_TILE_REGISTERS || ! BX_CPU_THIS_PTR amx->tile_valid(tile)) {
-    BX_ERROR(("%s: invalid tile %d", i->getIaOpcodeNameShort(), tile));
-    exception(BX_UD_EXCEPTION, 0);
-  }
+  check_tile(i, tile);
 
   unsigned rows = BX_CPU_THIS_PTR amx->tile_num_rows(tile);
-  unsigned bytes_per_row = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile);
-
-  if ((bytes_per_row & 0x3) != 0) {
-    BX_ERROR(("%s: invalid tile %d bytes_per_row=%d", i->getIaOpcodeNameShort(), tile, bytes_per_row));
-    exception(BX_UD_EXCEPTION, 0);
-  }
+  unsigned dword_elements_per_row = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile);
 
   if (BX_CPU_THIS_PTR amx->start_row >= rows) {
-    BX_ERROR(("%s: invalid (start_row=%d) >= (rows=%d)", i->getIaOpcodeNameShort(), tile, BX_CPU_THIS_PTR amx->start_row, rows));
+    BX_ERROR(("%s: invalid tile %d (start_row=%d) >= (rows=%d)", i->getIaOpcodeNameShort(), tile, BX_CPU_THIS_PTR amx->start_row, rows));
     exception(BX_UD_EXCEPTION, 0);
   }
 
-  unsigned elements_per_row = bytes_per_row / 4;
-  Bit32u mask = (elements_per_row < 16) ? ((1 << elements_per_row) - 1) : 0xFFFF;
+  Bit32u mask = (dword_elements_per_row < 16) ? ((1 << dword_elements_per_row) - 1) : 0xFFFF;
 
   BX_CPU_THIS_PTR amx->set_tile_used(tile);
+
+  BX_CPU_THIS_PTR amx->tile[tile].zero_out_of_range_columns(dword_elements_per_row);
 
   BX_CPU_THIS_PTR amx->tile[tile].clear_upper_rows(BX_CPU_THIS_PTR amx->start_row);
 
@@ -136,14 +129,11 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TILELOADD_TnnnMdq(bxInstruction_c *i)
     BxPackedAvxRegister *data = &(BX_CPU_THIS_PTR amx->tile[tile].row[row]);
 
     Bit64u eaddr = start_eaddr + row * stride;
-    if (bytes_per_row == 64) {
+    if (dword_elements_per_row == 16) {
       read_linear_zmmword(i->seg(), get_laddr64(i->seg(), eaddr), data);
     }
     else {
       avx_masked_load32(i, eaddr, data, mask);
-
-      for (unsigned n=elements_per_row; n < 16; n++)
-        data->vmm32u(n) = 0;
     }
 
     BX_CPU_THIS_PTR amx->start_row++;
@@ -163,26 +153,17 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TILESTORED_MdqTnnn(bxInstruction_c *i)
 
   unsigned tile = i->src();
 
-  if (tile >= BX_TILE_REGISTERS || ! BX_CPU_THIS_PTR amx->tile_valid(tile)) {
-    BX_ERROR(("TILESTORED: invalid tile %d", tile));
-    exception(BX_UD_EXCEPTION, 0);
-  }
+  check_tile(i, tile);
 
   unsigned rows = BX_CPU_THIS_PTR amx->tile_num_rows(tile);
-  unsigned bytes_per_row = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile);
-
-  if ((bytes_per_row & 0x3) != 0) {
-    BX_ERROR(("TILESTORED: invalid tile %d bytes_per_row=%d", tile, bytes_per_row));
-    exception(BX_UD_EXCEPTION, 0);
-  }
+  unsigned dword_elements_per_row = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile);
 
   if (BX_CPU_THIS_PTR amx->start_row >= rows) {
-    BX_ERROR(("TILESTORED: invalid (start_row=%d) >= (rows=%d)", tile, BX_CPU_THIS_PTR amx->start_row, rows));
+    BX_ERROR(("TILESTORED: invalid tile %d (start_row=%d) >= (rows=%d)", tile, BX_CPU_THIS_PTR amx->start_row, rows));
     exception(BX_UD_EXCEPTION, 0);
   }
 
-  unsigned elements_per_row = bytes_per_row / 4;
-  Bit32u mask = (elements_per_row < 16) ? ((1 << elements_per_row) - 1) : 0xFFFF;
+  Bit32u mask = (dword_elements_per_row < 16) ? ((1 << dword_elements_per_row) - 1) : 0xFFFF;
   i->setVL(BX_VL512);
 
   Bit64u start_eaddr = BX_READ_64BIT_REG(i->sibBase()) + (Bit64s) i->displ32s();
@@ -191,7 +172,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TILESTORED_MdqTnnn(bxInstruction_c *i)
   for (unsigned row=BX_CPU_THIS_PTR amx->start_row; row < rows; row++) {
     BxPackedAvxRegister *data = &(BX_CPU_THIS_PTR amx->tile[tile].row[row]);
     Bit64u eaddr = start_eaddr + row * stride;
-    if (bytes_per_row == 64)
+    if (dword_elements_per_row == 16)
       write_linear_zmmword(i->seg(), get_laddr64(i->seg(), eaddr), data);
     else
       avx_masked_store32(i, eaddr, data, mask);
@@ -226,6 +207,23 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TILERELEASE(bxInstruction_c *i)
   BX_NEXT_INSTR(i);
 }
 
+void BX_CPP_AttrRegparmN(2) BX_CPU_C::check_tile(bxInstruction_c *i, unsigned tile_num)
+{
+  // #UD if TILES_CONFIGURED == 0
+  // #UD if src are not valid tile
+  // #UD if src is >= palette_table[tilecfg.palette_id].max_names
+  if (tile_num >= BX_TILE_REGISTERS || ! BX_CPU_THIS_PTR amx->tile_valid(tile_num)) {
+    BX_ERROR(("%s: invalid tile %d", i->getIaOpcodeNameShort(), tile_num));
+    exception(BX_UD_EXCEPTION, 0);
+  }
+
+  unsigned bytes_per_row = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_num);
+  if ((bytes_per_row & 0x3) != 0) {
+    BX_ERROR(("%s: invalid tile %d bytes_per_row=%d", i->getIaOpcodeNameShort(), tile_num, bytes_per_row));
+    exception(BX_UD_EXCEPTION, 0);
+  }
+}
+
 void BX_CPU_C::check_tiles(bxInstruction_c *i, unsigned tile_dst, unsigned tile_src1, unsigned tile_src2)
 {
   // #UD if srcdest == src1 OR src1 == src2 OR srcdest == src2
@@ -237,53 +235,32 @@ void BX_CPU_C::check_tiles(bxInstruction_c *i, unsigned tile_dst, unsigned tile_
   // #UD if TILES_CONFIGURED == 0
   // #UD if srcdest/src1/src2 are not valid tiles
   // #UD if srcdest/src1/src2 are >= palette_table[tilecfg.palette_id].max_names
-  if (tile_dst >= BX_TILE_REGISTERS || ! BX_CPU_THIS_PTR amx->tile_valid(tile_dst)) {
-    BX_ERROR(("%s: invalid tile %d", i->getIaOpcodeNameShort(), tile_dst));
-    exception(BX_UD_EXCEPTION, 0);
-  }
-
-  if (tile_src1 >= BX_TILE_REGISTERS || ! BX_CPU_THIS_PTR amx->tile_valid(tile_src1)) {
-    BX_ERROR(("%s: invalid tile %d", i->getIaOpcodeNameShort(), tile_src1));
-    exception(BX_UD_EXCEPTION, 0);
-  }
-
-  if (tile_src2 >= BX_TILE_REGISTERS || ! BX_CPU_THIS_PTR amx->tile_valid(tile_src2)) {
-    BX_ERROR(("%s: invalid tile %d", i->getIaOpcodeNameShort(), tile_src2));
-    exception(BX_UD_EXCEPTION, 0);
-  }
+  check_tile(i, tile_dst);
+  check_tile(i, tile_src1);
+  check_tile(i, tile_src2);
 
   unsigned rows[3];
-  unsigned bytes_per_row[3];
+  unsigned dword_elements_per_row[3];
 
   rows[0] = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
-  bytes_per_row[0] = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst);
+  dword_elements_per_row[0] = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   rows[1] = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src1);
-  bytes_per_row[1] = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_src1);
+  dword_elements_per_row[1] = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_src1);
   rows[2] = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
-  bytes_per_row[2] = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_src2);
-
-  // #UD if srcdest.colbytes mod 4 != 0
-  // #UD if src1.colbytes mod 4 != 0
-  // #UD if src2.colbytes mod 4 != 0
-  for (unsigned j=0; j<3; j++) {
-    if ((bytes_per_row[j] & 0x3) != 0) {
-      BX_ERROR(("%s: invalid tile bytes_per_row=%d", i->getIaOpcodeNameShort(), bytes_per_row[j]));
-      exception(BX_UD_EXCEPTION, 0);
-    }
-  }
+  dword_elements_per_row[2] = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_src2);
 
   //     R   C
   // A = m x k (tsrc1)
   // B = k x n (tsrc2)
   // C = m x n (tsrcdest)
-  unsigned n = bytes_per_row[0] / 4;
+  unsigned n = dword_elements_per_row[0];
   unsigned m = rows[1];
   unsigned k = rows[2];
 
   // #UD if srcdest.colbytes != src2.colbytes (n)
   // #UD if srcdest.rows != src1.rows (m)
   // #UD if src1.colbytes / 4 != src2.rows (k)
-  if (n != (bytes_per_row[2] / 4) || m != rows[0] || k != (bytes_per_row[1] / 4)) {
+  if (n != dword_elements_per_row[2] || m != rows[0] || k != dword_elements_per_row[1]) {
     BX_ERROR(("%s: invalid matmul tile dimenstions", i->getIaOpcodeNameShort()));
     exception(BX_UD_EXCEPTION, 0);
   }
@@ -361,7 +338,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBSSD_TnnnTrmTreg(bxInstruction_c *i)
   /* A = m x k (tsrc1)    */
   /* B = k x n (tsrc2)    */
   /* C = m x n (tsrcdest) */
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -394,7 +371,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBSUD_TnnnTrmTreg(bxInstruction_c *i)
   /* A = m x k (tsrc1)    */
   /* B = k x n (tsrc2)    */
   /* C = m x n (tsrcdest) */
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -427,7 +404,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBUSD_TnnnTrmTreg(bxInstruction_c *i)
   /* A = m x k (tsrc1)    */
   /* B = k x n (tsrc2)    */
   /* C = m x n (tsrcdest) */
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -460,7 +437,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBUUD_TnnnTrmTreg(bxInstruction_c *i)
   /* A = m x k (tsrc1)    */
   /* B = k x n (tsrc2)    */
   /* C = m x n (tsrcdest) */
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -486,9 +463,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBUUD_TnnnTrmTreg(bxInstruction_c *i)
 
 // AMX-BF16 //
 
+#include "softfloat3e/include/softfloat.h"
 #include "bf16.h"
 
-extern float_status_t prepare_ne_softfloat_status_helper();
+extern softfloat_status_t prepare_ne_softfloat_status_helper(bool denormals_are_zeros);
 
 void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBF16PS_TnnnTrmTreg(bxInstruction_c *i)
 {
@@ -499,7 +477,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBF16PS_TnnnTrmTreg(bxInstruction_c *i)
   // A = m x k (tsrc1)
   // B = k x n (tsrc2)
   // C = m x n (tsrcdest)
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -509,8 +487,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPBF16PS_TnnnTrmTreg(bxInstruction_c *i)
 
   // "round to nearest even" rounding mode is used when doing each accumulation of the FMA.
   // output denormals are always flushed to zero and input denormals are always treated as zero.
-  float_status_t status = prepare_ne_softfloat_status_helper();
-  status.denormals_are_zeros = true;
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
 
   for (unsigned m=0; m < max_m; m++) {
     float32 tmp[32]; // new empty array
@@ -554,7 +531,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPFP16PS_TnnnTrmTreg(bxInstruction_c *i)
   // A = m x k (tsrc1)
   // B = k x n (tsrc2)
   // C = m x n (tsrcdest)
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -564,8 +541,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TDPFP16PS_TnnnTrmTreg(bxInstruction_c *i)
 
   // "round to nearest even" rounding mode is used when doing each accumulation of the FMA.
   // output FP32 denormals are always flushed to zero and input denormals are always treated as zero.
-  float_status_t status = prepare_ne_softfloat_status_helper();
-  status.denormals_are_zeros = true;
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
 
   for (unsigned m=0; m < max_m; m++) {
     float32 tmp[32]; // new empty array
@@ -607,7 +583,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCMMRLFP16PS_TnnnTrmTreg(bxInstruction_c *
   // A = m x k (tsrc1)
   // B = k x n (tsrc2)
   // C = m x n (tsrcdest)
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -617,8 +593,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCMMRLFP16PS_TnnnTrmTreg(bxInstruction_c *
 
   // "round to nearest even" rounding mode is used when doing each accumulation of the FMA.
   // output FP32 denormals are always flushed to zero and input denormals are always treated as zero.
-  float_status_t status = prepare_ne_softfloat_status_helper();
-  status.denormals_are_zeros = true;
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
 
   for (unsigned m=0; m < max_m; m++) {
     float32 tmp[32]; // new empty array
@@ -660,7 +635,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCMMIMFP16PS_TnnnTrmTreg(bxInstruction_c *
   // A = m x k (tsrc1)
   // B = k x n (tsrc2)
   // C = m x n (tsrcdest)
-  unsigned max_n = BX_CPU_THIS_PTR amx->tile_bytes_per_row(tile_dst) / 4;
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
   unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
   unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
 
@@ -670,8 +645,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCMMIMFP16PS_TnnnTrmTreg(bxInstruction_c *
 
   // "round to nearest even" rounding mode is used when doing each accumulation of the FMA.
   // output FP32 denormals are always flushed to zero and input denormals are always treated as zero.
-  float_status_t status = prepare_ne_softfloat_status_helper();
-  status.denormals_are_zeros = true;
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
 
   for (unsigned m=0; m < max_m; m++) {
     float32 tmp[32]; // new empty array
@@ -702,6 +676,169 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCMMIMFP16PS_TnnnTrmTreg(bxInstruction_c *
   BX_CPU_THIS_PTR amx->restart();
 
   BX_NEXT_INSTR(i);
+}
+
+BX_CPP_INLINE float32 f32_silence_snan(float32 a)
+{
+  if (f32_isNaN(a))
+    a = convert_to_QNaN(a);
+  return a;
+}
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TMMULTF32PS_TnnnTrmTreg(bxInstruction_c *i)
+{
+  unsigned tile_dst = i->dst(), tile_src1 = i->src1(), tile_src2 = i->src2();
+  check_tiles(i, tile_dst, tile_src1, tile_src2);
+
+  //     R   C
+  // A = m x k (tsrc1)
+  // B = k x n (tsrc2)
+  // C = m x n (tsrcdest)
+  unsigned max_n = BX_CPU_THIS_PTR amx->tile_dword_elements_per_row(tile_dst);
+  unsigned max_m = BX_CPU_THIS_PTR amx->tile_num_rows(tile_dst);
+  unsigned max_k = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src2);
+
+  AMX::TILE *tdst  = &(BX_CPU_THIS_PTR amx->tile[tile_dst]);
+  AMX::TILE *tsrc1 = &(BX_CPU_THIS_PTR amx->tile[tile_src1]);
+  AMX::TILE *tsrc2 = &(BX_CPU_THIS_PTR amx->tile[tile_src2]);
+
+  // "round to nearest even" rounding mode is used when doing each accumulation of the FMA.
+  // output denormals are always flushed to zero and input denormals are always treated as zero.
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
+
+  for (unsigned m=0; m < max_m; m++) {
+    float32 tmp[16]; // new empty array
+    for (unsigned n=0; n < 16; n++) tmp[n] = 0;
+
+    for (unsigned k=0; k < max_k; k++) {
+      for (unsigned n=0; n < max_n; n++) {
+        float32 a = fp32_convert_to_tf32(f32_silence_snan(tsrc1->row[m].vmm32u(k)));
+        float32 b = fp32_convert_to_tf32(f32_silence_snan(tsrc2->row[k].vmm32u(n)));
+        tmp[n] = f32_mulAdd(a, b, tmp[n], 0, &status);
+      }
+    }
+
+    for (unsigned n=0; n < max_n; n++) {
+      tdst->row[m].vmm32u(n) = f32_add(tdst->row[m].vmm32u(n), tmp[n], &status);
+    }
+
+    tdst->zero_upper_row_data32(m, max_n);
+  }
+
+  BX_CPU_THIS_PTR amx->set_tile_used(tile_dst);
+  BX_CPU_THIS_PTR amx->tile[tile_dst].clear_upper_rows(max_m);
+  BX_CPU_THIS_PTR amx->restart();
+
+  BX_NEXT_INSTR(i);
+}
+
+void BX_CPP_AttrRegparmN(3) BX_CPU_C::tilemov_row(bxInstruction_c *i, bool immediate_form, BxPackedAvxRegister *dst)
+{
+  unsigned tile_src = i->src1();
+  check_tile(i, tile_src);
+
+  unsigned row, row_chunk;
+  if (immediate_form) {
+    row = i->Ib() & 0x3f;
+    row_chunk = i->Ib() >> 6;
+  }
+  else {
+    row = (unsigned) BX_READ_16BIT_REG(i->src2());
+    row_chunk = (unsigned) (BX_READ_32BIT_REG(i->src2()) >> 16);
+  }
+
+  unsigned tile_num_rows = BX_CPU_THIS_PTR amx->tile_num_rows(tile_src);
+  if (row > tile_num_rows || row_chunk /* do not support multi-line rows yet */) {
+    BX_ERROR(("%s: row=%d:%d out of range for tile %d", i->getIaOpcodeNameShort(), row, row_chunk, tile_src));
+    exception(BX_GP_EXCEPTION, 0);
+  }
+
+  AMX::TILE *tsrc = &(BX_CPU_THIS_PTR amx->tile[tile_src]);
+  *dst = tsrc->row[row];
+}
+
+#include "cpu/decoder/ia_opcodes.h"
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TILEMOVROW_VdqTrm(bxInstruction_c *i)
+{
+  BxPackedAvxRegister dst;
+  tilemov_row(i, i->getIaOpcode() == BX_IA_EVEX_TILEMOVROW_VdqTrmIb, &dst);
+  BX_WRITE_AVX_REG(i->dst(), dst)
+  BX_CPU_THIS_PTR amx->restart();
+}
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCVTROWD2PS_VpsTrm(bxInstruction_c *i)
+{
+  BxPackedAvxRegister dst;
+  tilemov_row(i, i->getIaOpcode() == BX_IA_EVEX_TCVTROWD2PS_VpsTrmIb, &dst);
+
+  // "round to nearest even" rounding mode is used when doing each convertion below.
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
+
+  // converting the int32 source elements to fp32
+  for (unsigned n=0;n < DWORD_ELEMENTS(BX_VL512); n++)
+    dst.vmm32u(n) = i32_to_f32(dst.vmm32u(n), &status);
+
+  BX_WRITE_AVX_REG(i->dst(), dst);
+  BX_CPU_THIS_PTR amx->restart();
+}
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCVTROWPS2PHL_VphTrm(bxInstruction_c *i)
+{
+  BxPackedAvxRegister dst;
+  tilemov_row(i, i->getIaOpcode() == BX_IA_EVEX_TCVTROWPS2PHL_VphTrmIb, &dst);
+
+  // "round to nearest even" rounding mode is used when doing each convertion below.
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
+
+  // convert the fp32 source elements to fp16 and place them in low 16-bits of each dword
+  for (unsigned n=0;n < DWORD_ELEMENTS(BX_VL512); n++)
+    dst.vmm32u(n) = (Bit32u) f32_to_f16(dst.vmm32u(n), &status);
+
+  BX_WRITE_AVX_REG(i->dst(), dst);
+  BX_CPU_THIS_PTR amx->restart();
+}
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCVTROWPS2PHH_VphTrm(bxInstruction_c *i)
+{
+  BxPackedAvxRegister dst;
+  tilemov_row(i, i->getIaOpcode() == BX_IA_EVEX_TCVTROWPS2PHH_VphTrmIb, &dst);
+
+  // "round to nearest even" rounding mode is used when doing each convertion below.
+  softfloat_status_t status = prepare_ne_softfloat_status_helper(true);
+
+  // convert the fp32 source elements to fp16 and place them in high 16-bits of each dword
+  for (unsigned n=0;n < DWORD_ELEMENTS(BX_VL512); n++)
+    dst.vmm32u(n) = ((Bit32u) f32_to_f16(dst.vmm32u(n), &status)) << 16;
+
+  BX_WRITE_AVX_REG(i->dst(), dst);
+  BX_CPU_THIS_PTR amx->restart();
+}
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCVTROWPS2BF16L_VphTrm(bxInstruction_c *i)
+{
+  BxPackedAvxRegister dst;
+  tilemov_row(i, i->getIaOpcode() == BX_IA_EVEX_TCVTROWPS2BF16L_VphTrmIb, &dst);
+
+  // convert the fp32 source elements to bf16 and place them in low 16-bits of each dword
+  for (unsigned n=0;n < DWORD_ELEMENTS(BX_VL512); n++)
+    dst.vmm32u(n) = (Bit32u) convert_ne_fp32_to_bfloat16(dst.vmm32u(n));
+
+  BX_WRITE_AVX_REG(i->dst(), dst);
+  BX_CPU_THIS_PTR amx->restart();
+}
+
+void BX_CPP_AttrRegparmN(1) BX_CPU_C::TCVTROWPS2BF16H_VphTrm(bxInstruction_c *i)
+{
+  BxPackedAvxRegister dst;
+  tilemov_row(i, i->getIaOpcode() == BX_IA_EVEX_TCVTROWPS2BF16H_VphTrmIb, &dst);
+
+  // convert the fp32 source elements to bf16 and place them in high 16-bits of each dword
+  for (unsigned n=0;n < DWORD_ELEMENTS(BX_VL512); n++)
+    dst.vmm32u(n) = ((Bit32u) convert_ne_fp32_to_bfloat16(dst.vmm32u(n))) << 16;
+
+  BX_WRITE_AVX_REG(i->dst(), dst);
+  BX_CPU_THIS_PTR amx->restart();
 }
 
 #endif // BX_SUPPORT_AMX

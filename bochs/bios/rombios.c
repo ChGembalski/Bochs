@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2024  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -455,12 +455,15 @@ typedef unsigned long  Bit32u;
   ;; cmp function
   lcmpl:
   lcmpul:
-    and eax, #0x0000FFFF
-    shl ebx, #16
-    or  eax, ebx
-    shr ebx, #16
+    push eax
+    push ebx
+    and  eax, #0x0000FFFF
+    shl  ebx, #16
+    or   eax, ebx
     SEG SS
       cmp eax, dword ptr [di]
+    pop  ebx
+    pop  eax
     ret
 
   ;; sub function
@@ -475,13 +478,21 @@ typedef unsigned long  Bit32u;
   ;; mul function
   lmull:
   lmulul:
-    and eax, #0x0000FFFF
-    shl ebx, #16
-    or  eax, ebx
+    push edx
+    push ebx
+    push eax
+    and  eax, #0x0000FFFF
+    shl  ebx, #16
+    or   eax, ebx
     SEG SS
-    mul eax, dword ptr [di]
-    mov ebx, eax
-    shr ebx, #16
+    mul  eax, dword ptr [di]
+    mov  edx, eax
+    pop  eax
+    mov  ax, dx
+    shr  edx, #16
+    pop  ebx
+    mov  bx, dx
+    pop  edx
     ret
 
   ;; dec function
@@ -510,42 +521,41 @@ typedef unsigned long  Bit32u;
   ;; tst function
   ltstl:
   ltstul:
-    and eax, #0x0000FFFF
-    shl ebx, #16
-    or  eax, ebx
-    shr ebx, #16
+    push eax
+    push ebx
+    and  eax, #0x0000FFFF
+    shl  ebx, #16
+    or   eax, ebx
     test eax, eax
+    pop  ebx
+    pop  eax
     ret
 
   ;; sr function
   lsrul:
-    mov  cx,di
+    push ecx
+    mov  cx, di
     jcxz lsr_exit
-    and  eax, #0x0000FFFF
-    shl  ebx, #16
-    or   eax, ebx
   lsr_loop:
-    shr  eax, #1
+    shr  bx, #1
+    rcr  ax, #1
     loop lsr_loop
-    mov  ebx, eax
-    shr  ebx, #16
   lsr_exit:
+    pop  ecx
     ret
 
   ;; sl function
   lsll:
   lslul:
-    mov  cx,di
+    push ecx
+    mov  cx, di
     jcxz lsl_exit
-    and  eax, #0x0000FFFF
-    shl  ebx, #16
-    or   eax, ebx
   lsl_loop:
-    shl  eax, #1
+    shl  ax, #1
+    rcl  bx, #1
     loop lsl_loop
-    mov  ebx, eax
-    shr  ebx, #16
   lsl_exit:
+    pop  ecx
     ret
 
   idiv_:
@@ -559,6 +569,9 @@ typedef unsigned long  Bit32u;
     ret
 
   ldivul:
+    push edx
+    push ebx
+    push eax
     and  eax, #0x0000FFFF
     shl  ebx, #16
     or   eax, ebx
@@ -569,8 +582,13 @@ typedef unsigned long  Bit32u;
     SEG SS
     mov  bx,  [di]
     div  ebx
-    mov  ebx, eax
-    shr  ebx, #16
+    mov  edx, eax
+    pop  eax
+    mov  ax, dx
+    shr  edx, #16
+    pop  ebx
+    mov  bx, dx
+    pop  edx
     ret
 
   imodu:
@@ -894,8 +912,6 @@ static bx_bool        floppy_drive_recal();
 static bx_bool        floppy_media_known();
 static bx_bool        floppy_media_sense();
 static bx_bool        set_enable_a20();
-static void           debugger_on();
-static void           debugger_off();
 static void           keyboard_init();
 static void           keyboard_panic();
 static void           shutdown_status_panic();
@@ -938,7 +954,7 @@ Bit16u cdrom_boot();
 
 // static char bios_svn_version_string[] = "$Revision$ $Date$";
 
-#define BIOS_COPYRIGHT_STRING "(c) 2001-2021  The Bochs Project"
+#define BIOS_COPYRIGHT_STRING "(c) 2001-2025  The Bochs Project"
 
 #if DEBUG_ATA
 #  define BX_DEBUG_ATA(a...) BX_DEBUG(a)
@@ -1041,7 +1057,7 @@ static struct {
       { 0x0b30, 0x0b29,   none, 0x8100, none }, /* 0) */
       { 0x0c2d, 0x0c5f, 0x0c1f, 0x8200, none }, /* -_ */
       { 0x0d3d, 0x0d2b,   none, 0x8300, none }, /* =+ */
-      { 0x0e08, 0x0e08, 0x0e7f,   none, none }, /* backspace */
+      { 0x0e08, 0x0e08, 0x0e7f, 0x0ef0, none }, /* backspace */
       { 0x0f09, 0x0f00,   none,   none, none }, /* tab */
       { 0x1071, 0x1051, 0x1011, 0x1000, 0x40 }, /* Q */
       { 0x1177, 0x1157, 0x1117, 0x1100, 0x40 }, /* W */
@@ -1109,8 +1125,8 @@ static struct {
       { 0x4f00, 0x4f31, 0x7500, 0x0001, 0x20 }, /* 1 End */
       { 0x5000, 0x5032,   none, 0x0002, 0x20 }, /* 2 Down */
       { 0x5100, 0x5133, 0x7600, 0x0003, 0x20 }, /* 3 PgDn */
-      { 0x5200, 0x5230,   none,   none, 0x20 }, /* 0 Ins */
-      { 0x5300, 0x532e,   none,   none, 0x20 }, /* Del */
+      { 0x5200, 0x5230, 0x9200,   none, 0x20 }, /* 0 Ins */
+      { 0x5300, 0x532e, 0x9300,   none, 0x20 }, /* Del */
       {   none,   none,   none,   none, none },
       {   none,   none,   none,   none, none },
       { 0x565c, 0x567c,   none,   none, none }, /* \| */
@@ -2337,18 +2353,6 @@ set_enable_a20(val)
     outb(PORT_A20, oldval & 0xfd);
 
   return((oldval & 0x02) != 0);
-}
-
-  void
-debugger_on()
-{
-  outb(0xfedc, 0x01);
-}
-
-  void
-debugger_off()
-{
-  outb(0xfedc, 0x00);
 }
 
 int
@@ -5331,8 +5335,14 @@ ASM_END
           return;
         }
       } else if (shift_flags & 0x04) { /* CONTROL */
-        asciicode = scan_to_scanascii[scancode].control;
-        scancode = scan_to_scanascii[scancode].control >> 8;
+        if (((mf2_state & 0x02) > 0) && ((scancode >= 0x47) && (scancode <= 0x53))) {
+          /* extended keys handling */
+          asciicode = 0xe0;
+          scancode = scan_to_scanascii[scancode].normal >> 8;
+        } else {
+          asciicode = scan_to_scanascii[scancode].control;
+          scancode = scan_to_scanascii[scancode].control >> 8;
+        }
       } else if (((mf2_state & 0x02) > 0) && ((scancode >= 0x47) && (scancode <= 0x53))) {
         /* extended keys handling */
         asciicode = 0xe0;
@@ -5520,9 +5530,9 @@ int13_edd(DS, SI, device)
 
     if (type == ATA_TYPE_ATAPI)
     {
-      npc     = 0xffffffff;
-      nph     = 0xffffffff;
-      npspt   = 0xffffffff;
+      npc     = 0xffff;
+      nph     = 0xffff;
+      npspt   = 0xffff;
       lba_low = 0xffffffff;
       lba_high = 0xffffffff;
 
@@ -5672,13 +5682,13 @@ int13_edd(DS, SI, device)
 }
 
   void
-int13_harddisk(EHAX, DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS)
-  Bit16u EHAX, DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS;
+int13_harddisk(DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS)
+  Bit16u DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS;
 {
   Bit32u lba_low, lba_high;
   Bit16u cylinder, head, sector;
   Bit16u segment, offset;
-  Bit16u npc, nph, npspt, nlc, nlh, nlspt;
+  Bit16u nph, npspt, nlc, nlh, nlspt;
   Bit16u size, count;
   Bit8u  device, status;
 
@@ -5708,6 +5718,7 @@ int13_harddisk(EHAX, DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS)
   switch (GET_AH()) {
 
     case 0x00: /* disk controller reset */
+    case 0x0D: /* disk controller reset */
       ata_reset (device);
       goto int13_success;
       break;
@@ -5921,7 +5932,6 @@ int13_harddisk(EHAX, DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS)
 
     case 0x09: /* initialize drive parameters */
     case 0x0c: /* seek to specified cylinder */
-    case 0x0d: /* alternate disk reset */
     case 0x11: /* recalibrate */
     case 0x14: /* controller internal diagnostic */
       BX_INFO("int13_harddisk: function %02xh unimplemented, returns success\n", GET_AH());
@@ -6537,8 +6547,8 @@ ASM_END
 }
 
   void
-int13_harddisk(EHAX, DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS)
-  Bit16u EHAX, DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS;
+int13_harddisk(DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS)
+  Bit16u DS, ES, DI, SI, BP, ELDX, BX, DX, CX, AX, IP, CS, FLAGS;
 {
   Bit8u    drive, num_sectors, sector, head, status, mod;
   Bit8u    drive_map;
@@ -7261,10 +7271,13 @@ floppy_media_sense(drive)
   // Changed if-else to switch
   switch(drive_type) {
     case 1:    // 360K 5.25" drive
+      config_data = 0x00; // 0000 0000
+      media_state = 0x35; // 0011 0101
+      retval = 1;
+      break;
     case 2:    // 1.2 MB 5.25" drive
       config_data = 0x00; // 0000 0000
-      /* 1.2 MB 5.25" drive: media_state - need double stepping??? (bit 5) */
-      media_state = 0x25; // 0010 0101
+      media_state = 0x15; // 0001 0101
       retval = 1;
       break;
     case 3:    // 720K 3.5" drive
@@ -7284,7 +7297,7 @@ floppy_media_sense(drive)
     case 7:    // 180k 5.25" drive
     case 8:    // 320k 5.25" drive
       config_data = 0x00; // 0000 0000
-      media_state = 0x27; // 0010 0111
+      media_state = 0x37; // 0011 0111
       retval = 1;
       break;
     default:   // not recognized
@@ -8387,6 +8400,8 @@ Bit16u seq_nr;
     write_word(IPL_SEG, IPL_SEQUENCE_OFFSET, 0xFFFF);
   } else if (bootdev == 0) BX_PANIC("No bootable device.\n");
 
+  /* Workaround to fix network boot after adding USB boot option in Bochs */
+  if (bootdev == 6) bootdev = 4;
   /* Translate from CMOS runes to an IPL table offset by subtracting 1 */
   bootdev -= 1;
 #else
@@ -8904,6 +8919,7 @@ carry_set:
 ;   - make all called C function get the same parameters list
 ;
 int13_relocated:
+  sti                             ;; enable higher priority interrupts
 
 #if BX_ELTORITO_BOOT
   ;; check for an eltorito function
@@ -9037,17 +9053,20 @@ int13_notcdrom:
 #endif
 
 int13_disk:
-  ;; int13_harddisk modifies high word of EAX
-  shr   eax, #16
-  push  ax
   call  _int13_harddisk
-  pop   ax
-  shl   eax, #16
 
 int13_out:
   pop ds
   pop es
   popa
+
+  ;; Note: Some DOS versions expect the int 13h handler to return with interrupts enabled (IF).
+  ;; Because of iret modify IF on stack.
+  push  bp
+  mov   bp, sp
+  or    byte ptr [bp+7], #0x02  ;; set interrupt flag (IF) on stack
+  pop   bp
+
   iret
 
 ;----------
@@ -10120,7 +10139,7 @@ pci_real_f0e: ;; get irq routing options
   pop es
   popf
   pop ax
-  mov bx, #(1 << 9) | (1 << 11)   ;; irq 9 and 11 are used
+  mov bx, #(1 << 11) | (1 << 9)  ;; irqs 9 and 11 are used
   jmp pci_real_ok
 pci_real_too_small:
   stosw
@@ -10170,6 +10189,23 @@ pci_real_select_reg:
   mov dx,  #0x0cf8
   out dx,  eax
   pop dx
+  ret
+
+pci_set_pam_regs_ro:
+  xor  bx, bx
+  mov  di, #0x5a
+pci_set_pam_regs_loop:
+  mov  ax, #0xb108
+  call pcibios_real
+  test cl, #0x22
+  jz   pci_next_pam_reg
+  and  cl, #0xdd ; clear WE bits
+  mov  ax, #0xb10b
+  call pcibios_real
+pci_next_pam_reg:
+  inc  di
+  cmp  di, #0x5e
+  jne pci_set_pam_regs_loop
   ret
 
 .align 16
@@ -10268,7 +10304,7 @@ pci_routing_table_structure_end:
 
 #if !BX_ROMBIOS32
 pci_irq_list:
-  db 11, 10, 9, 5;
+  db 11, 9, 11, 9;
 
 pcibios_init_sel_reg:
   push eax
@@ -10280,6 +10316,58 @@ pcibios_init_sel_reg:
   mov dx,  #0x0cf8
   out dx,  eax
   pop eax
+  ret
+
+pcibios_init_vgarom:
+  push bx
+  mov  ecx, eax
+  xor  bx, bx
+  mov  dl, #0x58
+  call pcibios_init_sel_reg
+  mov  dx, #0x0cfe
+  in   ax, dx
+  mov  al, #0x22
+  cmp  ecx, #0x8000
+  jbe  set_pam1
+  mov  ah, #0x22
+set_pam1:
+  out  dx, ax
+  pop  bx
+  mov  dl, #0x30
+  call pcibios_init_sel_reg
+  mov  dx, #0x0cfc
+  mov  eax, #0x000c0001
+  out  dx, eax
+  push ds
+  mov  ax, #0xc000
+  mov  ds, ax
+  mov  es, ax
+  xor  si, si
+  xor  di, di
+  push ecx
+  shr  ecx, #1
+  rep
+    movsw
+  pop  ecx
+  pop  ds
+  push bx
+  xor  bx, bx
+  mov  dl, #0x58
+  call pcibios_init_sel_reg
+  mov  dx, #0x0cfe
+  in   ax, dx
+  or   al, #0x11
+  cmp  ecx, #0x8000
+  jbe  set_pam2
+  or   ah, #0x11
+set_pam2:
+  out  dx, ax
+  pop  bx
+  mov  dl, #0x30
+  call pcibios_init_sel_reg
+  mov  dx, #0x0cfc
+  xor  eax, eax
+  out  dx, eax
   ret
 
 pcibios_init_iomem_bases:
@@ -10356,6 +10444,25 @@ enable_iomem_space:
   in   al, dx
   or   al, #0x03
   out  dx, al
+  mov  dl, #0x0a ;; check class code
+  call pcibios_init_sel_reg
+  mov  dx, #0x0cfe
+  in   ax, dx
+  cmp  ax, #0x0300 ;; class VGA
+  jne  next_pci_dev
+  mov  dl, #0x30
+  call pcibios_init_sel_reg
+  in   eax, dx
+  mov  ecx, eax
+  mov  dx, #0x0cfc
+  mov  eax, #0xfffffffe
+  out  dx, eax
+  in   eax, dx
+  cmp  eax, ecx
+  je   next_pci_dev
+  xor  eax, #0xffffffff
+  inc  eax
+  call pcibios_init_vgarom
 next_pci_dev:
   mov  byte ptr[bp-8], #0x10
   inc  bx
@@ -11279,6 +11386,7 @@ vga_init_ok:
   mov  cx, #0xc800  ;; init option roms
   mov  ax, #0xe000
   call rom_scan
+  call pci_set_pam_regs_ro
 
 #if BX_ELTORITO_BOOT
   call _interactive_bootkey

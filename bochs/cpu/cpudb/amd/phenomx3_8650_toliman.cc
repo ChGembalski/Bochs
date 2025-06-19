@@ -43,7 +43,10 @@ phenom_8650_toliman_t::phenom_8650_toliman_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_486);
   enable_cpu_extension(BX_ISA_PENTIUM);
   enable_cpu_extension(BX_ISA_MMX);
+#if BX_SUPPORT_3DNOW
   enable_cpu_extension(BX_ISA_3DNOW);
+  enable_cpu_extension(BX_ISA_3DNOW_EXT);
+#endif
   enable_cpu_extension(BX_ISA_SYSCALL_SYSRET_LEGACY);
   enable_cpu_extension(BX_ISA_SYSENTER_SYSEXIT);
   enable_cpu_extension(BX_ISA_P6);
@@ -62,9 +65,6 @@ phenom_8650_toliman_t::phenom_8650_toliman_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_PSE);
   enable_cpu_extension(BX_ISA_PAE);
   enable_cpu_extension(BX_ISA_PGE);
-#if BX_PHY_ADDRESS_LONG
-  enable_cpu_extension(BX_ISA_PSE36);
-#endif
   enable_cpu_extension(BX_ISA_MTRR);
   enable_cpu_extension(BX_ISA_PAT);
   enable_cpu_extension(BX_ISA_XAPIC);
@@ -134,7 +134,7 @@ void phenom_8650_toliman_t::get_cpuid_leaf(Bit32u function, Bit32u subfunction, 
     return;
 #if BX_SUPPORT_MONITOR_MWAIT
   case 0x00000005:
-    get_std_cpuid_leaf_5(leaf);
+    get_std_cpuid_monitor_mwait_leaf(leaf, 0);
     return;
 #endif
   default:
@@ -264,33 +264,7 @@ void phenom_8650_toliman_t::get_std_cpuid_leaf_1(cpuid_function_t *leaf) const
 #endif
 }
 
-#if BX_SUPPORT_MONITOR_MWAIT
-
-// leaf 0x00000005 //
-void phenom_8650_toliman_t::get_std_cpuid_leaf_5(cpuid_function_t *leaf) const
-{
-  // CPUID function 0x00000005 - MONITOR/MWAIT Leaf
-
-  // EAX - Smallest monitor-line size in bytes
-  // EBX - Largest  monitor-line size in bytes
-  // ECX -
-  //   [31:2] - reserved
-  //    [1:1] - exit MWAIT even with EFLAGS.IF = 0
-  //    [0:0] - MONITOR/MWAIT extensions are supported
-  // EDX -
-  //  [03-00] - number of C0 sub C-states supported using MWAIT
-  //  [07-04] - number of C1 sub C-states supported using MWAIT
-  //  [11-08] - number of C2 sub C-states supported using MWAIT
-  //  [15-12] - number of C3 sub C-states supported using MWAIT
-  //  [19-16] - number of C4 sub C-states supported using MWAIT
-  //  [31-20] - reserved (MBZ)
-  leaf->eax = CACHE_LINE_SIZE;
-  leaf->ebx = CACHE_LINE_SIZE;
-  leaf->ecx = 3;
-  leaf->edx = 0;
-}
-
-#endif
+// leaf 0x00000005 MONITOR/MWAIT Leaf //
 
 // leaf 0x80000000 //
 void phenom_8650_toliman_t::get_ext_cpuid_leaf_0(cpuid_function_t *leaf) const
@@ -333,20 +307,10 @@ void phenom_8650_toliman_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
   //   [22:22] TBM: trailing bit manipulation instructions support
   //   [23:23] Topology extensions support
   //   [31:24] Reserved
-
-  leaf->ecx = BX_CPUID_EXT1_ECX_LAHF_SAHF |
-              BX_CPUID_EXT1_ECX_CMP_LEGACY |
-#if BX_SUPPORT_SVM
-              BX_CPUID_EXT1_ECX_SVM |
-#endif
-              BX_CPUID_EXT1_ECX_EXT_APIC_SPACE |
-              BX_CPUID_EXT1_ECX_ALT_MOV_CR8 |
-              BX_CPUID_EXT1_ECX_LZCNT |
-              BX_CPUID_EXT1_ECX_SSE4A |
-              BX_CPUID_EXT1_ECX_MISALIGNED_SSE |
-              BX_CPUID_EXT1_ECX_PREFETCHW |
-              BX_CPUID_EXT1_ECX_OSVW |
-              BX_CPUID_EXT1_ECX_IBS;
+  leaf->ecx = get_ext_cpuid_leaf_1_ecx(BX_CPUID_EXT1_ECX_CMP_LEGACY |
+                                       BX_CPUID_EXT1_ECX_PREFETCHW |
+                                       BX_CPUID_EXT1_ECX_OSVW |
+                                       BX_CPUID_EXT1_ECX_IBS);
 
   // EDX:
   // Many of the bits in EDX are the same as FN 0x00000001 for AMD
@@ -392,7 +356,6 @@ void phenom_8650_toliman_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
 // leaf 0x80000005 - L1 Cache and TLB Identifiers //
 void phenom_8650_toliman_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x800000005 - L1 Cache and TLB Identifiers
   leaf->eax = 0xFF30FF10;
   leaf->ebx = 0xFF20FF20;
   leaf->ecx = 0x40020140;
@@ -402,7 +365,6 @@ void phenom_8650_toliman_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 // leaf 0x80000006 - L2 Cache and TLB Identifiers //
 void phenom_8650_toliman_t::get_ext_cpuid_leaf_6(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x80000006 - L2 Cache and TLB Identifiers
   leaf->eax = 0x20800000;
   leaf->ebx = 0x42004200;
   leaf->ecx = 0x02008140;

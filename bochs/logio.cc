@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2023  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,8 @@
 #include "cpu/cpu.h"
 #include <assert.h>
 
+#include "bx_debug/debug.h"
+
 #if BX_WITH_CARBON
 #include <Carbon/Carbon.h>
 #endif
@@ -43,6 +45,7 @@ const char* iofunctions::getlevel(int i) const
   static const char *loglevel[N_LOGLEV] = {
     "DEBUG",
     "INFO",
+    "WARN",
     "ERROR",
     "PANIC"
   };
@@ -311,6 +314,7 @@ int logfunctions::default_onoff[N_LOGLEV] =
 {
   ACT_IGNORE,  // ignore debug
   ACT_REPORT,  // report info
+  ACT_WARN,    // on warn, show message box
   ACT_REPORT,  // report error
 #if BX_WITH_SDL2 || BX_WITH_WX || BX_WITH_WIN32 || BX_WITH_X11 || BX_WITH_COCOA
   ACT_ASK      // on panic, ask user what to do
@@ -417,6 +421,27 @@ void logfunctions::info(const char *fmt, ...)
   // the actions warn(), ask() and fatal() are not supported here
 }
 
+void logfunctions::lwarn(const char *fmt, ...)
+{
+  va_list ap;
+
+  assert(logio != NULL);
+
+  if (onoff[LOGLEV_WARN] == ACT_IGNORE) return;
+
+  va_start(ap, fmt);
+  logio->out(LOGLEV_INFO, prefix, fmt, ap);
+  va_end(ap);
+
+  if (onoff[LOGLEV_WARN] == ACT_WARN) {
+    va_start(ap, fmt);
+    warn(LOGLEV_WARN, prefix, fmt, ap);
+    va_end(ap);
+  }
+
+  // the actions ask() and fatal() are not supported here
+}
+
 void logfunctions::error(const char *fmt, ...)
 {
   va_list ap;
@@ -511,10 +536,14 @@ void logfunctions::warn(int level, const char *prefix, const char *fmt, va_list 
 
   // ensure the text screen is showing
   SIM->set_display_mode(DISP_MODE_CONFIG);
-  int val = SIM->log_dlg(prefix, level, buf1, BX_LOG_DLG_WARN);
-  if (val == BX_LOG_ASK_CHOICE_CONTINUE_ALWAYS) {
-    // user said continue, and don't "ask" for this facility again.
-    setonoff(level, ACT_REPORT);
+  if (level == LOGLEV_WARN) {
+    SIM->message_box("WARNING", buf1);
+  } else {
+    int val = SIM->log_dlg(prefix, level, buf1, BX_LOG_DLG_WARN);
+    if (val == BX_LOG_ASK_CHOICE_CONTINUE_ALWAYS) {
+      // user said continue, and don't "ask" for this facility again.
+      setonoff(level, ACT_REPORT);
+    }
   }
   // return to simulation mode
   SIM->set_display_mode(DISP_MODE_SIM);
@@ -665,9 +694,12 @@ void logfunctions::fatal(int level, const char *prefix, const char *fmt, va_list
     // store prefix and message in 'exit_msg' before unloading device plugins
     snprintf(exit_msg, 1025, "%s %s", prefix, tmpbuf);
   }
-#if !BX_DEBUGGER
-  bx_atexit();
+#if BX_DEBUGGER
+  if (!bx_dbg.debugger_active)
 #endif
+  {
+    bx_atexit();
+  }
 #if BX_WITH_CARBON
   if (!isatty(STDIN_FILENO) && !SIM->get_init_done()) {
     snprintf(exit_msg, sizeof(exit_msg), "Bochs startup error\n%s", tmpbuf);
@@ -682,11 +714,14 @@ void logfunctions::fatal(int level, const char *prefix, const char *fmt, va_list
     fprintf(stderr, "%s", exit_msg);
     fprintf(stderr, "\n%s\n", divider);
   }
-#if !BX_DEBUGGER
-  BX_EXIT(exit_status);
-#else
-  bx_dbg_exit(exit_status);
+#if BX_DEBUGGER
+  if (bx_dbg.debugger_active) {
+    bx_dbg_exit(exit_status);
+  } else
 #endif
+  {
+    BX_EXIT(exit_status);
+  }
   // not safe to use BX_* log functions in here.
   fprintf(stderr, "fatal() should never return, but it just did\n");
 }

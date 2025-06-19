@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2024  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -67,13 +67,15 @@ typedef struct {
   Bit16u vrstart;
 } bx_crtc_params_t;
 
+extern const Bit8u ccdat[16][4];
+
 #if BX_SUPPORT_PCI
 class bx_nonvga_device_c : public bx_pci_device_c {
 public:
   virtual void redraw_area(unsigned x0, unsigned y0,
                            unsigned width, unsigned height) {}
   virtual void refresh_display(void *this_ptr, bool redraw) {}
-  virtual void update(void) {}
+  virtual bool update(void) {return false;}
   virtual Bit32u get_vtotal_usec(void) {return 0;}
 };
 #endif
@@ -116,7 +118,7 @@ public:
 protected:
   void init_standard_vga(void);
   void init_gui(void);
-  void init_iohandlers(bx_read_handler_t f_read, bx_write_handler_t f_write);
+  void init_iohandlers(bx_read_handler_t f_read, bx_write_handler_t f_write, const char *name);
   void init_systemtimer();
 
   static Bit32u read_handler(void *this_ptr, Bit32u address, unsigned io_len);
@@ -149,11 +151,14 @@ protected:
                                 //   3 - 480 lines
     } misc_output;
 
+    Bit8u feature_control;
+
     struct {
       Bit8u  address;
       Bit8u  reg[0x19];
       bool   write_protect;
       Bit16u start_addr;
+      Bit8u  max_reg; // for logging only (VGA 0x18 / modified by extension)
     } CRTC;
 
     struct {
@@ -236,7 +241,7 @@ protected:
     bool  *vga_tile_updated;
     Bit8u *memory;
     Bit32u memsize;
-    Bit32u memsize_mask;
+    Bit32u vgamem_mask;
     bool  text_buffer_update;
     Bit8u *text_buffer; // active text memory in legacy format
     Bit8u *text_snapshot; // current text snapshot

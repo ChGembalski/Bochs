@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2019  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -33,7 +33,8 @@
 #include "pc_system.h"
 #include "gui/gui.h"
 
-#include "wide_int.h"
+#include "bx_debug/debug.h"
+
 #include "decoder/ia_opcodes.h"
 
 void BX_CPP_AttrRegparmN(1) BX_CPU_C::BxError(bxInstruction_c *i)
@@ -43,10 +44,8 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::BxError(bxInstruction_c *i)
   if (ia_opcode == BX_IA_ERROR) {
     BX_DEBUG(("BxError: Encountered an unknown instruction (signalling #UD)"));
 
-#if BX_DEBUGGER == 0 // with debugger it easy to see the #UD
     if (LOG_THIS getonoff(LOGLEV_DEBUG))
       debug_disasm_instruction(BX_CPU_THIS_PTR prev_rip);
-#endif
   }
   else {
     BX_DEBUG(("%s: instruction not supported - signalling #UD", get_bx_opcode_name(ia_opcode)));
@@ -113,6 +112,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::CPUID(bxInstruction_c *i)
   if (BX_CPU_THIS_PTR in_svm_guest) {
     if (SVM_INTERCEPT(SVM_INTERCEPT0_CPUID)) Svm_Vmexit(SVM_VMEXIT_CPUID);
   }
+#endif
+
+#if BX_INSTRUMENTATION
+  BX_INSTR_CPUID(BX_CPU_ID);
 #endif
 
   struct cpuid_function_t leaf;
@@ -182,7 +185,8 @@ void BX_CPU_C::enter_sleep_state(unsigned state)
   BX_INSTR_HLT(BX_CPU_ID);
 
 #if BX_DEBUGGER
-  bx_dbg_halt(BX_CPU_ID);
+  if (bx_dbg.debugger_active)
+    bx_dbg_halt(BX_CPU_ID);
 #endif
 
 #if BX_USE_IDLE_HACK
@@ -200,7 +204,10 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::HLT(bxInstruction_c *i)
   }
 
   if (! BX_CPU_THIS_PTR get_IF()) {
-    BX_INFO(("WARNING: HLT instruction with IF=0!"));
+#if BX_SUPPORT_SMP
+    if (BX_CPU_THIS_PTR msr.apicbase & 0x100) // warn for BSP only
+#endif
+      BX_WARN(("[CPU%d] HLT instruction with IF=0!", BX_CPU_ID));
   }
 
 #if BX_SUPPORT_VMX
@@ -405,12 +412,21 @@ void BX_CPU_C::handleCpuModeChange(void)
   set_PKeys(BX_CPU_THIS_PTR pkru, BX_CPU_THIS_PTR pkrs);
 #endif
 
+#if BX_DEBUGGER
+  if (bx_dbg.debugger_active) {
+    // assert magic async_event to stop trace execution
+    BX_CPU_THIS_PTR async_event |= BX_ASYNC_EVENT_STOP_TRACE;
+  }
+#endif
+
   if (mode != BX_CPU_THIS_PTR cpu_mode) {
     BX_DEBUG(("%s activated", cpu_mode_string(BX_CPU_THIS_PTR cpu_mode)));
 #if BX_DEBUGGER
-    if (BX_CPU_THIS_PTR mode_break) {
-      BX_CPU_THIS_PTR stop_reason = STOP_MODE_BREAK_POINT;
-      bx_debug_break(); // trap into debugger
+    if (bx_dbg.debugger_active) {
+      if (BX_CPU_THIS_PTR mode_break) {
+        BX_CPU_THIS_PTR stop_reason = STOP_MODE_BREAK_POINT;
+        bx_debug_break(); // trap into debugger
+      }
     }
 #endif
   }
@@ -504,21 +520,21 @@ void BX_CPU_C::handleAvxModeChange(void)
   }
   else {
     if (! protected_mode() || ! BX_CPU_THIS_PTR cr4.get_OSXSAVE() ||
-        (~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK)) != 0) {
+        (~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK)) != 0) {
       clear_avx_ok();
     }
     else {
       set_avx_ok();
 
 #if BX_SUPPORT_EVEX
-      if ((~BX_CPU_THIS_PTR xcr0.val32 & BX_XCR0_OPMASK_MASK) != 0) {
+      if ((~BX_CPU_THIS_PTR xcr0.get32() & BX_XCR0_OPMASK_MASK) != 0) {
         clear_opmask_ok();
         clear_evex_ok();
       }
       else {
         set_opmask_ok();
 
-        if ((~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_ZMM_HI256_MASK | BX_XCR0_HI_ZMM_MASK)) != 0)
+        if ((~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_ZMM_HI256_MASK | BX_XCR0_HI_ZMM_MASK)) != 0)
           clear_evex_ok();
         else
           set_evex_ok();
@@ -529,7 +545,7 @@ void BX_CPU_C::handleAvxModeChange(void)
 
 #if BX_SUPPORT_AMX
   if (! long64_mode() || ! BX_CPU_THIS_PTR cr4.get_OSXSAVE() ||
-      (~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_XTILECFG_MASK | BX_XCR0_XTILEDATA_MASK)) != 0)
+      (~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_XTILECFG_MASK | BX_XCR0_XTILEDATA_MASK)) != 0)
     clear_amx_ok();
   else
     set_amx_ok();
@@ -543,7 +559,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::BxNoAVX(bxInstruction_c *i)
   if (! protected_mode() || ! BX_CPU_THIS_PTR cr4.get_OSXSAVE())
     exception(BX_UD_EXCEPTION, 0);
 
-  if (~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK))
+  if (~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK))
     exception(BX_UD_EXCEPTION, 0);
 
   if(BX_CPU_THIS_PTR cr0.get_TS())
@@ -561,7 +577,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::BxNoOpMask(bxInstruction_c *i)
   if (! protected_mode() || ! BX_CPU_THIS_PTR cr4.get_OSXSAVE())
     exception(BX_UD_EXCEPTION, 0);
 
-  if (~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK | BX_XCR0_OPMASK_MASK))
+  if (~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK | BX_XCR0_OPMASK_MASK))
     exception(BX_UD_EXCEPTION, 0);
 
   if(BX_CPU_THIS_PTR cr0.get_TS())
@@ -577,7 +593,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::BxNoEVEX(bxInstruction_c *i)
   if (! protected_mode() || ! BX_CPU_THIS_PTR cr4.get_OSXSAVE())
     exception(BX_UD_EXCEPTION, 0);
 
-  if (~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK | BX_XCR0_OPMASK_MASK | BX_XCR0_ZMM_HI256_MASK | BX_XCR0_HI_ZMM_MASK))
+  if (~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_SSE_MASK | BX_XCR0_YMM_MASK | BX_XCR0_OPMASK_MASK | BX_XCR0_ZMM_HI256_MASK | BX_XCR0_HI_ZMM_MASK))
     exception(BX_UD_EXCEPTION, 0);
 
   if(BX_CPU_THIS_PTR cr0.get_TS())
@@ -595,7 +611,7 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::BxNoAMX(bxInstruction_c *i)
   if (! long64_mode() || ! BX_CPU_THIS_PTR cr4.get_OSXSAVE())
     exception(BX_UD_EXCEPTION, 0);
 
-  if (~BX_CPU_THIS_PTR xcr0.val32 & (BX_XCR0_XTILECFG_MASK | BX_XCR0_XTILEDATA_MASK))
+  if (~BX_CPU_THIS_PTR xcr0.get32() & (BX_XCR0_XTILECFG_MASK | BX_XCR0_XTILEDATA_MASK))
     exception(BX_UD_EXCEPTION, 0);
 
   BX_ASSERT(0);
@@ -685,6 +701,8 @@ void BX_CPP_AttrRegparmN(1) BX_CPU_C::RDPMC(bxInstruction_c *i)
 }
 
 #if BX_CPU_LEVEL >= 5
+
+#include "wide_int.h"
 
 Bit64u BX_CPU_C::get_TSC(void)
 {

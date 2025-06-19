@@ -106,17 +106,10 @@ enum
 #define REG_WPF         (REGISTER_WRITE | REGISTER_PIPELINED | REGISTER_FIFO)
 #define REG_RWPF        (REGISTER_READ | REGISTER_WRITE | REGISTER_PIPELINED | REGISTER_FIFO)
 
-/* lookup bits is the log2 of the size of the reciprocal/log table */
-#define RECIPLOG_LOOKUP_BITS  9
-
-/* input precision is how many fraction bits the input value has; this is a 64-bit number */
-#define RECIPLOG_INPUT_PREC   32
-
-/* lookup precision is how many fraction bits each table entry contains */
-#define RECIPLOG_LOOKUP_PREC  22
+/* lookup bits is the log2 of the size of the log table */
+#define LOG_LOOKUP_BITS     7
 
 /* output precision is how many fraction bits the result should have */
-#define RECIP_OUTPUT_PREC   15
 #define LOG_OUTPUT_PREC     8
 
 
@@ -846,8 +839,8 @@ static const char *const banshee_reg_name[] =
 #define io_vidChromaMax       (0x090/4) /*  */
 #define io_vidCurrentLine     (0x094/4) /*  */
 #define io_vidScreenSize      (0x098/4) /*  */
-#define io_vidOverlayStartCoords (0x09c/4) /*  */
-#define io_vidOverlayEndScreenCoord (0x0a0/4) /*  */
+#define io_vidOverlayStartCoord (0x09c/4) /*  */
+#define io_vidOverlayEndScreen (0x0a0/4) /*  */
 #define io_vidOverlayDudx     (0x0a4/4) /*  */
 #define io_vidOverlayDudxOffsetSrcWidth (0x0a8/4) /*  */
 #define io_vidOverlayDvdy     (0x0ac/4) /*  */
@@ -898,8 +891,8 @@ static const char *const banshee_io_reg_name[] =
 
   /* 0x080 */
   "vidInDecimInitErrs","vidInYDecimDeltas","vidPixelBufThold","vidChromaMin",
-  "vidChromaMax", "vidCurrentLine","vidScreenSize","vidOverlayStartCoords",
-  "vidOverlayEndScreenCoord","vidOverlayDudx","vidOverlayDudxOffsetSrcWidth","vidOverlayDvdy",
+  "vidChromaMax", "vidCurrentLine","vidScreenSize","vidOverlayStartCoord",
+  "vidOverlayEndScreen","vidOverlayDudx","vidOverlayDudxOffsetSrcWidth","vidOverlayDvdy",
   "vga[b0]",    "vga[b4]",    "vga[b8]",    "vga[bc]",
 
   /* 0x0c0 */
@@ -1509,7 +1502,9 @@ struct _cmdfifo_info
   Bit32u  depth;        /* current depth */
   Bit32u  depth_needed; /* depth needed for command */
   Bit32u  holes;        /* number of holes */
+  Bit32u  retAddr;
   bool    cmd_ready;
+  bool    jsr;
 };
 
 
@@ -1632,7 +1627,6 @@ struct _fbi_state
   Bit32u        tile_height;    /* height of video tiles */
   Bit32u        x_tiles;        /* number of tiles in the X direction */
 
-  Bit8u         vblank;         /* VBLANK state */
   Bit8u         vblank_count;   /* number of VBLANKs since last swap */
   bool          vblank_swap_pending; /* a swap is pending, waiting for a vblank */
   Bit8u         vblank_swap;    /* swap when we hit this count */
@@ -1656,6 +1650,7 @@ struct _fbi_state
 
   stats_block   lfb_stats;      /* LFB-access statistics */
 
+  Bit8u         pingpong;       /* sign inversion */
   Bit8u         sverts;         /* number of vertices ready */
   setup_vertex  svert[3];       /* 3 setup vertices */
 
@@ -1763,8 +1758,8 @@ struct _banshee_info
     Bit8u  src_fmt;
     Bit16u src_pitch;
     Bit8u  src_swizzle;
-    Bit16u src_x;
-    Bit16u src_y;
+    Bit16s src_x;
+    Bit16s src_y;
     Bit16u src_w;
     Bit16u src_h;
     Bit32u dst_base;
@@ -1797,6 +1792,19 @@ struct _banshee_info
     Bit32u laidx;
     Bit8u *lamem;
   } blt;
+  struct {
+    bool   enabled;
+    bool   redraw;
+    Bit8u  format;
+    Bit32u start;
+    Bit16u pitch;
+    Bit16u x0;
+    Bit16u y0;
+    Bit16u x1;
+    Bit16u y1;
+    double fx;
+    double fy;
+  } overlay;
 };
 
 
@@ -2022,93 +2030,36 @@ BX_CPP_INLINE Bit8u _count_leading_zeros(Bit32u value)
 }
 #endif
 
-/*************************************
- *
- *  Computes a fast 16.16 reciprocal
- *  of a 16.32 value; used for
- *  computing 1/w in the rasterizer.
- *
- *  Since it is trivial to also
- *  compute log2(1/w) = -log2(w) at
- *  the same time, we do that as well
- *  to 16.8 precision for LOD
- *  calculations.
- *
- *  On a Pentium M, this routine is
- *  20% faster than a 64-bit integer
- *  divide and also produces the log
- *  for free.
- *
- *************************************/
+//-------------------------------------------------
+//  fast_log2 - computes the log2 of a double-
+//  precision value as a 24.8 value; if the double
+//  was converted from a fixed-point integer, the
+//  number of fractional bits should be specified
+//  by fracbits
+//-------------------------------------------------
 
-BX_CPP_INLINE Bit32s fast_reciplog(Bit64s value, Bit32s *log2)
+BX_CPP_INLINE Bit32s fast_log2(double value, int fracbits = 0)
 {
-  extern Bit32u voodoo_reciplog[];
-  Bit32u temp, recip, rlog;
-  Bit32u interp;
-  Bit32u *table;
-  int neg = false;
-  int lz, exp = 0;
+  extern Bit8u voodoo_log[];
 
-  /* always work with unsigned numbers */
-  if (value < 0)
-  {
-    value = -value;
-    neg = true;
-  }
+  // negative values return 0
+  if (unlikely(value < 0))
+    return 0;
 
-  /* if we've spilled out of 32 bits, push it down under 32 */
-  if (value & BX_CONST64(0xffff00000000))
-  {
-    temp = (Bit32u)(value >> 16);
-    exp -= 16;
-  }
-  else
-    temp = (Bit32u)value;
+  // convert the value to a raw integer
+  union { double d; Bit64u i; } temp;
+  temp.d = value;
 
-  /* if the resulting value is 0, the reciprocal is infinite */
-  if (temp == 0)
-  {
-    *log2 = 1000 << LOG_OUTPUT_PREC;
-    return neg ? 0x80000000 : 0x7fffffff;
-  }
+  // we only care about the 11-bit exponent and top 7 bits of mantissa
+  // (sign is already assured to be 0)
+  Bit32u ival = temp.i >> 45;
 
-  /* determine how many leading zeros in the value and shift it up high */
-  lz = count_leading_zeros(temp);
-  temp <<= lz;
-  exp += lz;
+  // extract exponent, unbias, and adjust for fixed-point fraction
+  Bit32s exp = (ival >> 7) - 1023 - fracbits;
 
-  /* compute a pointer to the table entries we want */
-  /* math is a bit funny here because we shift one less than we need to in order */
-  /* to account for the fact that there are two Bit32u's per table entry */
-  table = &voodoo_reciplog[(temp >> (31 - RECIPLOG_LOOKUP_BITS - 1)) & ((2 << RECIPLOG_LOOKUP_BITS) - 2)];
-
-  /* compute the interpolation value */
-  interp = (temp >> (31 - RECIPLOG_LOOKUP_BITS - 8)) & 0xff;
-
-  /* do a linear interpolatation between the two nearest table values */
-  /* for both the log and the reciprocal */
-  rlog = (table[1] * (0x100 - interp) + table[3] * interp) >> 8;
-  recip = (table[0] * (0x100 - interp) + table[2] * interp) >> 8;
-
-  /* the log result is the fractional part of the log; round it to the output precision */
-  rlog = (rlog + (1 << (RECIPLOG_LOOKUP_PREC - LOG_OUTPUT_PREC - 1))) >> (RECIPLOG_LOOKUP_PREC - LOG_OUTPUT_PREC);
-
-  /* the exponent is the non-fractional part of the log; normally, we would subtract it from rlog */
-  /* but since we want the log(1/value) = -log(value), we subtract rlog from the exponent */
-  *log2 = ((exp - (31 - RECIPLOG_INPUT_PREC)) << LOG_OUTPUT_PREC) - rlog;
-
-  /* adjust the exponent to account for all the reciprocal-related parameters to arrive at a final shift amount */
-  exp += (RECIP_OUTPUT_PREC - RECIPLOG_LOOKUP_PREC) - (31 - RECIPLOG_INPUT_PREC);
-
-  /* shift by the exponent */
-  if (exp < 0)
-    recip >>= -exp;
-  else
-    recip <<= exp;
-
-  /* on the way out, apply the original sign to the reciprocal */
-  return neg ? -((Bit32s)recip) : recip;
+  // use top 7 bits of mantissa to look up fractional log
+  // combine the integral and fractional parts
+  return (exp << 8) | voodoo_log[ival & 127];
 }
 
 
@@ -2581,9 +2532,8 @@ do                                                                              
   if (ALPHAMODE_ALPHABLEND(ALPHAMODE))                                           \
   {                                                                              \
     int dpix = dest[XX];                                                         \
-    int dr = (dpix >> 8) & 0xf8;                                                 \
-    int dg = (dpix >> 3) & 0xfc;                                                 \
-    int db = (dpix << 3) & 0xf8;                                                 \
+    int dr, dg, db;                                                              \
+    EXTRACT_565_TO_888(dpix, dr, dg, db);                                        \
     int da = FBZMODE_ENABLE_ALPHA_PLANES(FBZMODE) ? depth[XX] : 0xff;            \
     int sr = (RR);                                                               \
     int sg = (GG);                                                               \
@@ -2860,9 +2810,12 @@ while (0)
 #define TEXTURE_PIPELINE(TT, XX, DITHER4, TEXMODE, COTHER, LOOKUP, LODBASE, ITERS, ITERT, ITERW, RESULT) \
 do                                                                               \
 {                                                                                \
+  bool trilinear_reverse;                                                        \
   Bit32s blendr, blendg, blendb, blenda;                                         \
   Bit32s tr, tg, tb, ta;                                                         \
-  Bit32s oow, s, t, lod, ilod;                                                   \
+  Bit32s s, t, lod, ilod;                                                        \
+  double sf, tf, wf;                                                             \
+  double ds1f, dt1f, ds2f, dt2f, rho, rhox, rhoy;                                \
   Bit32s smax, tmax;                                                             \
   Bit32u texbase;                                                                \
   rgb_union c_local;                                                             \
@@ -2870,10 +2823,19 @@ do                                                                              
   /* determine the S/T/LOD values for this texture */                            \
   if (TEXMODE_ENABLE_PERSPECTIVE(TEXMODE))                                       \
   {                                                                              \
-    oow = fast_reciplog((ITERW), &lod);                                          \
-    s = (Bit32s)((Bit64s)oow * (ITERS) >> 29);                                   \
-    t = (Bit32s)((Bit64s)oow * (ITERT) >> 29);                                   \
-    lod += (LODBASE);                                                            \
+    wf = 1.0 / (ITERW);                                                          \
+    sf = wf * (ITERS);                                                           \
+    tf = wf * (ITERT);                                                           \
+    s = (Bit32s)(Bit64s)(sf * 262144);                                           \
+    t = (Bit32s)(Bit64s)(tf * 262144);                                           \
+    ds1f = wf * ((TT)->dsdx - sf * (TT)->dwdx);                                  \
+    dt1f = wf * ((TT)->dtdx - tf * (TT)->dwdx);                                  \
+    rhox = ds1f * ds1f + dt1f * dt1f;                                            \
+    ds2f = wf * ((TT)->dsdy - sf * (TT)->dwdy);                                  \
+    dt2f = wf * ((TT)->dtdy - tf * (TT)->dwdy);                                  \
+    rhoy = ds2f * ds2f + dt2f * dt2f;                                            \
+    rho = BX_MAX(rhox, rhoy);                                                    \
+    lod = fast_log2(rho) / 2;                                                    \
   }                                                                              \
   else                                                                           \
   {                                                                              \
@@ -2892,6 +2854,16 @@ do                                                                              
     lod += DITHER4[(XX) & 3] << 4;                                               \
   if (lod < (TT)->lodmin)                                                        \
     lod = (TT)->lodmin;                                                          \
+                                                                                 \
+  if (TEXMODE_TRILINEAR(TEXMODE))                                                \
+  {                                                                              \
+    trilinear_reverse = lod & 0x100;                                             \
+    if (trilinear_reverse != TEXLOD_LOD_ODD((TT)->reg[tLOD].u))                  \
+      lod += 0x100;                                                              \
+  }                                                                              \
+  else                                                                           \
+    trilinear_reverse = false;                                                   \
+                                                                                 \
   if (lod > (TT)->lodmax)                                                        \
     lod = (TT)->lodmax;                                                          \
                                                                                  \
@@ -3133,7 +3105,7 @@ do                                                                              
   }                                                                              \
                                                                                  \
   /* reverse the RGB blend */                                                    \
-  if (!TEXMODE_TC_REVERSE_BLEND(TEXMODE))                                        \
+  if (trilinear_reverse != !TEXMODE_TC_REVERSE_BLEND(TEXMODE))                   \
   {                                                                              \
     blendr ^= 0xff;                                                              \
     blendg ^= 0xff;                                                              \
@@ -3141,7 +3113,7 @@ do                                                                              
   }                                                                              \
                                                                                  \
   /* reverse the alpha blend */                                                  \
-  if (!TEXMODE_TCA_REVERSE_BLEND(TEXMODE))                                       \
+  if (trilinear_reverse != !TEXMODE_TCA_REVERSE_BLEND(TEXMODE))                  \
     blenda ^= 0xff;                                                              \
                                                                                  \
   /* do the blend */                                                             \

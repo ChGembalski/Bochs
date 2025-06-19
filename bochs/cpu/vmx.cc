@@ -36,10 +36,13 @@
 
 #include "iodev/iodev.h"
 
+#include "bx_debug/debug.h"
+
 extern VMCS_Mapping vmcs_map;
 
 #if BX_SUPPORT_VMX >= 2
 extern bool isValidMSR_PAT(Bit64u pat_msr);
+extern bool isValidMSR_IA32_SPEC_CTRL(Bit64u val_64);
 #endif
 
 #if BX_SUPPORT_CET
@@ -134,6 +137,8 @@ static const char *VMX_vmexit_reason_name[] =
   /* 77 */  "TDCALL",
   /* 78 */  "RDMSRLIST",
   /* 79 */  "WRMSRLIST",
+  /* 80 */  "URDMSR",
+  /* 81 */  "UWRMSR",
 };
 
 #include "decoder/ia_opcodes.h"
@@ -740,8 +745,12 @@ VMX_error_code BX_CPU_C::VMenterLoadCheckVmControls(void)
       }
 
       vm->pid_addr = (bx_phy_address) VMread64(VMCS_64BIT_CONTROL_POSTED_INTERRUPT_DESC_ADDR);
-      if (! IsValidPageAlignedPhyAddr(vm->pid_addr)) {
+      if (! IsValidPhyAddr(vm->pid_addr)) {
         BX_ERROR(("VMFAIL: VMCS EXEC CTRL: Posted Interrupt Descriptor phy addr malformed"));
+        return VMXERR_VMENTRY_INVALID_VM_CONTROL_FIELD;
+      }
+      if ((vm->pid_addr & 0x3f) != 0) {
+        BX_ERROR(("VMFAIL: VMCS EXEC CTRL: Posted Interrupt Descriptor phy addr must be 64-byte aligned"));
         return VMXERR_VMENTRY_INVALID_VM_CONTROL_FIELD;
       }
     }
@@ -1231,6 +1240,14 @@ VMX_error_code BX_CPU_C::VMenterLoadCheckHostState(void)
     host_state->pat_msr = VMread64(VMCS_64BIT_HOST_IA32_PAT);
     if (! isValidMSR_PAT(host_state->pat_msr)) {
       BX_ERROR(("VMFAIL: invalid Memory Type in host MSR_PAT"));
+      return VMXERR_VMENTRY_INVALID_VM_HOST_STATE_FIELD;
+    }
+  }
+
+  if (vm->vmexit_ctrls2.LOAD_HOST_IA32_SPEC_CTRL()) {
+    host_state->ia32_spec_ctrl_msr = VMread64(VMCS_64BIT_HOST_IA32_SPEC_CTRL);
+    if (! isValidMSR_IA32_SPEC_CTRL(host_state->ia32_spec_ctrl_msr)) {
+      BX_ERROR(("VMFAIL: invalid value in host IA32_SPEC_CTRL_MSR"));
       return VMXERR_VMENTRY_INVALID_VM_HOST_STATE_FIELD;
     }
   }
@@ -1843,6 +1860,14 @@ Bit32u BX_CPU_C::VMenterLoadCheckGuestState(Bit64u *qualification)
       return VMX_VMEXIT_VMENTRY_FAILURE_GUEST_STATE;
     }
   }
+
+  if (vm->vmentry_ctrls.LOAD_GUEST_IA32_SPEC_CTRL()) {
+    guest.ia32_spec_ctrl_msr = VMread64(VMCS_64BIT_GUEST_IA32_SPEC_CTRL);
+    if (! isValidMSR_IA32_SPEC_CTRL(guest.ia32_spec_ctrl_msr)) {
+      BX_ERROR(("VMFAIL: invalid value in guest MSR_IA32_SPEC_CTRL"));
+      return VMX_VMEXIT_VMENTRY_FAILURE_GUEST_STATE;
+    }
+  }
 #endif
 
   guest.rip = VMread_natural(VMCS_GUEST_RIP);
@@ -2136,6 +2161,9 @@ Bit32u BX_CPU_C::VMenterLoadCheckGuestState(Bit64u *qualification)
   for(unsigned segreg=0; segreg<6; segreg++)
     BX_CPU_THIS_PTR sregs[segreg] = guest.sregs[segreg];
 
+  // SS.DPL is always loaded from the SS access-rights field. This will be the current privilege level (CPL) after the VM entry completes.
+  CPL = guest.sregs[BX_SEG_REG_SS].cache.dpl;
+
   BX_CPU_THIS_PTR gdtr.base = gdtr_base;
   BX_CPU_THIS_PTR gdtr.limit = gdtr_limit;
   BX_CPU_THIS_PTR idtr.base = idtr_base;
@@ -2157,6 +2185,10 @@ Bit32u BX_CPU_C::VMenterLoadCheckGuestState(Bit64u *qualification)
 #if BX_SUPPORT_VMX >= 2
   if (vm->vmentry_ctrls.LOAD_PAT_MSR()) {
     BX_CPU_THIS_PTR msr.pat = guest.pat_msr;
+  }
+
+  if (vm->vmentry_ctrls.LOAD_GUEST_IA32_SPEC_CTRL()) {
+    BX_CPU_THIS_PTR msr.ia32_spec_ctrl = guest.ia32_spec_ctrl_msr;
   }
 #endif
 
@@ -2671,6 +2703,9 @@ void BX_CPU_C::VMexitLoadHostState(void)
   if (vm->vmexit_ctrls1.LOAD_PAT_MSR()) {
     BX_CPU_THIS_PTR msr.pat = host_state->pat_msr;
   }
+  if (vm->vmexit_ctrls2.LOAD_HOST_IA32_SPEC_CTRL()) {
+    BX_CPU_THIS_PTR msr.ia32_spec_ctrl = host_state->ia32_spec_ctrl_msr;
+  }
 #endif
 
   // CS selector loaded from VMCS
@@ -2951,9 +2986,11 @@ void BX_CPU_C::VMexit(Bit32u reason, Bit64u qualification)
   BX_CPU_THIS_PTR last_exception_type = 0;
 
 #if BX_DEBUGGER
-  if (BX_CPU_THIS_PTR vmexit_break) {
-    BX_CPU_THIS_PTR stop_reason = STOP_VMEXIT_BREAK_POINT;
-    bx_debug_break(); // trap into debugger
+  if (bx_dbg.debugger_active) {
+    if (BX_CPU_THIS_PTR vmexit_break) {
+      BX_CPU_THIS_PTR stop_reason = STOP_VMEXIT_BREAK_POINT;
+      bx_debug_break(); // trap into debugger
+    }
   }
 #endif
 
@@ -4248,6 +4285,7 @@ void BX_CPU_C::register_vmx_state(bx_param_c *parent)
 #if BX_SUPPORT_X86_64
   BXRS_HEX_PARAM_FIELD(host, efer_msr, vm->host_state.efer_msr);
 #endif
+  BXRS_HEX_PARAM_FIELD(host, ia32_spec_ctrl_msr, vm->host_state.ia32_spec_ctrl_msr);
 #endif
 #if BX_SUPPORT_CET
   BXRS_HEX_PARAM_FIELD(host, ia32_s_cet_msr, vm->host_state.msr_ia32_s_cet);

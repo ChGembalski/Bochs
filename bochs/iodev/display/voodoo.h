@@ -37,6 +37,7 @@ typedef struct {
     Bit64u vsync_usec;
     double htime_to_pixel;
     Bit64u frame_start;
+    bool vfreq_update;
     bool clock_enabled;
     bool output_on;
     bool override_on;
@@ -66,7 +67,7 @@ public:
   virtual void refresh_display(void *this_ptr, bool redraw);
   virtual void redraw_area(unsigned x0, unsigned y0,
                            unsigned width, unsigned height);
-  virtual void update(void);
+  virtual bool update(void);
   virtual bool update_timing(void) {return 0;}
   virtual Bit32u get_retrace(bool hv) {return 0;}
   virtual Bit32u get_vtotal_usec(void) {return 0;}
@@ -127,6 +128,7 @@ public:
   virtual void register_state(void);
   virtual void after_restore_state(void);
 
+  virtual bool   update(void);
   virtual bool   update_timing(void);
   virtual Bit32u get_retrace(bool hv);
 
@@ -138,6 +140,7 @@ public:
 
   virtual void pci_write_handler(Bit8u address, Bit32u value, unsigned io_len);
 
+  void yuv_planar_write(Bit32u offset, Bit32u value);
   Bit32u blt_reg_read(Bit8u reg);
 #if BX_DEBUGGER
   virtual void debug_dump(int argc, char **argv);
@@ -166,6 +169,7 @@ private:
   bool   blt_apply_clipwindow(int *x0, int *y0, int *x1, int *y1, int *w, int *h);
   bool   blt_clip_check(int x, int y);
   Bit8u  blt_colorkey_check(Bit8u *ptr, Bit8u pxsize, bool dst);
+  Bit32u blt_yuv_conversion(Bit8u *ptr, Bit16u xc, Bit16u yc, Bit16u pitch, Bit8u fmt, Bit8u pxsize);
 
   void   blt_rectangle_fill(void);
   void   blt_pattern_fill_mono(void);
@@ -174,9 +178,13 @@ private:
   void   blt_screen_to_screen_pattern(void);
   void   blt_screen_to_screen_stretch(void);
   void   blt_host_to_screen(void);
+  void   blt_host_to_screen_stretch(void);
   void   blt_host_to_screen_pattern(void);
   void   blt_line(bool pline);
   void   blt_polygon_fill(bool force);
+
+  Bit32u get_overlay_pixel(unsigned x, unsigned y, Bit8u bpp);
+  bool   chromakey_check(Bit32u color, Bit8u bpp);
 
   bx_ddc_c ddc;
   bool     is_agp;

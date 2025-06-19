@@ -72,15 +72,14 @@
 # "cmdmode"     - call a headerbar button handler after pressing F7 (sdl, sdl2,
 #                 win32, x)
 # "fullscreen"  - startup in fullscreen mode (sdl, sdl2)
-# "gui_debug"   - use GTK debugger gui (sdl, sdl2, x) / Win32 debugger gui (sdl,
-#                 sdl2, win32). When using the "globalini" extension the
-#                 debugger uses ini file from BXSHARE path (see below).
 # "hideIPS"     - disable IPS output in status bar (rfb, sdl, sdl2, term, vncsrv,
 #                 win32, wx, x)
 # "nokeyrepeat" - turn off host keyboard repeat (sdl, sdl2, win32, x)
 # "no_gui_console" - use system console instead of builtin gui console
 #                    (rfb, sdl, sdl2, vncsrv, x)
 # "timeout"     - time (in seconds) to wait for client (rfb, vncsrv)
+# "gui_debug"   - This option is DEPRECATED, use command line option '-dbg_gui'
+#                 instead. It also supports the 'globalini' extension
 #
 # See the examples below for other currently supported options.
 # Setting up options without specifying display library is also supported.
@@ -101,7 +100,7 @@
 #                 on desktop window size
 #display_library: win32, options="traphotkeys, autoscale"
 #display_library: wx
-#display_library: x, options="gui_debug:globalini"
+#display_library: x
 
 #=======================================================================
 # CPU:
@@ -115,9 +114,12 @@
 #
 #  CPU configurations that can be selected:
 # -----------------------------------------------------------------
+#  i386                       Intel 386SX
+#  i486dx4                    Intel 486DX4
 #  pentium                    Intel Pentium (P54C)
 #  pentium_mmx                Intel Pentium MMX
 #  amd_k6_2_chomper           AMD-K6(tm) 3D processor (Chomper)
+#  athlon_xp                  AMD Athlon(tm) XP Processor
 #  p2_klamath                 Intel Pentium II (Klamath)
 #  p3_katmai                  Intel Pentium III (Katmai)
 #  p4_willamette              Intel(R) Pentium(R) 4 (Willamette)
@@ -142,6 +144,22 @@
 #  corei3_cnl                 Intel(R) Core(TM) i3-8121U CPU (Cannonlake)
 #  corei7_icelake_u           QuadCore Intel Core i7-1065G7 (IceLake)
 #  tigerlake                  11th Gen Intel(R) Core(TM) i5-1135G7 (TigerLake)
+#  sapphire_rapids            Intel(R) Xeon(R) w9-3475X (Sappire Rapids)
+#  arrow_lake                 15th Gen Intel(R) Core(TM) Ultra 5 245K (ArrowLake)
+#
+#  ADD_FEATURES:
+#    Enable one or more CPU features in the CPU configuration selected by MODEL.
+#    Could be useful for testing CPU with newer imaginary configurations by
+#    adding a specific feature or set of features to existing MODEL. The list 
+#    of features to add supplied through space or comma separated string.
+#
+#  EXCLUDE_FEATURES:
+#    Disable one of more CPU feature from CPU configuration selected by MODEL.
+#    Could be useful for testing CPU without a specific feature or set of
+#    features. When experiening issues booting a modern OS it could be useful
+#    to disable CPU features(s) to see if they responsible for the failures.
+#    The list of features to exclude supplied through space or comma separated
+#    string.
 #
 #  COUNT:
 #    Set the number of processors:cores per processor:threads per core when
@@ -203,151 +221,6 @@ cpu: model=core2_penryn_t9600, count=1, ips=50000000, reset_on_triple_fault=1, i
 cpu: cpuid_limit_winnt=0
 
 #=======================================================================
-# CPUID:
-#
-# This defines features and functionality supported by Bochs emulated CPU.
-# The option has no offect if CPU model was selected in CPU option.
-#
-#  MMX:
-#    Select MMX instruction set support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 5.
-#
-#  APIC:
-#    Select APIC configuration (LEGACY/XAPIC/XAPIC_EXT/X2APIC).
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 5.
-#
-#  SEP:
-#    Select SYSENTER/SYSEXIT instruction set support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  SIMD:
-#    Select SIMD instructions support.
-#    Any of NONE/SSE/SSE2/SSE3/SSSE3/SSE4_1/SSE4_2/AVX/AVX2/AVX512
-#    could be selected.
-#
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#    The AVX choises exists only if Bochs compiled with --enable-avx option.
-#
-#  SSE4A:
-#    Select AMD SSE4A instructions support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  MISALIGNED_SSE:
-#    Select AMD Misaligned SSE mode support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  AES:
-#    Select AES instruction set support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  SHA:
-#    Select SHA instruction set support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  MOVBE:
-#    Select MOVBE Intel(R) Atom instruction support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  ADX:
-#    Select ADCX/ADOX instructions support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  XSAVE:
-#    Select XSAVE extensions support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  XSAVEOPT:
-#    Select XSAVEOPT instruction support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  AVX_F16C:
-#    Select AVX float16 convert instructions support.
-#    This option exists only if Bochs compiled with --enable-avx option.
-#
-#  AVX_FMA:
-#    Select AVX fused multiply add (FMA) instructions support.
-#    This option exists only if Bochs compiled with --enable-avx option.
-#
-#  BMI:
-#    Select BMI1/BMI2 instructions support.
-#    This option exists only if Bochs compiled with --enable-avx option.
-#
-#  XOP:
-#    Select AMD XOP instructions support.
-#    This option exists only if Bochs compiled with --enable-avx option.
-#
-#  FMA4:
-#    Select AMD four operand FMA instructions support.
-#    This option exists only if Bochs compiled with --enable-avx option.
-#
-#  TBM:
-#    Select AMD Trailing Bit Manipulation (TBM) instructions support.
-#    This option exists only if Bochs compiled with --enable-avx option.
-#
-#  X86-64:
-#    Enable x86-64 and long mode support.
-#    This option exists only if Bochs compiled with x86-64 support.
-#
-#  1G_PAGES:
-#    Enable 1G page size support in long mode.
-#    This option exists only if Bochs compiled with x86-64 support.
-#
-#  PCID:
-#    Enable Process-Context Identifiers (PCID) support in long mode.
-#    This option exists only if Bochs compiled with x86-64 support.
-#
-#  FSGSBASE:
-#    Enable GS/GS BASE access instructions support in long mode.
-#    This option exists only if Bochs compiled with x86-64 support.
-#
-#  SMEP:
-#    Enable Supervisor Mode Execution Protection (SMEP) support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  SMAP:
-#    Enable Supervisor Mode Access Prevention (SMAP) support.
-#    This option exists only if Bochs compiled with BX_CPU_LEVEL >= 6.
-#
-#  MWAIT:
-#    Select MONITOR/MWAIT instructions support.
-#    This option exists only if Bochs compiled with --enable-monitor-mwait.
-#
-#  VMX:
-#    Select VMX extensions emulation support.
-#    This option exists only if Bochs compiled with --enable-vmx option.
-#
-#  SVM:
-#    Select AMD SVM (Secure Virtual Machine) extensions emulation support.
-#    This option exists only if Bochs compiled with --enable-svm option.
-#
-#  VENDOR_STRING:
-#    Set the CPUID vendor string returned by CPUID(0x0). This should be a
-#    twelve-character ASCII string.
-#
-#  BRAND_STRING:
-#    Set the CPUID vendor string returned by CPUID(0x80000002 .. 0x80000004).
-#    This should be at most a forty-eight-character ASCII string.
-#
-#  LEVEL:
-#    Set emulated CPU level information returned by CPUID. Default value is
-#    determined by configure option --enable-cpu-level. Currently supported
-#    values are 5 (for Pentium and similar processors) and 6 (for P6 and
-#    later processors).
-#
-#  FAMILY:
-#    Set model information returned by CPUID. Default family value determined
-#    by configure option --enable-cpu-level.
-#
-#  MODEL:
-#    Set model information returned by CPUID. Default model value is 3.
-#
-#  STEPPING:
-#    Set stepping information returned by CPUID. Default stepping value is 3.
-#=======================================================================
-#cpuid: x86_64=1, mmx=1, sep=1, simd=sse4_2, apic=xapic, aes=1, movbe=1, xsave=1
-#cpuid: family=6, model=0x1a, stepping=5
-
-#=======================================================================
 # MEMORY
 # Set the amount of physical memory you want to emulate.
 #
@@ -399,24 +272,22 @@ memory: guest=512, host=256, block_size=512
 #    at startup if existing and saved on exit if modified. The Bochs BIOS doesn't
 #    use this feature yet.
 #
-# Please note that if you use the BIOS-bochs-legacy romimage BIOS option,
-# you cannot use a PCI enabled VGA ROM BIOS.
+# Please note that if you use a SeaBIOS binary in romimage BIOS option,
+# you must use a PCI enabled VGA ROM BIOS.
 #=======================================================================
 romimage: file=$BXSHARE/BIOS-bochs-latest, options=fastboot
 #romimage: file=$BXSHARE/BIOS-bochs-legacy
 #romimage: file=$BXSHARE/bios.bin-1.13.0 # http://www.seabios.org/SeaBIOS
+#romimage: file=$BXSHARE/i440fx.bin, flash_data=escd.bin
 #romimage: file=asus_p6np5.bin, flash_data=escd.bin
 #romimage: file=mybios.bin, address=0xfff80000 # 512k at memory top
 
 #=======================================================================
 # VGAROMIMAGE
 # You now need to load a VGA ROM BIOS into C0000.
-# Please note that if you use the BIOS-bochs-legacy romimage BIOS option,
-# you cannot use a PCI enabled VGA ROM BIOS option such as the cirrus
-# option shown below.
 #=======================================================================
-vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
-#vgaromimage: file=bios/VGABIOS-lgpl-latest-cirrus
+vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest.bin
+#vgaromimage: file=bios/VGABIOS-lgpl-latest-cirrus.bin
 #vgaromimage: file=$BXSHARE/vgabios-cirrus.bin-1.13.0 # http://www.seabios.org/SeaVGABIOS
 #vgaromimage: file=bios/VGABIOS-elpin-2.40
 
@@ -468,8 +339,13 @@ vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
 #   DDC
 #     This parameter defines the behaviour of the DDC emulation that returns
 #     the monitor EDID data. By default the 'builtin' values for 'Bochs Screen'
-#     are used. Other choices are 'disabled' (no DDC emulation) and 'file'
-#     (read monitor EDID from file / path name separated with a colon).
+#     are used. Other choices are 'builtin_gui' (limit builtin values based on
+#     gui capabilities), 'disabled' (no DDC emulation) and 'file' (read monitor
+#     EDID from file / path name separated with a colon).
+#
+#   VBE_MEMSIZE
+#     With this parameter the size of the memory for the Bochs VBE extension
+#     can be defined. Valid values are 4, 8, 16 and 32 MB (default is 16 MB).
 # Examples:
 #   vga: extension=cirrus, update_freq=10, ddc=builtin
 #=======================================================================
@@ -477,14 +353,12 @@ vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
 
 #=======================================================================
 # VOODOO:
-# This defines the Voodoo Graphics emulation (experimental). Currently
-# supported models are 'voodoo1', 'voodoo2', 'banshee' and 'voodoo3'. The
-# Voodoo2 support is not yet complete, but almost usable. The Banshee and
-# Voodoo3 support is under construction, but basically usable. The 2D/3D cards
-# require an external VGA BIOS the vga extension option to be set to 'voodoo'.
-# If the i440BX PCI chipset is selected, they can be assigned to AGP (slot #5).
-# The gui screen update timing for all models is controlled by the related 'vga'
-# options.
+# This defines the Voodoo Graphics emulation. Currently supported models
+# are 'voodoo1', 'voodoo2', 'banshee' and 'voodoo3'. The 2D/3D cards require
+# the 'banshee' version of the LGPL'd VGABIOS or an external VGA BIOS and the
+# vga extension option to be set to 'voodoo'. If the i440BX PCI chipset is
+# selected, these cards can be assigned to AGP (slot #5). The gui screen update
+# timing for all models is controlled by the related 'vga' options.
 #
 # Examples:
 #   voodoo: enabled=1, model=voodoo2
@@ -518,6 +392,8 @@ vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
 #   KEYMAP:
 #     This enables a remap of a physical localized keyboard to a
 #     virtualized us keyboard, as the PC architecture expects.
+#     Using a language specifier instead of a file name is also supported.
+#     A keymap is also required by the paste feature.
 #
 #   USER_SHORTCUT:
 #     This defines the keyboard shortcut to be sent when you press the "user"
@@ -559,8 +435,8 @@ vgaromimage: file=$BXSHARE/VGABIOS-lgpl-latest
 #  TOGGLE:
 #  The default method to toggle the mouse capture at runtime is to press the
 #  CTRL key and the middle mouse button ('ctrl+mbutton'). This option allows
-#  to change the method to 'ctrl+f10' (like DOSBox), 'ctrl+alt' (like QEMU)
-#  or 'f12'.
+#  to change the method to 'ctrl+f10' (like DOSBox), 'ctrl+alt' (legacy QEMU),
+#  'ctrl+alt+g' (QEMU current) or 'f12'.
 #
 # Examples:
 #   mouse: enabled=1
@@ -802,10 +678,11 @@ ata0-master: type=disk, mode=flat, path="30M.sample"
 # This defines the boot sequence. Now you can specify up to 3 boot drives,
 # which can be 'floppy', 'disk', 'cdrom' or 'network' (boot ROM).
 # Legacy 'a' and 'c' are also supported.
+# The new boot choice 'usb' is only supported by the i440fx.bin BIOS.
 # Examples:
 #   boot: floppy
 #   boot: cdrom, disk
-#   boot: network, disk
+#   boot: network, usb, disk
 #   boot: cdrom, floppy, disk
 #=======================================================================
 #boot: floppy
@@ -854,12 +731,13 @@ log: bochsout.txt
 #=======================================================================
 # LOG CONTROLS
 #
-# Bochs has four severity levels for event logging.
+# Bochs has fife severity levels for event logging.
 #   panic: cannot proceed.  If you choose to continue after a panic,
 #          don't be surprised if you get strange behavior or crashes.
 #   error: something went wrong, but it is probably safe to continue the
 #          simulation.
-#   info: interesting or useful messages.
+#   warn:  important messages, by default show a message box for it.
+#   info:  interesting or useful messages.
 #   debug: messages useful only when debugging the code.  This may
 #          spit out thousands per second.
 #
@@ -1290,14 +1168,15 @@ speaker: enabled=1, mode=sound, volume=15
 # Triggers:
 #   reset:       will break and load the debugger on a port reset
 #   enable:      will break and load the debugger on a port enable
-#   start_frame: will break and load the debugger on start of frame
-#                  (this is different for each controller type)
 #   doorbell:    will break and load the debugger a xHCI Command Ring addition
 #   event:       will break and load the debugger on a xHCI Event Ring addition
+#   data:        will break and load the debugger on a xHCI Data Ring addition
+#   start_frame: will break and load the debugger on start of frame
+#                  (this is different for each controller type)
 #   non_exist:   will break and load the debugger on a non-existant port access
 # (experimental and is under development)
 #=======================================================================
-#usb_debug: type=xhci, reset, enable, start_frame, doorbell, event, non_exist
+#usb_debug: type=xhci, reset=1, enable=1, start_frame=1, doorbell=1, event=1, data=1, non_exist=1
 
 #=======================================================================
 # PCIDEV:

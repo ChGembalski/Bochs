@@ -186,11 +186,7 @@ extern short DockOrder;        // set the default List "docking" (Reg, ASM, Dump
 // END of User Customizable settings
 
 #if !defined(_MSC_VER)
-#if SIZEOF_UNSIGNED_LONG == 8
-#define FMT_LLCAPX  "%016lX"
-#else
-#define FMT_LLCAPX  "%016llX"
-#endif
+#define FMT_LLCAPX  FMT_LL"X"
 #else
 #define FMT_LLCAPX  "%016I64X"
 #endif
@@ -416,9 +412,9 @@ extern Bit32s yClick;          // values are in Listview coordinates
 
 extern const char* DC0txt[2];    // DumpMode definitions in text
 
-extern const char* BTxt[6];
-
-extern int BtnLkup[6];
+#define NBUTTONS 6
+extern const char* BTxt[NBUTTONS];
+extern int BtnLkup[NBUTTONS];
 
 #endif
 

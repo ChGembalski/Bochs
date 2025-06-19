@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2014-2024  The Bochs Project
+//  Copyright (C) 2014-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -346,7 +346,6 @@ void switch_to_fullscreen(void)
     bx_gui->toggle_mouse_enable();
   }
   SDL_GetWindowPosition(window, &saved_x, &saved_y);
-  SDL_SetWindowSize(window, res_x, res_y);
   SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
   sdl_fullscreen = SDL_GetWindowSurface(window);
   sdl_screen = NULL;
@@ -466,7 +465,7 @@ void bx_sdl2_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 
   // load keymap for sdl
   if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-    bx_keymap.loadKeymap(convertStringToSDLKey);
+    bx_keymap.loadKeymap("sdl2", convertStringToSDLKey);
   }
 
   if (!gui_ci) {
@@ -490,11 +489,11 @@ void bx_sdl2_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   }
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
-  if (enh_dbg_gui_enabled) {
+  if (bx_dbg.debugger_active && bx_dbg.debugger_gui) {
     SIM->set_debug_gui(1);
 #ifdef WIN32
     if (gui_ci) {
-      sdl2_enh_dbg_global_ini = enh_dbg_global_ini;
+      sdl2_enh_dbg_global_ini = bx_dbg.dbg_gui_globalini;
       // on Windows the debugger gui must run in a separate thread
       DWORD threadID;
       CreateThread(NULL, 0, DebugGuiThread, NULL, 0, &threadID);
@@ -502,7 +501,7 @@ void bx_sdl2_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
       BX_PANIC(("Config interface 'win32config' is required for gui debugger"));
     }
 #else
-    init_debug_dialog(enh_dbg_global_ini);
+    init_debug_dialog(bx_dbg.dbg_gui_globalini);
 #endif
   }
 #endif
@@ -514,6 +513,10 @@ void bx_sdl2_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
 #endif
   if (gui_ci) {
     dialog_caps = BX_GUI_DLG_ALL;
+#if BX_USB_DEBUGGER
+  } else {
+    dialog_caps |= BX_GUI_DLG_USB;
+#endif
   }
   sdl_init_done = 1;
 }
@@ -630,8 +633,7 @@ void bx_sdl2_gui_c::handle_events(void)
       case SDL_WINDOWEVENT:
         if (sdl_event.window.event == SDL_WINDOWEVENT_EXPOSED) {
           SDL_UpdateWindowSurface(window);
-        }
-        if (sdl_event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+        } else if (sdl_event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
           DEV_kbd_release_keys();
         }
         break;
@@ -749,6 +751,9 @@ void bx_sdl2_gui_c::handle_events(void)
         }
         // handle gui console mode
         if (console_running()) {
+          if (sdl_event.key.keysym.sym == SDLK_KP_ENTER) {
+            sdl_event.key.keysym.sym = SDLK_RETURN;
+          }
           if ((sdl_event.key.keysym.sym & (1 << 30)) == 0) {
             Bit8u ascii = (Bit8u)sdl_event.key.keysym.sym;
             if ((ascii == SDLK_RETURN) || (ascii == SDLK_BACKSPACE)) {
@@ -767,6 +772,8 @@ void bx_sdl2_gui_c::handle_events(void)
             mouse_toggle = mouse_toggle_check(BX_MT_KEY_F10, 1);
           } else if (sdl_event.key.keysym.sym == SDLK_F12) {
             mouse_toggle = mouse_toggle_check(BX_MT_KEY_F12, 1);
+          } else if (sdl_event.key.keysym.sym == SDLK_g) {
+            mouse_toggle = mouse_toggle_check(BX_MT_KEY_G, 1);
           }
           if (mouse_toggle) {
             toggle_mouse_enable();
@@ -843,7 +850,7 @@ void bx_sdl2_gui_c::handle_events(void)
           break;
         }
 
-        if (gui_nokeyrepeat && sdl_event.key.repeat) {
+        if (gui_opts.nokeyrepeat && sdl_event.key.repeat) {
           break;
         }
         // convert sym->bochs code
@@ -885,10 +892,13 @@ void bx_sdl2_gui_c::handle_events(void)
           mouse_toggle_check(BX_MT_KEY_F10, 0);
         } else if (sdl_event.key.keysym.sym == SDLK_F12) {
           mouse_toggle_check(BX_MT_KEY_F12, 0);
+        } else if (sdl_event.key.keysym.sym == SDLK_g) {
+          mouse_toggle_check(BX_MT_KEY_G, 0);
         }
 
         // filter out release of Windows/Fullscreen toggle
-        if (sdl_event.key.keysym.sym != SDLK_SCROLLLOCK) {
+        if ((sdl_event.key.keysym.sym != SDLK_RETURN) ||
+            (bx_gui->get_modifier_keys() != BX_MOD_KEY_ALT)) {
           // convert sym->bochs code
           if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
             key_event = sdl_sym_to_bx_key(sdl_event.key.keysym.sym);
@@ -1376,7 +1386,7 @@ void bx_sdl2_gui_c::set_mouse_mode_absxy(bool mode)
 #if BX_SHOW_IPS
 void bx_sdl2_gui_c::show_ips(Bit32u ips_count)
 {
-  if (!gui_hide_ips && !sdl_ips_update) {
+  if (!gui_opts.hide_ips && !sdl_ips_update) {
     ips_count /= 1000;
     sprintf(sdl_ips_text, "IPS: %u.%3.3uM", ips_count / 1000, ips_count % 1000);
     sdl_ips_update = 1;
@@ -1455,7 +1465,7 @@ int sdl2_ask_dialog(BxEvent *event)
     i = 2;
   }
 #if BX_DEBUGGER || BX_GDBSTUB
-  if (mode == BX_LOG_DLG_ASK) {
+  if ((mode == BX_LOG_DLG_ASK) && (bx_dbg.debugger_active || BX_GDBSTUB)) {
     buttondata[i].flags = 0;
     buttondata[i].buttonid = BX_LOG_ASK_CHOICE_ENTER_DEBUG;
     buttondata[i].text = "Debugger";

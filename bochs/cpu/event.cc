@@ -35,6 +35,8 @@
 
 #include "iodev/iodev.h"
 
+#include "bx_debug/debug.h"
+
 bool BX_CPU_C::handleWaitForEvent(void)
 {
   if (BX_CPU_THIS_PTR activity_state == BX_ACTIVITY_STATE_WAIT_FOR_SIPI) {
@@ -98,7 +100,7 @@ bool BX_CPU_C::handleWaitForEvent(void)
 #endif
 
 #if BX_DEBUGGER
-    if (bx_guard.interrupt_requested)
+    if (bx_dbg.debugger_active && bx_guard.interrupt_requested)
       return 1; // Return to caller of cpu_loop.
 #endif
 

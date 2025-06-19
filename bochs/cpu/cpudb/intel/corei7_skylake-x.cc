@@ -51,9 +51,6 @@ corei7_skylake_x_t::corei7_skylake_x_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_PSE);
   enable_cpu_extension(BX_ISA_PAE);
   enable_cpu_extension(BX_ISA_PGE);
-#if BX_PHY_ADDRESS_LONG
-  enable_cpu_extension(BX_ISA_PSE36);
-#endif
   enable_cpu_extension(BX_ISA_MTRR);
   enable_cpu_extension(BX_ISA_PAT);
   enable_cpu_extension(BX_ISA_XAPIC);
@@ -162,10 +159,10 @@ void corei7_skylake_x_t::get_cpuid_leaf(Bit32u function, Bit32u subfunction, cpu
     get_std_cpuid_leaf_4(subfunction, leaf);
     return;
   case 0x00000005:
-    get_std_cpuid_leaf_5(leaf);
+    get_std_cpuid_monitor_mwait_leaf(leaf, 0x00002020);
     return;
-  case 0x00000006:
-    get_std_cpuid_leaf_6(leaf);
+  case 0x00000006: // CPUID leaf 0x00000006 - Thermal and Power Management Leaf
+    get_leaf(leaf, 0x00000075, 0x00000002, 0x00000009, 0x00000000);
     return;
   case 0x00000007:
     get_std_cpuid_leaf_7(subfunction, leaf);
@@ -441,46 +438,8 @@ void corei7_skylake_x_t::get_std_cpuid_leaf_4(Bit32u subfunction, cpuid_function
   }
 }
 
-// leaf 0x00000005 //
-void corei7_skylake_x_t::get_std_cpuid_leaf_5(cpuid_function_t *leaf) const
-{
-  // CPUID function 0x00000005 - MONITOR/MWAIT Leaf
-
-#if BX_SUPPORT_MONITOR_MWAIT
-  // EAX - Smallest monitor-line size in bytes
-  // EBX - Largest  monitor-line size in bytes
-  // ECX -
-  //   [31:2] - reserved
-  //    [1:1] - exit MWAIT even with EFLAGS.IF = 0
-  //    [0:0] - MONITOR/MWAIT extensions are supported
-  // EDX -
-  //  [03-00] - number of C0 sub C-states supported using MWAIT
-  //  [07-04] - number of C1 sub C-states supported using MWAIT
-  //  [11-08] - number of C2 sub C-states supported using MWAIT
-  //  [15-12] - number of C3 sub C-states supported using MWAIT
-  //  [19-16] - number of C4 sub C-states supported using MWAIT
-  //  [31-20] - reserved (MBZ)
-  leaf->eax = CACHE_LINE_SIZE;
-  leaf->ebx = CACHE_LINE_SIZE;
-  leaf->ecx = 3;
-  leaf->edx = 0x00002020;
-#else
-  leaf->eax = 0;
-  leaf->ebx = 0;
-  leaf->ecx = 0;
-  leaf->edx = 0;
-#endif
-}
-
-// leaf 0x00000006 - Thermal and Power Management Leaf //
-void corei7_skylake_x_t::get_std_cpuid_leaf_6(cpuid_function_t *leaf) const
-{
-  // CPUID function 0x00000006 - Thermal and Power Management Leaf
-  leaf->eax = 0x00000075;
-  leaf->ebx = 0x00000002;
-  leaf->ecx = 0x00000009;
-  leaf->edx = 0x00000000;
-}
+// leaf 0x00000005 MONITOR/MWAIT Leaf                //
+// leaf 0x00000006 Thermal and Power Management Leaf //
 
 // leaf 0x00000007 //
 void corei7_skylake_x_t::get_std_cpuid_leaf_7(Bit32u subfunction, cpuid_function_t *leaf) const
@@ -629,7 +588,7 @@ void corei7_skylake_x_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
   //   [27:27] Performance time-stamp counter. Indicates support for MSR 0xC0010280
   //   [28:28] PerfCtrExtL2I: L2I performance counter extensions support
   //   [31:29] Reserved
-  leaf->ecx = get_ext_cpuid_leaf_1_ecx_intel(BX_CPUID_EXT1_ECX_PREFETCHW);
+  leaf->ecx = get_ext_cpuid_leaf_1_ecx(BX_CPUID_EXT1_ECX_PREFETCHW);
 
   // EDX:
   //    [10:0] Reserved for Intel

@@ -38,7 +38,10 @@ turion64_tyler_t::turion64_tyler_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_486);
   enable_cpu_extension(BX_ISA_PENTIUM);
   enable_cpu_extension(BX_ISA_MMX);
+#if BX_SUPPORT_3DNOW
   enable_cpu_extension(BX_ISA_3DNOW);
+  enable_cpu_extension(BX_ISA_3DNOW_EXT);
+#endif
   enable_cpu_extension(BX_ISA_SYSCALL_SYSRET_LEGACY);
   enable_cpu_extension(BX_ISA_SYSENTER_SYSEXIT);
   enable_cpu_extension(BX_ISA_P6);
@@ -51,9 +54,6 @@ turion64_tyler_t::turion64_tyler_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_PSE);
   enable_cpu_extension(BX_ISA_PAE);
   enable_cpu_extension(BX_ISA_PGE);
-#if BX_PHY_ADDRESS_LONG
-  enable_cpu_extension(BX_ISA_PSE36);
-#endif
   enable_cpu_extension(BX_ISA_MTRR);
   enable_cpu_extension(BX_ISA_PAT);
   enable_cpu_extension(BX_ISA_XAPIC);
@@ -315,7 +315,6 @@ void turion64_tyler_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
 // leaf 0x80000005 - L1 Cache and TLB Identifiers //
 void turion64_tyler_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x800000005 - L1 Cache and TLB Identifiers
   leaf->eax = 0xFF08FF08;
   leaf->ebx = 0xFF20FF20;
   leaf->ecx = 0x40020140;
@@ -325,7 +324,6 @@ void turion64_tyler_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 // leaf 0x80000006 - L2 Cache and TLB Identifiers //
 void turion64_tyler_t::get_ext_cpuid_leaf_6(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x80000006 - L2 Cache and TLB Identifiers
   leaf->eax = 0x00000000;
   leaf->ebx = 0x42004200;
   leaf->ecx = 0x02008140;

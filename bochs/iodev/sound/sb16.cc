@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2023  The Bochs Project
+//  Copyright (C) 2001-2024  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -218,6 +218,8 @@ bx_sb16_c::bx_sb16_c(void)
   opl.timer_handle = BX_NULL_TIMER_HANDLE;
   waveout[0] = NULL;
   waveout[1] = NULL;
+  fmopl_callback_id[0] = -1;
+  fmopl_callback_id[1] = -1;
   wavein = NULL;
   midiout[0] = NULL;
   midiout[1] = NULL;
@@ -234,8 +236,11 @@ bx_sb16_c::~bx_sb16_c(void)
 
   closemidioutput();
 
-  if (BX_SB16_WAVEOUT1 != NULL) {
-    BX_SB16_WAVEOUT1->unregister_wave_callback(fmopl_callback_id);
+  if (fmopl_callback_id[0] >= 0) {
+    BX_SB16_WAVEOUT1->unregister_wave_callback(fmopl_callback_id[0]);
+  }
+  if (fmopl_callback_id[1] >= 0) {
+    BX_SB16_WAVEOUT2->unregister_wave_callback(fmopl_callback_id[1]);
   }
   closewaveoutput();
 
@@ -274,13 +279,15 @@ void bx_sb16_c::init(void)
   if (BX_SB16_WAVEOUT1 == NULL) {
     BX_PANIC(("Couldn't initialize waveout driver"));
     BX_SB16_THIS wavemode &= ~1;
-  } else {
-    BX_SB16_THIS fmopl_callback_id = BX_SB16_WAVEOUT1->register_wave_callback(BX_SB16_THISP, fmopl_callback);
+  } else if (BX_SB16_THIS wavemode & 1) {
+    BX_SB16_THIS fmopl_callback_id[0] = BX_SB16_WAVEOUT1->register_wave_callback(BX_SB16_THISP, fmopl_callback);
   }
   if (BX_SB16_THIS wavemode & 2) {
     BX_SB16_WAVEOUT2 = DEV_sound_get_waveout(1);
     if (BX_SB16_WAVEOUT2 == NULL) {
       BX_PANIC(("Couldn't initialize wave file driver"));
+    } else {
+      BX_SB16_THIS fmopl_callback_id[1] = BX_SB16_WAVEOUT2->register_wave_callback(BX_SB16_THISP, fmopl_callback);
     }
   }
   BX_SB16_WAVEIN = DEV_sound_get_wavein();
@@ -385,7 +392,7 @@ void bx_sb16_c::init(void)
 
   // Allocate the IO addresses, 2x0..2xf, 3x0..3x4 and 388..38b
   for (addr=BX_SB16_IO; addr<BX_SB16_IO+BX_SB16_IOLEN; addr++) {
-    DEV_register_ioread_handler(this, &read_handler, addr, "SB16", 1);
+    DEV_register_ioread_handler(this, &read_handler, addr, "SB16", (addr & 1) ? 1 : 3);
     DEV_register_iowrite_handler(this, &write_handler, addr, "SB16", (addr & 1) ? 1 : 3);
   }
   for (addr=BX_SB16_IOMPU; addr<BX_SB16_IOMPU+BX_SB16_IOMPULEN; addr++) {
@@ -672,7 +679,7 @@ void bx_sb16_c::dsp_reset(Bit32u value)
       {
          writelog(WAVELOG(4), "DSP reset: DMA aborted");
          DSP.dma.mode = 1;  // no auto init anymore
-         dsp_dmadone();
+         dsp_dmadone(0);
       }
 
       DSP.resetport = 0;
@@ -960,7 +967,7 @@ void bx_sb16_c::dsp_datawrite(Bit32u value)
          DSP_B.datain.get(&value8);
          DSP.dma.timeconstant = value8 <<  8;
          DSP.dma.param.samplerate = (Bit32u) 256000000L / ((Bit32u) 65536L - (Bit32u) DSP.dma.timeconstant);
-           break;
+         break;
 
          // set samplerate for input
        case 0x41:
@@ -1156,7 +1163,7 @@ void bx_sb16_c::dsp_datawrite(Bit32u value)
          if (DSP.dma.mode != 0)
            {
              DSP.dma.mode = 1;  // no auto init anymore
-             dsp_dmadone();
+             dsp_dmadone(1);
            }
          break;
 
@@ -1166,7 +1173,7 @@ void bx_sb16_c::dsp_datawrite(Bit32u value)
          if (DSP.dma.mode != 0)
          {
              DSP.dma.mode = 1;  // no auto init anymore
-             dsp_dmadone();
+             dsp_dmadone(1);
          }
          break;
 
@@ -1251,7 +1258,7 @@ void bx_sb16_c::dsp_datawrite(Bit32u value)
 // dsp_dma() initiates all kinds of dma transfers
 void bx_sb16_c::dsp_dma(Bit8u command, Bit8u mode, Bit16u length, Bit8u comp)
 {
-  int ret;
+  int ret, size;
   bx_list_c *base;
   bool issigned;
 
@@ -1307,7 +1314,8 @@ void bx_sb16_c::dsp_dma(Bit8u command, Bit8u mode, Bit16u length, Bit8u comp)
   } else {
     DSP.dma.count = ((DSP.dma.blocklength + 1) << 1) - 1;
   }
-  DSP.dma.timer = BX_SB16_THIS dmatimer * BX_DMA_BUFFER_SIZE / sampledatarate;
+  size = (DSP.dma.count < BX_DMA_BUFFER_SIZE) ? DSP.dma.count : BX_DMA_BUFFER_SIZE;
+  DSP.dma.timer = BX_SB16_THIS dmatimer * size / sampledatarate;
 
   writelog(WAVELOG(5), "DMA is %db, %dHz, %s, %s, mode %d, %s, %s, %d bps, %d usec/DMA",
            DSP.dma.param.bits, DSP.dma.param.samplerate,
@@ -1518,24 +1526,25 @@ Bit8u bx_sb16_c::dsp_putsamplebyte()
 }
 
 // called when the last byte of a DMA transfer has been received/sent
-void bx_sb16_c::dsp_dmadone()
+void bx_sb16_c::dsp_dmadone(bool irq)
 {
-  writelog(WAVELOG(4), "DMA transfer done, triggering IRQ");
-
   if ((DSP.dma.output == 1) && (DSP.dma.mode != 2)) {
     dsp_sendwavepacket();  // flush the output
   } else if ((DSP.dma.output == 0) && (DSP.dma.mode != 2)) {
     BX_SB16_WAVEIN->stopwaverecord();
   }
 
-  // generate the appropriate IRQ
-  if (DSP.dma.param.bits == 8)
-    MIXER.reg[0x82] |= 1;
-  else
-    MIXER.reg[0x82] |= 2;
+  if (irq) {
+    // generate the appropriate IRQ
+    writelog(WAVELOG(4), "DMA transfer done, triggering IRQ");
+    if (DSP.dma.param.bits == 8)
+      MIXER.reg[0x82] |= 1;
+    else
+      MIXER.reg[0x82] |= 2;
 
-  DEV_pic_raise_irq(BX_SB16_IRQ);
-  DSP.irqpending = 1;
+    DEV_pic_raise_irq(BX_SB16_IRQ);
+    DSP.irqpending = 1;
+  }
 
   // if auto-DMA, reinitialize
   if (DSP.dma.mode == 2)
@@ -1572,7 +1581,7 @@ Bit16u bx_sb16_c::dma_read8(Bit8u *buffer, Bit16u maxlen)
   } while ((len < maxlen) && (DSP.dma.count != 0xffff));
 
   if (DSP.dma.count == 0xffff) // last byte received
-    dsp_dmadone();
+    dsp_dmadone(1);
 
   return len;
 }
@@ -1592,7 +1601,7 @@ Bit16u bx_sb16_c::dma_write8(Bit8u *buffer, Bit16u maxlen)
            buffer[0], DSP.dma.count);
 
   if (DSP.dma.count == 0xffff) // last byte sent
-    dsp_dmadone();
+    dsp_dmadone(1);
 
   return len;
 }
@@ -1616,7 +1625,7 @@ Bit16u bx_sb16_c::dma_read16(Bit16u *buffer, Bit16u maxlen)
   } while ((len < maxlen) && (DSP.dma.count != 0xffff));
 
   if (DSP.dma.count == 0xffff) // last word received
-    dsp_dmadone();
+    dsp_dmadone(1);
 
   return len;
 }
@@ -1640,7 +1649,7 @@ Bit16u bx_sb16_c::dma_write16(Bit16u *buffer, Bit16u maxlen)
            buffer[0], DSP.dma.count);
 
   if (DSP.dma.count == 0xffff) // last word sent
-    dsp_dmadone();
+    dsp_dmadone(1);
 
   return len;
 }

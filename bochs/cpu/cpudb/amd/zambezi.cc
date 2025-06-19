@@ -54,9 +54,6 @@ zambezi_t::zambezi_t(BX_CPU_C *cpu): bx_cpuid_t(cpu)
   enable_cpu_extension(BX_ISA_PSE);
   enable_cpu_extension(BX_ISA_PAE);
   enable_cpu_extension(BX_ISA_PGE);
-#if BX_PHY_ADDRESS_LONG
-  enable_cpu_extension(BX_ISA_PSE36);
-#endif
   enable_cpu_extension(BX_ISA_MTRR);
   enable_cpu_extension(BX_ISA_PAT);
   enable_cpu_extension(BX_ISA_XAPIC);
@@ -153,13 +150,11 @@ void zambezi_t::get_cpuid_leaf(Bit32u function, Bit32u subfunction, cpuid_functi
   case 0x00000001:
     get_std_cpuid_leaf_1(leaf);
     return;
-#if BX_SUPPORT_MONITOR_MWAIT
   case 0x00000005:
-    get_std_cpuid_leaf_5(leaf);
+    get_std_cpuid_monitor_mwait_leaf(leaf, 0);
     return;
-#endif
-  case 0x00000006:
-    get_std_cpuid_leaf_6(leaf);
+  case 0x00000006: // CPUID leaf 0x00000006 - Thermal and Power Management Leaf
+    get_leaf(leaf, 0x00000000, 0x00000000, 0x00000001, 0x00000000);
     return;
   case 0x0000000D:
     get_std_cpuid_xsave_leaf(subfunction, leaf);
@@ -295,45 +290,9 @@ void zambezi_t::get_std_cpuid_leaf_1(cpuid_function_t *leaf) const
 #endif
 }
 
-#if BX_SUPPORT_MONITOR_MWAIT
-
-// leaf 0x00000005 //
-void zambezi_t::get_std_cpuid_leaf_5(cpuid_function_t *leaf) const
-{
-  // CPUID function 0x00000005 - MONITOR/MWAIT Leaf
-
-  // EAX - Smallest monitor-line size in bytes
-  // EBX - Largest  monitor-line size in bytes
-  // ECX -
-  //   [31:2] - reserved
-  //    [1:1] - exit MWAIT even with EFLAGS.IF = 0
-  //    [0:0] - MONITOR/MWAIT extensions are supported
-  // EDX -
-  //  [03-00] - number of C0 sub C-states supported using MWAIT
-  //  [07-04] - number of C1 sub C-states supported using MWAIT
-  //  [11-08] - number of C2 sub C-states supported using MWAIT
-  //  [15-12] - number of C3 sub C-states supported using MWAIT
-  //  [19-16] - number of C4 sub C-states supported using MWAIT
-  //  [31-20] - reserved (MBZ)
-  leaf->eax = CACHE_LINE_SIZE;
-  leaf->ebx = CACHE_LINE_SIZE;
-  leaf->ecx = 3;
-  leaf->edx = 0;
-}
-
-#endif
-
-// leaf 0x00000006 //
-void zambezi_t::get_std_cpuid_leaf_6(cpuid_function_t *leaf) const
-{
-  // CPUID function 0x00000006 - Thermal and Power Management Leaf
-  leaf->eax = 0x00000000;
-  leaf->ebx = 0x00000000;
-  leaf->ecx = 0x00000001;
-  leaf->edx = 0x00000000;
-}
-
-// leaf 0x0000000D - XSAVE //
+// leaf 0x00000005 MONITOR/MWAIT Leaf //
+// leaf 0x00000006 Thermal and Power Management Leaf //
+// leaf 0x0000000D XSAVE //
 
 // leaf 0x80000000 //
 void zambezi_t::get_ext_cpuid_leaf_0(cpuid_function_t *leaf) const
@@ -380,27 +339,16 @@ void zambezi_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
   // * [23:23] PerfCtrExtCore: core perf counter extensions support
   // * [24:24] PerfCtrExtNB: NB perf counter extensions support
   //   [31:25] Reserved
-
-  leaf->ecx = BX_CPUID_EXT1_ECX_LAHF_SAHF |
-              BX_CPUID_EXT1_ECX_CMP_LEGACY |
-#if BX_SUPPORT_SVM
-              BX_CPUID_EXT1_ECX_SVM |
-#endif
-              BX_CPUID_EXT1_ECX_EXT_APIC_SPACE |
-              BX_CPUID_EXT1_ECX_ALT_MOV_CR8 |
-              BX_CPUID_EXT1_ECX_LZCNT |
-              BX_CPUID_EXT1_ECX_SSE4A |
-              BX_CPUID_EXT1_ECX_MISALIGNED_SSE |
-              BX_CPUID_EXT1_ECX_PREFETCHW |
-              BX_CPUID_EXT1_ECX_OSVW |
-              BX_CPUID_EXT1_ECX_IBS |
-              BX_CPUID_EXT1_ECX_XOP |
-              BX_CPUID_EXT1_ECX_WDT |
-              BX_CPUID_EXT1_ECX_FMA4 |
-              BX_CPUID_EXT1_ECX_NODEID |
-              BX_CPUID_EXT1_ECX_TOPOLOGY_EXTENSIONS |
-              BX_CPUID_EXT1_ECX_PERFCTR_EXT_CORE |
-              BX_CPUID_EXT1_ECX_PERFCTR_EXT_NB;
+  leaf->ecx = get_ext_cpuid_leaf_1_ecx(BX_CPUID_EXT1_ECX_CMP_LEGACY |
+                                       BX_CPUID_EXT1_ECX_PREFETCHW |
+                                       BX_CPUID_EXT1_ECX_OSVW |
+                                       BX_CPUID_EXT1_ECX_IBS |
+                                       BX_CPUID_EXT1_ECX_XOP |
+                                       BX_CPUID_EXT1_ECX_WDT |
+                                       BX_CPUID_EXT1_ECX_NODEID |
+                                       BX_CPUID_EXT1_ECX_TOPOLOGY_EXTENSIONS |
+                                       BX_CPUID_EXT1_ECX_PERFCTR_EXT_CORE |
+                                       BX_CPUID_EXT1_ECX_PERFCTR_EXT_NB);
 
   // EDX:
   // Many of the bits in EDX are the same as FN 0x00000001 for AMD
@@ -446,7 +394,6 @@ void zambezi_t::get_ext_cpuid_leaf_1(cpuid_function_t *leaf) const
 // leaf 0x80000005 //
 void zambezi_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x800000005 - L1 Cache and TLB Identifiers
   leaf->eax = 0xff20ff18;
   leaf->ebx = 0xff20ff30;
   leaf->ecx = 0x10040140;
@@ -456,7 +403,6 @@ void zambezi_t::get_ext_cpuid_leaf_5(cpuid_function_t *leaf) const
 // leaf 0x80000006 //
 void zambezi_t::get_ext_cpuid_leaf_6(cpuid_function_t *leaf) const
 {
-  // CPUID function 0x80000006 - L2 Cache and TLB Identifiers
   leaf->eax = 0x64000000;
   leaf->ebx = 0x64004200;
   leaf->ecx = 0x08008140;

@@ -79,10 +79,6 @@ BX_CPU_C::BX_CPU_C(unsigned id): bx_cpuid(id)
   srand(time(NULL)); // initialize random generator for RDRAND/RDSEED
 }
 
-#if BX_CPU_LEVEL >= 4
-
-#include "generic_cpuid.h"
-
 enum {
 #define bx_define_cpudb(model) bx_cpudb_##model,
 #include "cpudb.h"
@@ -90,12 +86,38 @@ enum {
 };
 #undef bx_define_cpudb
 
+int bx_default_cpuid_model()
+{
+#if BX_CPU_LEVEL == 3
+  return bx_cpudb_i386;
+#elif BX_CPU_LEVEL == 4
+  return bx_cpudb_i486dx4;
+#elif BX_CPU_LEVEL == 5
+  return bx_cpudb_pentium_mmx;
+#elif BX_CPU_LEVEL >= 6
+  #if BX_SUPPORT_X86_64
+    #if BX_SUPPORT_AVX
+      return bx_cpudb_corei7_haswell_4770;
+    #else
+      return bx_cpudb_core2_penryn_t9600;
+    #endif
+  #else
+    return bx_cpudb_p4_willamette;
+  #endif
+#endif
+}
+
 #define bx_define_cpudb(model) \
   extern bx_cpuid_t *create_ ##model##_cpuid(BX_CPU_C *cpu);
 
 #include "cpudb.h"
 
 #undef bx_define_cpudb
+
+#if BX_CPU_LEVEL >= 4
+
+#include "cpuid.h"
+#include "cpudb/intel/i386.h" // dummy CPUDB module, i387 doesn't support CPUID instruction 
 
 static bx_cpuid_t *cpuid_factory(BX_CPU_C *cpu)
 {
@@ -113,6 +135,43 @@ static bx_cpuid_t *cpuid_factory(BX_CPU_C *cpu)
 #undef bx_define_cpudb
 }
 
+#include <string>
+
+void BX_CPU_C::add_remove_cpuid_features(const char *input, bool add)
+{
+  // Use as delimiters: space, tab, newline, and comma
+  static const char *delimiters = " \t\n,";
+
+  int start = 0;
+  int i = 0;
+
+  while (true) {
+    // Check if the current character is a delimiter or end of the string
+    if (strchr(delimiters, input[i]) || !input[i]) {
+      // If there is a word between start and i
+      if (i > start) {
+        std::string feature_name(input + start, input + i);
+        int feature = match_cpu_feature(feature_name.c_str());
+        if (feature >= 0) {
+          if (add)
+            BX_CPU_THIS_PTR cpuid->enable_cpu_extension(feature);
+          else
+            BX_CPU_THIS_PTR cpuid->disable_cpu_extension(feature);
+        }
+        else
+          BX_PANIC(("CPUID: unknown feature name \"%s\" cannot be enabled/disabled", feature_name.c_str()));
+      }
+      // Move the start to the next character after the delimiter
+      start = i + 1;
+    }
+
+    // Break out of the loop if end of the string is reached
+    if (! input[i]) break;
+
+    ++i;
+  }
+}
+
 #endif
 
 // BX_CPU_C constructor
@@ -120,17 +179,30 @@ void BX_CPU_C::initialize(void)
 {
 #if BX_CPU_LEVEL >= 4
   BX_CPU_THIS_PTR cpuid = cpuid_factory(this);
-  if (! BX_CPU_THIS_PTR cpuid)
+  if (! BX_CPU_THIS_PTR cpuid) {
     BX_PANIC(("Failed to create CPUID module !"));
+  }
+  else {
+    const char *cpu_model_name = cpuid->get_name();
+    BX_INFO(("initialized CPU model %s", cpu_model_name));
 
-  cpuid->get_cpu_extensions(BX_CPU_THIS_PTR ia_extensions_bitmask);
+    const char* features_to_exclude = SIM->get_param_string(BXPN_CPU_EXCLUDE_FEATURES)->getptr();
+    add_remove_cpuid_features(features_to_exclude, false);
+
+    const char* features_to_add = SIM->get_param_string(BXPN_CPU_ADD_FEATURES)->getptr();
+    add_remove_cpuid_features(features_to_add, true);
+  }
+
+  BX_CPU_THIS_PTR cpuid->get_cpu_extensions(BX_CPU_THIS_PTR ia_extensions_bitmask);
 
 #if BX_SUPPORT_VMX
-  BX_CPU_THIS_PTR vmx_extensions_bitmask = cpuid->get_vmx_extensions_bitmask();
+  BX_CPU_THIS_PTR vmx_extensions_bitmask = BX_CPU_THIS_PTR cpuid->get_vmx_extensions_bitmask();
 #endif
 #if BX_SUPPORT_SVM
-  BX_CPU_THIS_PTR svm_extensions_bitmask = cpuid->get_svm_extensions_bitmask();
+  BX_CPU_THIS_PTR svm_extensions_bitmask = BX_CPU_THIS_PTR cpuid->get_svm_extensions_bitmask();
 #endif
+
+  BX_CPU_THIS_PTR cpuid->sanity_checks();
 #endif
 
   init_FetchDecodeTables(); // must be called after init_isa_features_bitmask()
@@ -153,6 +225,9 @@ void BX_CPU_C::initialize(void)
   }
 #endif
 
+#if BX_CPU_LEVEL >= 5
+  init_MSRs();
+
 #if BX_CONFIGURE_MSRS
   for (unsigned n=0; n < BX_MSR_MAX_INDEX; n++) {
     BX_CPU_THIS_PTR msrs[n] = 0;
@@ -162,7 +237,6 @@ void BX_CPU_C::initialize(void)
 #endif
 
   // ignore bad MSRS if user asked for it
-#if BX_CPU_LEVEL >= 5
   BX_CPU_THIS_PTR ignore_bad_msrs = SIM->get_param_bool(BXPN_IGNORE_BAD_MSRS)->get();
 #endif
 
@@ -508,8 +582,8 @@ void BX_CPU_C::register_state(void)
   for (n=0; n<8; n++) {
     snprintf(name, 128, "st%d", n);
     bx_list_c *STx = new bx_list_c(fpu, name);
-    BXRS_HEX_PARAM_FIELD(STx, exp,      the_i387.st_space[n].exp);
-    BXRS_HEX_PARAM_FIELD(STx, fraction, the_i387.st_space[n].fraction);
+    new bx_shadow_num_c(STx, "exp", &the_i387.st_space[n].signExp, BASE_HEX);
+    new bx_shadow_num_c(STx, "fraction", (Bit64u*) &the_i387.st_space[n].signif, BASE_HEX);
   }
   BXRS_DEC_PARAM_FIELD(fpu, tos, the_i387.tos);
 #endif
@@ -771,6 +845,10 @@ BX_CPU_C::~BX_CPU_C()
   delete stats;
 #endif
 
+#if BX_CPU_LEVEL >= 5
+  destroy_MSRs();
+#endif
+
   BX_INSTR_EXIT(BX_CPU_ID);
   BX_DEBUG(("Exit."));
 }
@@ -927,11 +1005,11 @@ void BX_CPU_C::reset(unsigned source)
 #endif
 
 #if BX_CPU_LEVEL >= 5
-  BX_CPU_THIS_PTR dr6.val32 = 0xFFFF0FF0;
+  BX_CPU_THIS_PTR dr6.set32(0xFFFF0FF0);
 #else
-  BX_CPU_THIS_PTR dr6.val32 = 0xFFFF1FF0;
+  BX_CPU_THIS_PTR dr6.set32(0xFFFF1FF0);
 #endif
-  BX_CPU_THIS_PTR dr7.val32 = 0x00000400;
+  BX_CPU_THIS_PTR dr7.set32(0x00000400);
 
   BX_CPU_THIS_PTR in_smm = false;
 
@@ -942,11 +1020,18 @@ void BX_CPU_C::reset(unsigned source)
     BX_CPU_THIS_PTR smbase = 0x30000; // do not change SMBASE on INIT
   }
 
-  BX_CPU_THIS_PTR cr0.set32(0x60000010);
+#if BX_SUPPORT_FPU
+  if (BX_CPUID_SUPPORT_ISA_EXTENSION(BX_ISA_X87))
+    BX_CPU_THIS_PTR cr0.set32(0x60000010);
+  else
+#else
+    BX_CPU_THIS_PTR cr0.set32(0x60000000);
+#endif
+
   // handle reserved bits
 #if BX_CPU_LEVEL == 3
   // reserved bits all set to 1 on 386
-  BX_CPU_THIS_PTR cr0.val32 |= 0x7ffffff0;
+  BX_CPU_THIS_PTR cr0.val32 |= 0x7fffffe0;
 #endif
 
 #if BX_CPU_LEVEL >= 3
@@ -1092,7 +1177,7 @@ void BX_CPU_C::reset(unsigned source)
 #endif
 
 #if BX_DEBUGGER
-  BX_CPU_THIS_PTR stop_reason = STOP_NO_REASON;
+  BX_CPU_THIS_PTR stop_reason = 0;
   BX_CPU_THIS_PTR magic_break = 0;
   BX_CPU_THIS_PTR trace = 0;
   BX_CPU_THIS_PTR trace_reg = 0;
@@ -1306,12 +1391,12 @@ void BX_CPU_C::assert_checks(void)
   }
 
   // check CR0 consistency
-  if (! check_CR0(BX_CPU_THIS_PTR cr0.val32))
+  if (! check_CR0(BX_CPU_THIS_PTR cr0.get32()))
     BX_PANIC(("assert_checks: CR0 consistency checks failed !"));
 
 #if BX_CPU_LEVEL >= 5
   // check CR4 consistency
-  if (! check_CR4(BX_CPU_THIS_PTR cr4.val32))
+  if (! check_CR4(BX_CPU_THIS_PTR cr4.get32()))
     BX_PANIC(("assert_checks: CR4 consistency checks failed !"));
 #endif
 

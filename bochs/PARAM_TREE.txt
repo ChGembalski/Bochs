@@ -22,47 +22,15 @@ cpu
   n_cores
   n_threads
   model
+  add_features
+  exclude_features
   ips
   quantum
   reset_on_triple_fault
   msrs
   cpuid_limit_winnt
   mwait_is_nop
-
-cpuid
-  level
-  family
-  model
-  stepping
-  vendor_string
   brand_string
-  mmx
-  sep
-  simd
-  sse4a
-  misaligned_sse
-  avx_f16c
-  avx_fma
-  aes
-  sha
-  movbe
-  adx
-  xsave
-  xsaveopt
-  svm
-  vmx
-  bmi
-  xop
-  fma4
-  tbm
-  apic
-  x86_64
-  1g_pages
-  pcid
-  fsgsbase
-  smep
-  smap
-  mwait
 
 memory
   standard
@@ -133,6 +101,9 @@ display
   screenmode
   vga_extension
   vga_update_interval
+  ddc_mode
+  ddc_file
+  vbe_memsize
   voodoo
     enabled
     model

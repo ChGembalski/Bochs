@@ -51,6 +51,6 @@ private:
 
 extern bx_cpuid_t *create_amd_k6_2_chomper_cpuid(BX_CPU_C *cpu);
 
-#endif // BX_CPU_LEVEL >= 5 && BX_SUPPORT_X86_64 == 0
+#endif // BX_CPU_LEVEL >= 5
 
 #endif

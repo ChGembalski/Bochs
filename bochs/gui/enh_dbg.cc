@@ -8,7 +8,7 @@
 //
 //  Modified by Bruce Ewing
 //
-//  Copyright (C) 2008-2024  The Bochs Project
+//  Copyright (C) 2008-2025  The Bochs Project
 
 #include "config.h"
 
@@ -24,8 +24,11 @@
 #include "cpu/cpu.h"
 
 extern char* disasm(const Bit8u *opcode, bool is_32, bool is_64, char *disbufptr, bxInstruction_c *i, bx_address cs_base, bx_address rip);
+extern const char *stringify_EFLAGS(Bit32u eflags, char *s);
 
 #include "enh_dbg.h"
+
+#define LOG_THIS genlog->
 
 // Match stuff
 #define MATCH_TRUE 1
@@ -37,16 +40,18 @@ extern char* disasm(const Bit8u *opcode, bool is_32, bool is_64, char *disbufptr
 
 const char* DC0txt[2] = {"P.Address","L.Address"};    // DumpMode definitions in text
 
-const char* BTxt[6] = {
+const char* BTxt[NBUTTONS] = {
   "Continue [c]",
   "Step [s]",
   "Step N [s ###]",
+  "Step Over",
   "Refresh",
   "Break [^C]",
-  "Break All"};
+//"Break All"
+};
 
-int BtnLkup[6] = {
-    CMD_CONT, CMD_STEP1, CMD_STEPN, CMD_RFRSH, CMD_BREAK
+int BtnLkup[NBUTTONS] = {
+    CMD_CONT, CMD_STEP1, CMD_STEPN, CMD_STEPOVER, CMD_RFRSH, CMD_BREAK
 };
 
 #ifdef WIN32
@@ -238,7 +243,7 @@ bx_phy_address WWP_Snapshot[16];
 bx_phy_address RWP_Snapshot[16];
 
 bool global_ini;
-char ini_path[BX_PATHNAME_LEN];
+char ini_path[BX_PATHNAME_LEN + 16];
 char *debug_cmd;
 bool debug_cmd_ready;
 bool vgaw_refresh;
@@ -435,29 +440,8 @@ void upr(char* d)
 // create EFLAGS display for Status line
 void ShowEflags(char *buf)
 {
-    static const char *EflBName[16] = {
-        "cf", "pf", "af", "zf", "sf", "tf", "if", "df", "of", "nt", "rf", "vm", "ac", "vif", "vip", "id"
-    };
-    static const int EflBNameLen[16] = {
-        2,2,2,2,2,2,2,2,2,2,2,2,2,3,3,2
-    };
-    static const int EflBitVal[16] = {
-        1, 4, 0x10, 0x40, 0x80, 0x100, 0x200, 0x400, 0x800, 0x4000, 0x10000, 0x20000, 0x40000, 0x80000, 0x100000, 0x200000
-    };
-
     Bit32u Efl = (Bit32u) rV[EFL_Rnum];
-    int i = 16;
-    char *cp = buf + 6;
-
-    sprintf(buf,"IOPL=%1u", (Efl & 0x3000) >> 12);
-    while (--i >= 0)
-    {
-        *(cp++)= ' ';
-        strcpy (cp, EflBName[i]);       // copy the name of the bitflag
-        if ((Efl & EflBitVal[i]) != 0)  // if the bit is set, put the name in uppercase
-            upr(cp);
-        cp += EflBNameLen[i];
-    }
+    stringify_EFLAGS(Efl, buf);
 }
 
 // change the display on the status line if anything has changed
@@ -527,7 +511,7 @@ bool ReadBxLMem(Bit64u laddr, unsigned len, Bit8u *buf)
 }
 
 // binary conversion (and validity testing) on hex/decimal char string inputs
-Bit64u cvthex(char *p, Bit64u errval)
+Bit64u cvthex(const char *p, Bit64u errval)
 {
     Bit64u ret = 0;
     bool end = FALSE;
@@ -545,9 +529,9 @@ Bit64u cvthex(char *p, Bit64u errval)
     return ret;
 }
 
-Bit64u cvt64(char *nstr, bool negok)
+Bit64u cvt64(const char *nstr, bool negok)
 {
-    char *p, *s;
+    const char *p, *s;
     Bit64u ret = 0;
     bool neg = FALSE;
     p= nstr;
@@ -571,7 +555,7 @@ Bit64u cvt64(char *nstr, bool negok)
 }
 
 // "singlestep" disassembly lines from the internal debugger are sometimes ignored
-bool isSSDisasm(char *s)
+bool isSSDisasm(const char *s)
 {
     if (ignSSDisasm == FALSE)   // ignoring those lines?
         return FALSE;
@@ -811,18 +795,18 @@ int FillSSE(int LineCount)
     return (LineCount);
 }
 
+#if BX_SUPPORT_FPU
+extern double x87_to_double(Bit16u signExp, Bit64u signif);
+
 // this routine is only called if debugger already knows FPU is supported
 // -- but it might not be active
 int FillMMX(int LineCount)
 {
-    static double scale_factor = pow(2.0, -63.0);
-    int i;
-    Bit16u exp = 0;
-    Bit64u mmreg = 0;
     bx_param_num_c *p;
-    unsigned short exponent[8];
+    Bit16u exponent[8];
     char *cols[3];
     char fputxt[60];
+    int i;
 
     cols[0] = fputxt;
     if ((rV[CR0_Rnum] & 0xc) != 0)  // TS or EM flags in CR0 temporarily disable MMX/FPU/SSE
@@ -838,35 +822,24 @@ int FillMMX(int LineCount)
     cols[2] = fputxt + 32;
     strcpy (fputxt, "MM0-ST0");
     strcpy (fputxt + 18, " : ");
-    i = 7;
     for (i = 0; i < 8; i++)
     {
         fputxt[2] = i + '0';
         fputxt[6] = i + '0';
         RitemToRnum[LineCount] = i + ST0_Rnum;
         p = RegObject[CurrentCPU][ST0_Rnum + i];
+        Bit64u mmreg = 0;
         if (p != NULL)
             mmreg = p->get64(); // get the value of "mmx(i)" register
-        else
-            mmreg = 0;
-        sprintf (fputxt + 10,Fmt32b[UprCase],GET32H(mmreg));
-        sprintf (fputxt + 21,Fmt32b[UprCase], GET32L(mmreg));
+        sprintf (fputxt + 10, Fmt64b[UprCase], mmreg);
 
         p = RegObject[CurrentCPU][ST0_exp + i];
+        Bit16u exp = 0;
         if (p != NULL)
             exp = (Bit16u) p->get64();  // get the exponent for this FPU register
-        else
-            exp = 0;
         exponent[i] = exp;              // save each one temporarily
-        double f = pow(2.0, ((0x7fff & exp) - 0x3fff));
-        if (exp & 0x8000)
-            f = -f;
-#ifdef _MSC_VER
-        f *= (double)(signed __int64)(mmreg>>1) * scale_factor * 2;
-#else
-        f *= mmreg*scale_factor;
-#endif
-        sprintf (cols[2],"%.3e",f);
+        double f = x87_to_double(exp, mmreg);
+        sprintf (cols[2],"%.3e", f);
         InsertListRow(cols, 3, REG_WND, LineCount, 3);  // 3 cols, group 3
         ++LineCount;
     }
@@ -875,13 +848,14 @@ int FillMMX(int LineCount)
     {
         fputxt[2] = i + '0';
         RitemToRnum[LineCount] = i + ST0_exp;
-        sprintf (fputxt+10,Fmt16b[UprCase], exponent[i]);   // col1
-        sprintf (fputxt+32,"%u", exponent[i]);      // col2
-        InsertListRow(cols, 3, REG_WND, LineCount, 3);  // 3 cols, group 3
+        sprintf (fputxt+10, Fmt16b[UprCase], exponent[i]);   // col1
+        sprintf (fputxt+32,"%u", exponent[i]);               // col2
+        InsertListRow(cols, 3, REG_WND, LineCount, 3);       // 3 cols, group 3
         ++LineCount;
     }
     return LineCount;
 }
+#endif
 
 // get values of Debug registers from simulation
 int FillDebugRegs(int itemnum)
@@ -1006,6 +980,8 @@ void FillAsm(Bit64u LAddr, int MaxLines)
         }
         if (AsmLineCount >= MaxLines)       // disassembled enough lines?
             Go = FALSE;
+        if (In64Mode == FALSE && ReadAddr > 0xffffffff)
+            break;
     }
     if (ResizeColmns != FALSE)
         RedrawColumns(ASM_WND);
@@ -1232,7 +1208,7 @@ void InitRegObjects()
         while (--i >= 0)
             RegObject[cpu][i] = (bx_param_num_c *) NULL;
 
-        char pname[16];
+        char pname[20];
         sprintf (pname,"bochs.cpu%d", cpu);    // set the "cpu number" for cpu_list
         cpu_list = (bx_list_c *) SIM->get_param(pname, root_param);
 
@@ -1362,14 +1338,24 @@ void InitRegObjects()
 
 void doUpdate()
 {
+    Bit8u tmpbuffer[4096];
+
     void FillStack();
+    void RefreshDataDump(Bit8u *buffer);
+
     if (doSimuInit != FALSE)
         SpecialInit();
     // begin an autoupdate of Register and Asm windows
     LoadRegList();      // build and show ListView
     ParseBkpt();        // get the linear breakpoint list
-    if (DViewMode == VIEW_STACK)    // in stack view mode, keep the stack updated
+    if (DViewMode == VIEW_STACK) {  // in stack view mode, keep the stack updated
         FillStack();
+    } else if ((DViewMode == VIEW_MEMDUMP) && DumpInitted) {
+        RefreshDataDump(tmpbuffer);
+        if (memcmp(DataDump, tmpbuffer, 4096)) {
+            doDumpRefresh = TRUE;
+        }
+    }
     CurrentAsmLA = BX_CPU(CurrentCPU)->get_laddr(BX_SEG_REG_CS, (bx_address) rV[RIP_Rnum]);
     if (CurrentAsmLA < BottomAsmLA || CurrentAsmLA > TopAsmLA)
     {
@@ -1399,7 +1385,7 @@ void FillGDT()
     unsigned int k = (GDT_Len + 1) / 8;
     Bit8u gdtbuf[8];
     char *cols[18];
-    char gdttxt[90];
+    char gdttxt[100];
     doDumpRefresh = FALSE;
 
     Bit64u laddr = rV[GDTRnum];
@@ -1408,8 +1394,8 @@ void FillGDT()
     *gdttxt = 0;
     cols[0]= gdttxt + 1;
     cols[1]= gdttxt + 30;
-    cols[2]= gdttxt + 40;
-    cols[3]= gdttxt + 80;
+    cols[2]= gdttxt + 50;
+    cols[3]= gdttxt + 90;
     cols[4]= gdttxt;    // columns #5 to 17 are blank
     cols[5]= gdttxt;
     cols[6]= gdttxt;
@@ -1619,43 +1605,39 @@ void AddPagingLine(int LC, char *pa_lin, char *pa_phy)
 // lifted from bx_dbg_dump_table in dbg_main of the internal debugger
 void FillPAGE()
 {
-    Bit32u lin, start_lin, curlin; // show only low 32 bit
-    bx_phy_address phy;
-    Bit64u start_phy, phy64;
+    Bit64u lin, start_lin; // show only low 32 bit
+    bx_phy_address phy, start_phy; // start of a valid translation interval
+    bx_address lpf_mask = 0;
     int LineCount = 0;
-    char pa_lin[50];
-    char pa_phy[50];
     doDumpRefresh = FALSE;
 
     StartListUpdate(DUMP_WND);
-    curlin = lin = 0;   // always start at linear address 0
+
+    lin = 0;   // always start at linear address 0
+    phy = 0;
     start_lin = 1;      // force a mismatch on the first line
     start_phy = 2;
-    while (LineCount < 1024 && curlin != 0xfffff000)
-    {
-        // get translation lin -> phys, and verify mapping is legal
-        if (BX_CPU(CurrentCPU)->dbg_xlate_linear2phy(lin, &phy) != FALSE)
-        {
-            phy64 = phy;
-            if ((lin - start_lin) != (phy64 - start_phy))
-            {
-                if (start_lin != 1)
-                {
-                    sprintf (pa_lin,"0x%08X - 0x%08X",start_lin, lin - 1);
+
+    char pa_lin[50];
+    char pa_phy[50];
+
+    while(LineCount < 10000) {
+        bool valid = BX_CPU(CurrentCPU)->dbg_xlate_linear2phy(lin, &phy, &lpf_mask);
+        if(valid) {
+            if((lin - start_lin) != (phy - start_phy)) {
+                if(start_lin != 1) {
+                    sprintf (pa_lin,"0x" FMT_ADDRX64 " - 0x" FMT_ADDRX64, start_lin, lin - 1);
                     sprintf (pa_phy,"0x" FMT_LLCAPX " - 0x" FMT_LLCAPX,
                         start_phy, start_phy + (lin-1-start_lin));
                     AddPagingLine (LineCount,pa_lin,pa_phy);
                     ++LineCount;
                 }
                 start_lin = lin;
-                start_phy = phy64;
+                start_phy = phy;
             }
-        }
-        else
-        {
-            if (start_lin != 1)
-            {
-                sprintf (pa_lin,"0x%08X - 0x%08X",start_lin, lin - 1);
+        } else {
+            if(start_lin != 1) {
+                sprintf (pa_lin,"0x" FMT_ADDRX64 " - 0x" FMT_ADDRX64, start_lin, lin - 1);
                 sprintf (pa_phy,"0x" FMT_LLCAPX " - 0x" FMT_LLCAPX,
                     start_phy, start_phy + (lin-1-start_lin));
                 AddPagingLine (LineCount,pa_lin,pa_phy);
@@ -1664,12 +1646,19 @@ void FillPAGE()
             start_lin = 1;
             start_phy = 2;
         }
-        curlin = lin;
-        lin += 0x1000;  // then test the next 4K page in the loop
+
+        lin += lpf_mask;
+        if (!BX_CPU(CurrentCPU)->long64_mode() && lin >= BX_CONST64(0xfffff000)) break;
+        if (lin >= BX_CONST64(0x00007ffffffff000)) {
+            if (lin < BX_CONST64(0xfffff00000000000))
+                lin = BX_CONST64(0xfffff00000000000) - 1;
+            if (lin >= BX_CONST64(0xfffffffffffff000))
+                break;
+        }
+        lin++;
     }
-    if (start_lin != 1)     // need to output one last line?
-    {
-        sprintf (pa_lin,"0x%08X - 0x%08X", start_lin, -1);
+    if(start_lin != 1) {
+        sprintf (pa_lin,"0x" FMT_ADDRX64 " - 0x%08X", start_lin, -1);
         sprintf (pa_phy,"0x" FMT_LLCAPX " - 0x" FMT_LLCAPX,start_phy, start_phy + (lin-1-start_lin));
         AddPagingLine (LineCount,pa_lin,pa_phy);
     }
@@ -1996,7 +1985,7 @@ void FillBrkp()
 }
 
 // performs endian byteswapping the hard way, for a Data dump
-void FillDataX(char* t, char C, bool doHex)
+void FillDataX(char* t, unsigned char C, bool doHex)
 {
     char tmpbuf[40];
     char *d = tmpbuf;
@@ -2009,14 +1998,34 @@ void FillDataX(char* t, char C, bool doHex)
 
     if (doHex != FALSE)
     {
-        *d = AsciiHex[2* (unsigned char)C];
-        d[1] = AsciiHex[2* (unsigned char)C + 1];
+        *d = AsciiHex[2*C];
+        d[1] = AsciiHex[2*C + 1];
         d[2] = 0;
         if (isLittleEndian) // little endian => reverse hex digits
         {
             strcat(d,t);
             strcpy(t,d);    // so append the new bytes to the FRONT of t
         }
+    }
+}
+
+void RefreshDataDump(Bit8u *buffer)
+{
+    bool retval = TRUE;
+
+    // re-load 4k DataDump array from bochs emulated linear or physical memory
+    if (LinearDump) {
+        // cannot read linear mem across a 4K boundary -- so break the read in two
+        // -- calculate location of 4K boundary (h):
+        unsigned len = (int) DumpStart & 0xfff;
+        unsigned i = 4096 - len;
+        Bit64u h = DumpStart + i;
+        retval = ReadBxLMem(DumpStart, i, buffer);
+        if (retval != FALSE && len != 0)
+            retval = ReadBxLMem(h, len, buffer + i);
+    } else {
+        retval = bx_mem.dbg_fetch_mem(BX_CPU(CurrentCPU),
+            (bx_phy_address)DumpStart, 4096, buffer);
     }
 }
 
@@ -2029,6 +2038,9 @@ void ShowData()
     char mdtxt[200];
     char tmphex[40];
 
+    if (doDumpRefresh) {
+        RefreshDataDump((Bit8u*)DataDump);
+    }
     *mdtxt = 0;
     cols[0]= mdtxt + 1;     // the amount of storage needed for each column is complicated
     cols[1]= mdtxt + 20;
@@ -2544,7 +2556,7 @@ void doFind()
 
         // Try ascii for additional matches and selected lines
         Select = TRUE;          // this loop, only add selected lines to the display
-        by = strlen(tmpcb);
+        by = (int)strlen(tmpcb);
         for(i = 0, L = 0; i < 4096; i += 16, L++)
         {
             if (by != 0 && FindHex((unsigned char *)DataDump + i,16,(unsigned char *)tmpcb,by))
@@ -2553,11 +2565,27 @@ void doFind()
     }
 }
 
+void doStepOver()
+{
+    // can't run sim until everything is ready
+    if (AtBreak == FALSE || debug_cmd_ready != FALSE)
+        return;
+
+    // The VGAW *MUST* be refreshed periodically -- it's best to use the timer.
+    // Which means that the sim cannot be directly run from this msglp thread.
+    *debug_cmd = 'p';   // send a fake "continue" command to the internal debugger
+    debug_cmd[1] = 0;
+    debug_cmd_ready = TRUE;
+    AtBreak = FALSE;
+    StatusChange = TRUE;
+}
+
 void doStepN()
 {
     // can't run sim until everything is ready
     if (AtBreak == FALSE || debug_cmd_ready != FALSE)
         return;
+
     sprintf (tmpcb,"%d",PrevStepNSize);
     if (AskText("Singlestep N times","Number of steps (use 0x for hex):",tmpcb) == FALSE)
         return;
@@ -3007,15 +3035,7 @@ int HotKey (int ww, int Alt, int Shift, int Control)
             break;
 
         case VK_F8:
-                // can't continue until everything is ready
-            if (AtBreak != FALSE && debug_cmd_ready == FALSE)
-            {
-                *debug_cmd = 'p';   // send a fake "proceed" command to the internal debugger
-                debug_cmd[1] = 0;
-                debug_cmd_ready = TRUE;
-                AtBreak = FALSE;
-                StatusChange = TRUE;
-            }
+            doStepOver();
             break;
 
         case VK_F11:
@@ -3121,6 +3141,10 @@ void ActivateMenuItem (int cmd)
 
         case CMD_STEPN: // step N
             doStepN();
+            break;
+
+        case CMD_STEPOVER:
+            doStepOver();
             break;
 
         case CMD_BREAK: // break/stop the sim
@@ -3456,25 +3480,6 @@ static size_t strip_whitespace(char *s)
   return ptr;
 }
 
-static void get_bxshare_path(char *path)
-{
-  const char *varptr = NULL;
-
-#if BX_HAVE_GETENV
-  varptr = getenv("BXSHARE");
-#endif
-  if (varptr != NULL) {
-    sprintf(path, "%s", varptr);
-  } else {
-    varptr = get_builtin_variable("BXSHARE");
-    if (varptr != NULL) {
-      sprintf(path, "%s", varptr);
-    } else {
-      strcpy(path, ".");
-    }
-  }
-}
-
 void ReadSettings()
 {
   FILE *fd = NULL;
@@ -3492,6 +3497,9 @@ void ReadSettings()
   if (fd == NULL) {
     fd = fopen("bx_enh_dbg.ini", "r");
     if (fd == NULL) return;
+    BX_INFO(("Reading gui debugger settings from local ini file"));
+  } else {
+    BX_INFO(("Reading gui debugger settings from '%s'", ini_path));
   }
   do {
     ret = fgets(line, sizeof(line)-1, fd);
@@ -3555,7 +3563,7 @@ void ReadSettings()
           DumpAlign = (1 << DumpWSIndex);
           PrevDAD = 0;
         } else if (!strcmp(param, "DockOrder")) {
-          DockOrder = strtoul(val, NULL, 16);
+          DockOrder = (short)strtoul(val, NULL, 16);
         } else if ((len1 == 15) && !strncmp(param, "ListWidthPix[", 13) && (param[14] == ']')) {
           if ((param[13] < '0') || (param[13] > '2')) {
             fprintf(stderr, "bx_enh_dbg.ini: invalid index for option SeeReg[x]\n");
@@ -3579,10 +3587,14 @@ void WriteSettings()
 
   if (global_ini) {
     fd = fopen(ini_path, "w");
-  } else {
-    fd = fopen("bx_enh_dbg.ini", "w");
   }
-  if (fd == NULL) return;
+  if (fd == NULL) {
+    fd = fopen("bx_enh_dbg.ini", "w");
+    if (fd == NULL) return;
+    BX_INFO(("Saving gui debugger settings to local ini file"));
+  } else {
+    BX_INFO(("Saving gui debugger settings to '%s'", ini_path));
+  }
   fprintf(fd, "# bx_enh_dbg_ini\n");
   for (i = 0; i < 8; i++) {
     fprintf(fd, "SeeReg[%d] = %s\n", i, SeeReg[i] ? "TRUE" : "FALSE");

@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2001-2024  The Bochs Project
+//  Copyright (C) 2001-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -27,7 +27,6 @@
 #include "param_names.h"
 #include "keymap.h"
 #include "iodev.h"
-#include "enh_dbg.h"
 #if BX_WITH_X11
 
 #define XK_PUBLISHING
@@ -606,7 +605,7 @@ void bx_x_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   progname = argv[0];
   console.present = 1;
 
-#if (BX_DEBUGGER && BX_DEBUGGER_GUI) || BX_SUPPORT_SOUNDLOW || BX_SUPPORT_VOODOO
+#if (BX_DEBUGGER && BX_DEBUGGER_GUI) || BX_SUPPORT_SOUNDLOW || BX_SUPPORT_VOODOO || BX_USB_DEBUGGER
   // This is only necessary when GTK+ and Xlib are sharing the same
   // connection. XInitThreads() must finish before any calls to GTK+
   // or Xlib are made.
@@ -885,14 +884,14 @@ void bx_x_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   // loads keymap for x11
   x11_use_kbd_mapping = SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get();
   if (x11_use_kbd_mapping) {
-    bx_keymap.loadKeymap(convertStringToXKeysym);
+    bx_keymap.loadKeymap("x11", convertStringToXKeysym);
   }
 
 #if BX_DEBUGGER && BX_DEBUGGER_GUI
   // initialize debugger gui
-  if (enh_dbg_gui_enabled) {
+  if (bx_dbg.debugger_active && bx_dbg.debugger_gui) {
     SIM->set_debug_gui(1);
-    init_debug_dialog(enh_dbg_global_ini);
+    init_debug_dialog(bx_dbg.dbg_gui_globalini);
   }
 #endif
 
@@ -927,6 +926,9 @@ void bx_x_gui_c::specific_init(int argc, char **argv, unsigned headerbar_y)
   new_gfx_api = 1;
   new_text_api = 1;
   dialog_caps |= (BX_GUI_DLG_USER | BX_GUI_DLG_SNAPSHOT | BX_GUI_DLG_CDROM);
+#if BX_USB_DEBUGGER
+  dialog_caps |= BX_GUI_DLG_USB;
+#endif
 }
 
 void bx_x_gui_c::handle_events(void)
@@ -953,7 +955,7 @@ void bx_x_gui_c::handle_events(void)
     XNextEvent(bx_x_display, &report);
     current_z = 0;
 
-    if (gui_nokeyrepeat && (report.type == KeyRelease) && X11_KeyRepeat(bx_x_display, &report)) {
+    if (gui_opts.nokeyrepeat && (report.type == KeyRelease) && X11_KeyRepeat(bx_x_display, &report)) {
       return;
     }
 
@@ -1705,7 +1707,7 @@ void bx_x_gui_c::set_mouse_mode_absxy(bool mode)
 void bx_x_gui_c::show_ips(Bit32u ips_count)
 {
   if (x11_info_msg_counter == 0) {
-    if (!x11_ips_update && !gui_hide_ips) {
+    if (!x11_ips_update && !gui_opts.hide_ips) {
       ips_count /= 1000;
       sprintf(x11_ips_text, "IPS: %u.%3.3uM", ips_count / 1000, ips_count % 1000);
       x11_ips_update = 1;
@@ -1811,6 +1813,8 @@ void bx_x_gui_c::xkeypress(KeySym keysym, int press_release)
     mouse_toggle = mouse_toggle_check(BX_MT_KEY_F10, !press_release);
   } else if (keysym == XK_F12) {
     mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_F12, !press_release);
+  } else if (keysym == XK_g) {
+    mouse_toggle = bx_gui->mouse_toggle_check(BX_MT_KEY_G, !press_release);
   }
   if (mouse_toggle) {
     toggle_mouse_enable();
@@ -2593,9 +2597,11 @@ int x11_ask_dialog(BxEvent *event)
   }
   if (mode == BX_LOG_DLG_ASK) {
 #if BX_DEBUGGER || BX_GDBSTUB
-    buttons.btn[i].label = "Debugger";
-    buttons.btn[i].code = BX_LOG_ASK_CHOICE_ENTER_DEBUG;
-    i++;
+    if (bx_dbg.debugger_active) {
+      buttons.btn[i].label = "Debugger";
+      buttons.btn[i].code = BX_LOG_ASK_CHOICE_ENTER_DEBUG;
+      i++;
+    }
 #endif
 #if BX_HAVE_ABORT
     buttons.btn[i].label = "Dump Core";

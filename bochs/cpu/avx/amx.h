@@ -51,6 +51,7 @@ struct AMX {
   bool tile_valid(unsigned tile_num) const { return tilecfg[tile_num].rows != 0; }
   unsigned tile_num_rows(unsigned tile_num) const { return tilecfg[tile_num].rows; }
   unsigned tile_bytes_per_row(unsigned tile_num) const { return tilecfg[tile_num].bytes_per_row; }
+  unsigned tile_dword_elements_per_row(unsigned tile_num) const { return tilecfg[tile_num].bytes_per_row / 4; }
 
   bool is_tile_used(unsigned tile_num) const { return tile_use_tracker & (1 << tile_num); }
   void set_tile_used(unsigned tile_num) { tile_use_tracker |= (1 << tile_num); }
@@ -69,6 +70,12 @@ struct AMX {
     {
       for (unsigned i=limit; i < 16; i++)
         row[nrow].vmm32u(i) = 0;
+    }
+
+    void zero_out_of_range_columns(unsigned limit)
+    {
+      for (unsigned i=0; i < BX_TILE_MAX_ROWS; i++)
+        zero_upper_row_data32(i, limit);
     }
 
     // clear 0..nrows

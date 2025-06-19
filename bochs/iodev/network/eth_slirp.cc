@@ -17,7 +17,8 @@
 //  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 //
 
-// eth_slirp.cc  - Bochs port of Qemu's slirp implementation
+// eth_slirp.cc  - Bochs port of Qemu's slirp implementation (updated from libslirp 4.8.0)
+// Portion of this software comes with the following license: BSD-3-Clause
 
 #define BX_PLUGGABLE
 
@@ -33,13 +34,37 @@
 
 #if BX_NETWORKING && BX_NETMOD_SLIRP
 
+#ifdef _WIN32
+/* as defined in sdkddkver.h */
+#ifdef _WIN32_WINNT
+#if _WIN32_WINNT < 0x0601
+#undef _WIN32_WINNT
+#endif
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601 /* Windows 7 */
+#endif
+/* reduces the number of implicitly included headers */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#endif
+
+#if defined(_MSC_VER)
+#define CPP_STD _MSVC_LANG
+#else
+#define CPP_STD __cplusplus
+#endif
+
 #if BX_HAVE_LIBSLIRP
 #include <slirp/libslirp.h>
-#include <signal.h>
+#ifdef __MINGW32__
+typedef ssize_t slirp_ssize_t;
+#endif
 #else
-#include "slirp/slirp.h"
 #include "slirp/libslirp.h"
 #endif
+#include <signal.h>
 
 static unsigned int bx_slirp_instances = 0;
 
@@ -70,8 +95,8 @@ public:
                       logfunctions *netdev, const char *script);
   virtual ~bx_slirp_pktmover_c();
   void sendpkt(void *buf, unsigned io_len);
-  void receive(void *pkt, unsigned pkt_len);
-  int can_receive(void);
+  slirp_ssize_t receive(void *pkt, unsigned pkt_len);
+  void slirp_msg(bool error, const char *msg);
 private:
   Slirp *slirp;
   unsigned netdev_speed;
@@ -83,9 +108,12 @@ private:
   char *smb_export, *smb_tmpdir;
   struct in_addr smb_srv;
 #endif
+  bool slirp_logging;
+  Bit8u debug_switches;
   char *pktlog_fn;
   FILE *pktlog_txt;
-  bool slirp_logging;
+
+  logfunctions *slirplog;
 
   bool parse_slirp_conf(const char *conf);
   static void rx_timer_handler(void *);
@@ -111,17 +139,77 @@ protected:
 } bx_slirp_match;
 
 
-#if BX_HAVE_LIBSLIRP
-static slirp_ssize_t send_packet(const void *buf, size_t len, void *opaque);
+static slirp_ssize_t send_packet(const void *buf, size_t len, void *opaque)
+{
+  bx_slirp_pktmover_c *class_ptr = (bx_slirp_pktmover_c *)opaque;
+
+  return class_ptr->receive((void*)buf, (unsigned)len);
+}
 
 static void guest_error(const char *msg, void *opaque)
 {
-  fprintf(stderr, "guest_error\n");
+  char errmsg[512];
+
+  sprintf(errmsg, "guest error: %s", msg);
+  ((bx_slirp_pktmover_c*)opaque)->slirp_msg(true, errmsg);
 }
 
 static int64_t clock_get_ns(void *opaque)
 {
   return bx_pc_system.time_usec() * 1000;
+}
+
+struct timer {
+    SlirpTimerId id;
+    void *cb_opaque;
+    int64_t expire;
+    struct timer *next;
+};
+
+static struct timer *timer_queue;
+
+static void *timer_new_opaque(SlirpTimerId id, void *cb_opaque, void *opaque)
+{
+  ((bx_slirp_pktmover_c*)opaque)->slirp_msg(false, "timer_new_opaque()");
+  struct timer *new_timer = new timer;
+  new_timer->id = id;
+  new_timer->cb_opaque = cb_opaque;
+  new_timer->next = NULL;
+  return new_timer;
+}
+
+static void timer_free(void *_timer, void *opaque)
+{
+  ((bx_slirp_pktmover_c*)opaque)->slirp_msg(false, "timer_free()");
+  struct timer *timer1 = (timer*)_timer;
+  struct timer **t;
+
+  for (t = &timer_queue; *t != NULL; *t = (*t)->next) {
+    if (*t == timer1) {
+      /* Not expired yet, drop it */
+      *t = timer1->next;
+      break;
+    }
+  }
+
+  delete [] timer1;
+}
+
+static void timer_mod(void *_timer, int64_t expire_time, void *opaque)
+{
+  ((bx_slirp_pktmover_c*)opaque)->slirp_msg(false, "timer_mod()");
+  struct timer *timer1 = (timer*)_timer;
+  struct timer **t;
+
+  timer1->expire = expire_time * 1000 * 1000;
+
+  for (t = &timer_queue; *t != NULL; *t = (*t)->next) {
+    if (expire_time < (*t)->expire)
+      break;
+  }
+
+  timer1->next = *t;
+  *t = timer1;
 }
 
 static int npoll;
@@ -141,14 +229,20 @@ static void notify(void *opaque)
   // Nothing here yet
 }
 
+#if CPP_STD >= 201703
 static struct SlirpCb callbacks = {
     .send_packet = send_packet,
     .guest_error = guest_error,
     .clock_get_ns = clock_get_ns,
+    .timer_free = timer_free,
+    .timer_mod = timer_mod,
     .register_poll_fd = register_poll_fd,
     .unregister_poll_fd = unregister_poll_fd,
     .notify = notify,
+    .timer_new_opaque = timer_new_opaque,
 };
+#else
+static struct SlirpCb callbacks;
 #endif
 
 bx_slirp_pktmover_c::bx_slirp_pktmover_c(const char *netif,
@@ -158,24 +252,29 @@ bx_slirp_pktmover_c::bx_slirp_pktmover_c(const char *netif,
                                          logfunctions *netdev,
                                          const char *script)
 {
-#if !BX_HAVE_LIBSLIRP
-  logfunctions *slirplog;
   char prefix[10];
-#endif
 
   slirp = NULL;
   pktlog_fn = NULL;
   n_hostfwd = 0;
+#if CPP_STD < 201703
+  callbacks.send_packet = send_packet,
+  callbacks.guest_error = guest_error,
+  callbacks.clock_get_ns = clock_get_ns,
+  callbacks.timer_free = timer_free,
+  callbacks.timer_mod = timer_mod,
+  callbacks.register_poll_fd = register_poll_fd,
+  callbacks.unregister_poll_fd = unregister_poll_fd,
+  callbacks.notify = notify,
+  callbacks.timer_new_opaque = timer_new_opaque,
+#endif
   /* default settings according to historic slirp */
   memset(&config, 0, sizeof(config));
-#if BX_HAVE_LIBSLIRP
   config.version = 4;
   config.in_enabled = true;
   config.disable_host_loopback = false;
   config.enable_emu = false;
   config.disable_dns = false;
-  config.tftp_server_name = "tftp";
-#endif
   config.restricted = false;
   config.vnetwork.s_addr = htonl(0x0a000200);    /* 10.0.2.0 */
   config.vnetmask.s_addr = htonl(0xffffff00);    /* 255.255.255.0 */
@@ -183,6 +282,10 @@ bx_slirp_pktmover_c::bx_slirp_pktmover_c(const char *netif,
   config.vdhcp_start.s_addr = htonl(0x0a00020f); /* 10.0.2.15 */
   config.vnameserver.s_addr = htonl(0x0a000203); /* 10.0.2.3 */
   config.tftp_path = netif;
+  config.vdomainname = "local";
+  /* enable IPv6 support by default using QEMU settings */
+  config.in6_enabled = true;
+  inet_pton(AF_INET6, "fec0::", &config.vprefix_addr6);
 #ifndef WIN32
   smb_export = NULL;
   smb_tmpdir = NULL;
@@ -193,10 +296,8 @@ bx_slirp_pktmover_c::bx_slirp_pktmover_c(const char *netif,
 #if BX_HAVE_LIBSLIRP
   BX_INFO(("slirp network driver (libslirp version %s)", slirp_version_string()));
 #else
-  if (sizeof(struct arphdr) != 28) {
-    BX_FATAL(("system error: invalid ARP header structure size"));
-  }
-  BX_INFO(("slirp network driver"));
+  BX_INFO(("slirp network driver (based on libslirp version %s)", slirp_version_string()));
+  debug_switches = 0;
 #endif
 
   this->rxh   = rxh;
@@ -217,14 +318,24 @@ bx_slirp_pktmover_c::bx_slirp_pktmover_c(const char *netif,
     if (!parse_slirp_conf(script)) {
       BX_ERROR(("reading slirp config failed"));
     }
+    if (config.in6_enabled) {
+      BX_INFO(("IPv6 enabled (using default QEMU settings)"));
+      config.vprefix_len = 64;
+      config.vhost6 = config.vprefix_addr6;
+      config.vhost6.s6_addr[15] |= 2;
+      config.vnameserver6 = config.vprefix_addr6;
+      config.vnameserver6.s6_addr[15] |= 3;
+    }
   }
-#if BX_HAVE_LIBSLIRP
-  slirp = slirp_new(&config, &callbacks, this);
-#else
   slirplog = new logfunctions();
   sprintf(prefix, "SLIRP%d", bx_slirp_instances);
   slirplog->put(prefix);
-  slirp = slirp_new(&config, this, slirplog);
+  slirp = slirp_new(&config, &callbacks, this);
+#if !BX_HAVE_LIBSLIRP
+  if (debug_switches != 0) {
+    slirplog->setonoff(LOGLEV_DEBUG, ACT_REPORT);
+  }
+  slirp_set_logfn(slirp, slirplog, debug_switches);
 #endif
   if (n_hostfwd > 0) {
     for (int i = 0; i < n_hostfwd; i++) {
@@ -276,6 +387,7 @@ bx_slirp_pktmover_c::~bx_slirp_pktmover_c()
 #endif
     if (config.bootfile != NULL) free((void*)config.bootfile);
     if (config.vhostname != NULL) free((void*)config.vhostname);
+    if (config.tftp_server_name != NULL) free((void*)config.tftp_server_name);
     if (config.vdnssearch != NULL) {
       size_t i = 0;
       while (config.vdnssearch[i] != NULL) {
@@ -297,6 +409,31 @@ bx_slirp_pktmover_c::~bx_slirp_pktmover_c()
     }
   }
 }
+
+#if defined(WIN32)
+#if !BX_HAVE_LIBSLIRP
+#define inet_aton slirp_inet_aton
+int slirp_inet_aton(const char *cp, struct in_addr *ia);
+#else
+int inet_aton(const char *cp, struct in_addr *ia)
+{
+  uint32_t addr;
+
+#if defined(_MSC_VER)
+  if (!inet_pton(AF_INET, cp, &addr)) {
+    return 0;
+  }
+#else
+  addr = inet_addr(cp);
+#endif
+  if (addr == 0xffffffff) {
+    return 0;
+  }
+  ia->s_addr = addr;
+  return 1;
+}
+#endif
+#endif
 
 bool bx_slirp_pktmover_c::parse_slirp_conf(const char *conf)
 {
@@ -428,6 +565,21 @@ bool bx_slirp_pktmover_c::parse_slirp_conf(const char *conf)
           } else {
             BX_ERROR(("slirp: wrong format for 'pktlog'"));
           }
+        } else if (!stricmp(param, "ipv6_enabled")) {
+          config.in6_enabled = (atoi(val) != 0);
+        } else if (!stricmp(param, "ipv6_prefix")) {
+          inet_pton(AF_INET6, val, &config.vprefix_addr6);
+        } else if (!stricmp(param, "tftp_srvname")) {
+          if (len2 < 33) {
+            config.tftp_server_name = (char*)malloc(len2+1);
+            strcpy((char*)config.tftp_server_name, val);
+          } else {
+            BX_ERROR(("slirp: wrong format for 'tftp_srvname'"));
+          }
+#if !BX_HAVE_LIBSLIRP
+        } else if (!stricmp(param, "debug_switches")) {
+          debug_switches = atoi(val);
+#endif
         } else {
           BX_ERROR(("slirp: unknown option '%s'", line));
         }
@@ -452,7 +604,6 @@ void bx_slirp_pktmover_c::rx_timer_handler(void *this_ptr)
 }
 
 
-#if BX_HAVE_LIBSLIRP
 static int add_poll_cb(int fd, int events, void *opaque)
 {
     if (events & SLIRP_POLL_IN)
@@ -477,7 +628,6 @@ static int get_revents_cb(int idx, void *opaque)
         event |= SLIRP_POLL_PRI;
     return event;
 }
-#endif
 
 void bx_slirp_pktmover_c::rx_timer(void)
 {
@@ -493,39 +643,14 @@ void bx_slirp_pktmover_c::rx_timer(void)
   FD_ZERO(&rfds);
   FD_ZERO(&wfds);
   FD_ZERO(&xfds);
-#if BX_HAVE_LIBSLIRP
   slirp_pollfds_fill(slirp, &timeout, add_poll_cb, this);
-#else
-  slirp_select_fill(&nfds, &rfds, &wfds, &xfds, &timeout);
-#endif
   tv.tv_sec = 0;
   tv.tv_usec = 0;
   ret = select(nfds + 1, &rfds, &wfds, &xfds, &tv);
-#if BX_HAVE_LIBSLIRP
   slirp_pollfds_poll(slirp, (ret < 0), get_revents_cb, this);
-#else
-  slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0));
-#endif
 }
 
-int slirp_can_output(void *this_ptr)
-{
-  bx_slirp_pktmover_c *class_ptr = (bx_slirp_pktmover_c *)this_ptr;
-  return class_ptr->can_receive();
-}
-
-int bx_slirp_pktmover_c::can_receive()
-{
-  return ((this->rxstat(this->netdev) & BX_NETDEV_RXREADY) != 0);
-}
-
-void slirp_output(void *this_ptr, const Bit8u *pkt, int pkt_len)
-{
-  bx_slirp_pktmover_c *class_ptr = (bx_slirp_pktmover_c *)this_ptr;
-  class_ptr->receive((void*)pkt, pkt_len);
-}
-
-void bx_slirp_pktmover_c::receive(void *pkt, unsigned pkt_len)
+slirp_ssize_t bx_slirp_pktmover_c::receive(void *pkt, unsigned pkt_len)
 {
   if (this->rxstat(this->netdev) & BX_NETDEV_RXREADY) {
     if (pkt_len < MIN_RX_PACKET_LEN) pkt_len = MIN_RX_PACKET_LEN;
@@ -533,19 +658,12 @@ void bx_slirp_pktmover_c::receive(void *pkt, unsigned pkt_len)
       write_pktlog_txt(pktlog_txt, (const Bit8u*)pkt, pkt_len, 1);
     }
     this->rxh(this->netdev, pkt, pkt_len);
+    return pkt_len;
   } else {
     BX_ERROR(("device not ready to receive data"));
+    return -1;
   }
 }
-
-#if BX_HAVE_LIBSLIRP
-static slirp_ssize_t send_packet(const void *buf, size_t len, void *opaque)
-{
-  bx_slirp_pktmover_c *class_ptr = (bx_slirp_pktmover_c *)opaque;
-  class_ptr->receive((void*)buf, len);
-  return len;
-}
-#endif
 
 #if !defined(_WIN32) && !defined(__CYGWIN__)
 
@@ -680,7 +798,7 @@ static int get_str_sep(char *buf, int buf_size, const char **pp, int sep)
     p1 = strchr(p, sep);
     if (!p1)
         return -1;
-    len = p1 - p;
+    len = (int)(p1 - p);
     p1++;
     if (buf_size > 0) {
         if (len > buf_size - 1)
@@ -755,6 +873,17 @@ int bx_slirp_pktmover_c::slirp_hostfwd(Slirp *s, const char *redir_str, int lega
  fail_syntax:
     BX_ERROR(("invalid host forwarding rule '%s'", redir_str));
     return -1;
+}
+
+#undef LOG_THIS
+#define LOG_THIS  slirplog->
+
+void bx_slirp_pktmover_c::slirp_msg(bool error, const char *msg)
+{
+  if (error)
+    BX_ERROR(("%s", msg));
+  else
+    BX_INFO(("%s", msg));
 }
 
 #endif /* if BX_NETWORKING && BX_NETMOD_SLIRP */

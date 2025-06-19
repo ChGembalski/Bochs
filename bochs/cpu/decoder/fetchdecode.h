@@ -62,24 +62,12 @@ enum BxDecodeError {
 // according to instruction prefixes)
 //
 
-BX_CPP_INLINE Bit16u FetchWORD(const Bit8u *iptr)
-{
-   return ReadHostWordFromLittleEndian((Bit16u*)iptr);
-}
+#define FetchDWORD(iptr) ReadHostDWordFromLittleEndian((Bit32u*)(iptr))
+#define FetchWORD(iptr) ReadHostWordFromLittleEndian((Bit16u*)(iptr))
+#define FetchQWORD(iptr) ReadHostQWordFromLittleEndian((Bit64u*)(iptr));
 
-BX_CPP_INLINE Bit32u FetchDWORD(const Bit8u *iptr)
-{
-   return ReadHostDWordFromLittleEndian((Bit32u*)iptr);
-}
-
-#if BX_SUPPORT_X86_64
-BX_CPP_INLINE Bit64u FetchQWORD(const Bit8u *iptr)
-{
-   return ReadHostQWordFromLittleEndian((Bit64u*)iptr);
-}
-#endif
-
-#define BX_PREPARE_AMX               (0x400)
+#define BX_PREPARE_AMX               (0x800)
+#define BX_EVEX_VL_IGNORE            (0x400 | BX_PREPARE_EVEX)
 #define BX_PREPARE_EVEX_NO_BROADCAST (0x200 | BX_PREPARE_EVEX)
 #define BX_PREPARE_EVEX_NO_SAE       (0x100 | BX_PREPARE_EVEX)
 #define BX_PREPARE_EVEX              (0x80)
@@ -270,7 +258,6 @@ const Bit8u OP_Qq = BX_FORM_SRC(BX_MMX_REG, BX_SRC_RM);
 
 const Bit8u OP_Vdq = BX_FORM_SRC(BX_VMM_REG, BX_SRC_NNN);
 const Bit8u OP_Vqq = BX_FORM_SRC(BX_VMM_REG, BX_SRC_NNN);
-const Bit8u OP_Vbf16 = BX_FORM_SRC(BX_VMM_REG, BX_SRC_NNN);
 const Bit8u OP_Vph = BX_FORM_SRC(BX_VMM_REG, BX_SRC_NNN);
 const Bit8u OP_Vps = BX_FORM_SRC(BX_VMM_REG, BX_SRC_NNN);
 const Bit8u OP_Vpd = BX_FORM_SRC(BX_VMM_REG, BX_SRC_NNN);
@@ -285,7 +272,6 @@ const Bit8u OP_Wd = BX_FORM_SRC(BX_VMM_SCALAR_DWORD, BX_SRC_VECTOR_RM);
 const Bit8u OP_Ww = BX_FORM_SRC(BX_VMM_SCALAR_WORD, BX_SRC_VECTOR_RM);
 const Bit8u OP_Wb = BX_FORM_SRC(BX_VMM_SCALAR_BYTE, BX_SRC_VECTOR_RM);
 const Bit8u OP_Wdq = BX_FORM_SRC(BX_VMM_FULL_VECTOR, BX_SRC_VECTOR_RM);
-const Bit8u OP_Wbf16 = BX_FORM_SRC(BX_VMM_FULL_VECTOR, BX_SRC_VECTOR_RM);
 const Bit8u OP_Wph = BX_FORM_SRC(BX_VMM_FULL_VECTOR, BX_SRC_VECTOR_RM);
 const Bit8u OP_Wps = BX_FORM_SRC(BX_VMM_FULL_VECTOR, BX_SRC_VECTOR_RM);
 const Bit8u OP_Wpd = BX_FORM_SRC(BX_VMM_FULL_VECTOR, BX_SRC_VECTOR_RM);
@@ -403,7 +389,7 @@ SSSS SSoo SEVO EEEA R
  1 1 EE        LL 0 S
  6 6 FF        50   T
      II        1/
-	 XX        21
+     XX        21
 */
 
 const unsigned OS64_OFFSET = 23;

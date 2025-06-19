@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2021  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,10 @@
 #include "bochs.h"
 #include "gui.h"
 #include "keymap.h"
+
+#if defined(__APPLE__)
+#include <libgen.h>
+#endif
 
 // Table of bochs "BX_KEY_*" symbols
 // the table must be in BX_KEY_* order
@@ -96,10 +100,46 @@ bx_keymap_c::~bx_keymap_c(void)
     keymapCount = 0;
 }
 
-void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*))
+#if defined(WIN32) || defined(__ANDROID__) || defined(__APPLE__)
+static char* basename(char *path)
 {
+  char *ptr;
+
+  ptr = strrchr(path, '/');
+  if (ptr == NULL) {
+    ptr = strrchr(path, 92);
+    if (ptr == NULL) {
+      ptr = path;
+    } else {
+      ptr++;
+    }
+  } else {
+    ptr++;
+  }
+  return ptr;
+}
+#endif
+
+void bx_keymap_c::loadKeymap(const char *prefix, Bit32u stringToSymbol(const char*))
+{
+  char keymap_file[BX_PATHNAME_LEN], bxshare[BX_PATHNAME_LEN], lang[3];
+
   if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-    loadKeymap(stringToSymbol, SIM->get_param_string(BXPN_KBD_KEYMAP)->getptr());
+    strcpy(keymap_file, SIM->get_param_string(BXPN_KBD_KEYMAP)->getptr());
+    if (strlen(keymap_file) == 2) {
+      strcpy(lang, keymap_file);
+      get_bxshare_path(bxshare);
+      sprintf(keymap_file, "%s" DIRECTORY_SEPARATOR "keymaps" DIRECTORY_SEPARATOR "%s-pc-%s.map",
+              bxshare, prefix, lang);
+    } else {
+      char *prefix2 = new char[strlen(prefix) + 2];
+      sprintf(prefix2, "%s-", prefix);
+      if (strncmp(prefix2, basename(keymap_file), strlen(prefix2))) {
+        BX_PANIC(("Keymap file not designed for this display library"));
+      }
+      delete [] prefix2;
+    }
+    loadKeymap(stringToSymbol, keymap_file);
   }
 }
 

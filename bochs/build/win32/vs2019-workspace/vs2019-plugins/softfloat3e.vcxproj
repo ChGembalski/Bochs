@@ -217,7 +217,7 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\cpu\softfloat3e\8086-SSE\specialize.h" />
+    <ClInclude Include="..\cpu\softfloat3e\include\specialize.h" />
     <ClInclude Include="..\cpu\softfloat3e\include\internals.h" />
     <ClInclude Include="..\cpu\softfloat3e\include\opts-GCC.h" />
     <ClInclude Include="..\cpu\softfloat3e\include\primitives.h" />
@@ -265,7 +265,6 @@
     <ClCompile Include="..\cpu\softfloat3e\f128_mul.c" />
     <ClCompile Include="..\cpu\softfloat3e\f128_mulAdd.c" />
     <ClCompile Include="..\cpu\softfloat3e\f128_roundToInt.c" />
-    <ClCompile Include="..\cpu\softfloat3e\f128_sqrt.c" />
     <ClCompile Include="..\cpu\softfloat3e\f128_to_extF80.c" />
     <ClCompile Include="..\cpu\softfloat3e\f128_to_f32.c" />
     <ClCompile Include="..\cpu\softfloat3e\f128_to_f64.c" />
@@ -283,6 +282,8 @@
     <ClCompile Include="..\cpu\softfloat3e\f16_div.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_getExp.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_getMant.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_max.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_min.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_minmax.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_mul.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_mulAdd.c" />
@@ -290,16 +291,24 @@
     <ClCompile Include="..\cpu\softfloat3e\f16_roundToInt.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_sqrt.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_extF80.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_i16.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_i16_r_minMag.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_i8.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_i8_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_f32.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_f64.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_i32.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_i32_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_i64.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_i64_r_minMag.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_ui16.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_ui16_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_ui32.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_ui32_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_ui64.c" />
     <ClCompile Include="..\cpu\softfloat3e\f16_to_ui64_r_minMag.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_ui8.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f16_to_ui8_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_addsub.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_class.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_compare.c" />
@@ -307,6 +316,8 @@
     <ClCompile Include="..\cpu\softfloat3e\f32_frc.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_getExp.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_getMant.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f32_max.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f32_min.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_minmax.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_mul.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_mulAdd.c" />
@@ -322,10 +333,14 @@
     <ClCompile Include="..\cpu\softfloat3e\f32_to_i32_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_to_i64.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_to_i64_r_minMag.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f32_to_i8.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f32_to_i8_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_to_ui32.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_to_ui32_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_to_ui64.c" />
     <ClCompile Include="..\cpu\softfloat3e\f32_to_ui64_r_minMag.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f32_to_ui8.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f32_to_ui8_r_minMag.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_addsub.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_class.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_compare.c" />
@@ -333,6 +348,8 @@
     <ClCompile Include="..\cpu\softfloat3e\f64_frc.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_getExp.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_getMant.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f64_max.c" />
+    <ClCompile Include="..\cpu\softfloat3e\f64_min.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_minmax.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_mul.c" />
     <ClCompile Include="..\cpu\softfloat3e\f64_mulAdd.c" />
@@ -401,10 +418,14 @@
     <ClCompile Include="..\cpu\softfloat3e\s_roundPackToF16.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_roundPackToF32.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_roundPackToF64.c" />
+    <ClCompile Include="..\cpu\softfloat3e\s_roundToI16.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_roundToI32.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_roundToI64.c" />
+    <ClCompile Include="..\cpu\softfloat3e\s_roundToI8.c" />
+    <ClCompile Include="..\cpu\softfloat3e\s_roundToUI16.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_roundToUI32.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_roundToUI64.c" />
+    <ClCompile Include="..\cpu\softfloat3e\s_roundToUI8.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_shiftRightJam128.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_shiftRightJam128Extra.c" />
     <ClCompile Include="..\cpu\softfloat3e\s_shiftRightJam256M.c" />

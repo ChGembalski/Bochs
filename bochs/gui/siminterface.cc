@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2002-2024  The Bochs Project
+//  Copyright (C) 2002-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -28,6 +28,9 @@
 #include "iodev.h"
 #include "bx_debug/debug.h"
 #include "virt_timer.h"
+#if BX_USB_DEBUGGER
+#include "gui/usb_debug.h"
+#endif
 
 bx_simulator_interface_c *SIM = NULL;
 logfunctions *siminterface_log = NULL;
@@ -69,9 +72,6 @@ class bx_real_sim_c : public bx_simulator_interface_c {
   const char *registered_ci_name;
   config_interface_callback_t ci_callback;
   void *ci_callback_data;
-#if BX_USE_WIN32USBDEBUG
-  usb_interface_callback_t usbi_callback;
-#endif
   rt_conf_entry_t *rt_conf_entries;
   addon_option_t *addon_options;
   bool init_done;
@@ -169,6 +169,7 @@ public:
   virtual bool is_pci_device(const char *name);
   virtual bool is_agp_device(const char *name);
 #if BX_DEBUGGER
+  virtual bool debugger_active() {return bx_dbg.debugger_active;}
   virtual void debug_break();
   virtual void debug_interpret_cmd(char *cmd);
   virtual char *debug_get_next_command();
@@ -179,9 +180,10 @@ public:
     config_interface_callback_t callback,
     void *userdata);
   virtual int configuration_interface(const char* name, ci_command_t command);
-#if BX_USE_WIN32USBDEBUG
-  virtual void register_usb_interface(usb_interface_callback_t callback, void *data);
-  virtual int usb_config_interface(int type, int wParam, int lParam);
+#if BX_USB_DEBUGGER
+  virtual void register_usb_debug_type(int type);
+  virtual void usb_debug_trigger(int type, int trigger, Bit64u param0, int param1, int param2);
+  virtual int usb_debug_interface(int type, Bit64u param0, int param1, int param2);
 #endif
   virtual int begin_simulation(int argc, char *argv[]);
   virtual int register_runtime_config_handler(void *dev, rt_conf_handler_t handler);
@@ -571,7 +573,8 @@ const char *floppy_devtype_names[] = { "none", "5.25\" 360K", "5.25\" 1.2M", "3.
 const char *floppy_type_names[] = { "none", "1.2M", "1.44M", "2.88M", "720K", "360K", "160K", "180K", "320K", "auto", NULL };
 int floppy_type_n_sectors[] = { -1, 80*2*15, 80*2*18, 80*2*36, 80*2*9, 40*2*9, 40*1*8, 40*1*9, 40*2*8, -1 };
 const char *media_status_names[] = { "ejected", "inserted", NULL };
-const char *bochs_bootdisk_names[] = { "none", "floppy", "disk","cdrom", "network", NULL };
+
+const char *bochs_bootdisk_names[] = { "none", "floppy", "disk", "cdrom", "", "usb", "network", NULL };
 
 void bx_real_sim_c::set_notify_callback(bxevent_handler func, void *arg)
 {
@@ -725,12 +728,7 @@ void bx_real_sim_c::periodic()
   sim_to_ci_event (&tick);
   if (tick.retcode < 0) {
     BX_INFO(("Bochs thread has been asked to quit."));
-#if !BX_DEBUGGER
-    bx_atexit();
-    quit_sim(0);
-#else
-    bx_dbg_exit(0);
-#endif
+    bx_exit(0);
   }
   static int refresh_counter = 0;
   if (++refresh_counter == 50) {
@@ -931,11 +929,11 @@ int bx_real_sim_c::configuration_interface(const char *ignore, ci_command_t comm
     BX_PANIC(("no configuration interface was loaded"));
     return -1;
   }
-  if (!strcmp(registered_ci_name, "wx"))
+  if (!strcmp(registered_ci_name, "wx")) {
     wxsel = 1;
-  else
+  } else {
     wxsel = 0;
-  bx_debug_gui = wxsel;
+  }
   if (command == CI_START) {
     ci_started = 1;
   } else if (command == CI_SHUTDOWN) {
@@ -948,23 +946,26 @@ int bx_real_sim_c::configuration_interface(const char *ignore, ci_command_t comm
   return retval;
 }
 
-#if BX_USE_WIN32USBDEBUG
-void bx_real_sim_c::register_usb_interface(usb_interface_callback_t callback, void *data)
+#if BX_USB_DEBUGGER
+void bx_real_sim_c::register_usb_debug_type(int type)
 {
-  usbi_callback = callback;
+  usb_dbg_register_type(type);
 }
 
-int bx_real_sim_c::usb_config_interface(int type, int wParam, int lParam)
+void bx_real_sim_c::usb_debug_trigger(int type, int trigger, Bit64u param0, int param1, int param2)
 {
-  if (!usbi_callback) {
-    BX_PANIC(("no usb interface was loaded"));
-    return -1;
+  usb_dbg_trigger(type, trigger, param0, param1, param2);
+}
+
+int bx_real_sim_c::usb_debug_interface(int type, Bit64u param0, int param1, int param2)
+{
+  int retval = -1;
+
+  if (type != USB_DEBUG_NONE) {
+    set_display_mode(DISP_MODE_CONFIG);
+    retval = usb_dbg_interface(type, param0, param1, param2);
+    set_display_mode(DISP_MODE_SIM);
   }
-  
-  set_display_mode(DISP_MODE_CONFIG);
-  int retval = (*usbi_callback)(type, wParam, lParam);
-  set_display_mode(DISP_MODE_SIM);
-  
   return retval;
 }
 #endif
@@ -1231,7 +1232,7 @@ bool bx_real_sim_c::restore_logopts()
     do {
       ret = fgets(line, sizeof(line)-1, fp);
       line[sizeof(line) - 1] = '\0';
-      int len = strlen(line);
+      int len = (int)strlen(line);
       if ((len>0) && (line[len-1] < ' '))
         line[len-1] = '\0';
       i = 0;
@@ -1282,7 +1283,7 @@ static int bx_restore_getline(FILE *fp, char *line, int maxlen)
 {
   char *ret = fgets(line, maxlen - 1, fp);
   line[maxlen - 1] = '\0';
-  int len = strlen(line);
+  int len = (int)strlen(line);
   if ((len > 0) && (line[len - 1] < ' '))
     line[len - 1] = '\0';
   return (ret != NULL) ? len : 0;

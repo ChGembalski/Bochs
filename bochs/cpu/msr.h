@@ -2,7 +2,7 @@
 // $Id$
 /////////////////////////////////////////////////////////////////////////
 //
-//  Copyright (C) 2019  The Bochs Project
+//  Copyright (C) 2019-2025  The Bochs Project
 //
 //  This library is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,21 @@
 #ifndef BX_MSR_H
 #define BX_MSR_H
 
+class MSR_Descriptor {
+private:
+  const char *msrname;
+  unsigned cpu_feature;
+
+public:
+  MSR_Descriptor(const char *name, unsigned feature): msrname(name), cpu_feature(feature) {}
+ ~MSR_Descriptor() {}
+
+  const char* get_name() const { return msrname; }
+  unsigned get_cpu_feature() const { return cpu_feature; }
+};
+
+typedef MSR_Descriptor* MSR_DescriptorPtr;
+
 enum MSR_Register {
   BX_MSR_TSC            = 0x010,
   BX_MSR_APICBASE       = 0x01b,
@@ -30,9 +45,11 @@ enum MSR_Register {
 
   BX_MSR_IA32_BARRIER   = 0x02f,
 
+  BX_MSR_IA32_UMWAIT_CONTROL    = 0x0e1,
+
   BX_MSR_IA32_SPEC_CTRL         = 0x048,
   BX_MSR_IA32_PRED_CMD          = 0x049,
-  BX_MSR_IA32_UMWAIT_CONTROL    = 0x0e1,
+  BX_MSR_IA32_CORE_CAPABILITIES = 0x0cf,
   BX_MSR_IA32_ARCH_CAPABILITIES = 0x10a,
   BX_MSR_IA32_FLUSH_CMD         = 0x10b,
 
@@ -41,6 +58,9 @@ enum MSR_Register {
   BX_MSR_SYSENTER_ESP = 0x175,
   BX_MSR_SYSENTER_EIP = 0x176,
 #endif
+
+  BX_MSR_IA32_XFD = 0x1c4,
+  BX_MSR_IA32_XFD_ERROR = 0x1c5,
 
   BX_MSR_DEBUGCTLMSR      = 0x1d9,
   BX_MSR_LASTBRANCHFROMIP = 0x1db,
@@ -126,7 +146,7 @@ enum MSR_Register {
   BX_MSR_VMX_PROCBASED_CTRLS3     = 0x492,
   BX_MSR_VMX_VMEXIT_CTRLS2        = 0x493,
   BX_MSR_IA32_FEATURE_CONTROL     = 0x03A,
-  BX_MSR_IA32_SMM_MONITOR_CTL     = 0x09B,
+  BX_MSR_IA32_SMM_MONITOR_CTRL    = 0x09B,
 #endif
 
   /* Shadow Stack */
@@ -149,6 +169,8 @@ enum MSR_Register {
   BX_MSR_IA32_UINTR_MISC = 0x988,
   BX_MSR_IA32_UINTR_PD = 0x989, // interface to UPID_ADDR
   BX_MSR_IA32_UINTR_TT = 0x98A, // interface to UITT_ADDR
+
+  BX_MSR_IA32_UINTR_TIMER = 0x1B00, // for User Timer feature (not implemented yet)
 #endif
 
   BX_MSR_XSS = 0xDA0,
@@ -172,4 +194,4 @@ enum MSR_Register {
 
 const unsigned BX_NUM_VARIABLE_RANGE_MTRRS = 8;
 
-#endif  // #ifndef BX_MSR_H
+#endif  // BX_MSR_H
