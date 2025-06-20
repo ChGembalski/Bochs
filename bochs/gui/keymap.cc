@@ -100,7 +100,7 @@ bx_keymap_c::~bx_keymap_c(void)
     keymapCount = 0;
 }
 
-#if defined(WIN32) || defined(__ANDROID__) || defined(__APPLE__)
+#if defined(WIN32) || defined(__ANDROID__)  // || defined(__APPLE__)
 static char* basename(char *path)
 {
   char *ptr;

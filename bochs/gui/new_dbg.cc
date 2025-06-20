@@ -30,6 +30,9 @@
   #include "new_dbg.h"
   #include "bochs.h"
   #include "siminterface.h"
+  #include "bx_debug/debug.h"
+  #include "pc_system.h"
+  #include "cpu/cpu.h"
 //#include "cpu/decoder/instr.h"
 
   extern void new_dbg_handler_custom(bool init);
@@ -290,9 +293,9 @@
     * command_finished_callback
    */
   bool command_finished_callback(int cpu) {
-    
+
     return bx_dbg_new->command_finished(cpu);
-    
+
   }
 
 
@@ -311,33 +314,33 @@ bx_dbg_gui_c::bx_dbg_gui_c(void) {
   this->cmd_chain->succ = NULL;
   this->cmd_chain->cmd = NULL;
   atomic_flag_clear(&this->cmd_chain_lock);
-    
+
   // setup asm buffer
   this->asm_buffer = (unsigned char *)malloc(ASM_BUFFER_SIZE * sizeof(unsigned char));
   this->asm_text_buffer = (unsigned char *)malloc(ASM_TEXT_BUFFER_SIZE * sizeof(unsigned char));
-  
+
   // mem dump buffer
   this->mem_buffer = (unsigned char *)realloc(NULL, 64 * sizeof(unsigned char));
-  
+
   // setup debugger callback
   register_dbg_gui_callback(command_finished_callback);
-  
+
   this->in_run_loop = false;
-  
+
   // stack buffer
   this->stack_data.data_64 = (bx_dbg_stack_entry_64_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_64_t));
   this->stack_data.data_32 = (bx_dbg_stack_entry_32_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_32_t));
   this->stack_data.data_16 = (bx_dbg_stack_entry_16_t *)malloc(STACK_ENTRY_LINES * sizeof(bx_dbg_stack_entry_16_t));
-  
+
   // setup breakpoint chain
   this->breakpoint_chain = (struct bx_dbg_breakpoint_chain_t *)malloc(sizeof(struct bx_dbg_breakpoint_chain_t));
   this->breakpoint_chain->pred = this->breakpoint_chain;
   this->breakpoint_chain->succ = NULL;
   this->breakpoint_chain->breakpoint = NULL;
-    
-  
+
+
   this->init_register_refs();
-  
+
 }
 
 /**
@@ -347,11 +350,11 @@ bx_dbg_gui_c::~bx_dbg_gui_c(void) {
 
   struct bx_dbg_cmd_chain_t * next;
   struct bx_dbg_breakpoint_chain_t * breakpoint_next;
-  
+
   next = this->cmd_chain;
   while (next != NULL) {
     struct bx_dbg_cmd_chain_t * node;
-    
+
     node = next;
     if (next->cmd != NULL) {
       free(next->cmd);
@@ -359,11 +362,11 @@ bx_dbg_gui_c::~bx_dbg_gui_c(void) {
     next = next->succ;
     free(node);
   };
-  
+
   breakpoint_next = this->breakpoint_chain;
   while (breakpoint_next != NULL) {
     struct bx_dbg_breakpoint_chain_t * node;
-    
+
     node = breakpoint_next;
     if (breakpoint_next->breakpoint != NULL) {
       if (breakpoint_next->breakpoint->condition != NULL) {
@@ -374,22 +377,22 @@ bx_dbg_gui_c::~bx_dbg_gui_c(void) {
     breakpoint_next = breakpoint_next->succ;
     free(node);
   };
-  
+
   free(this->asm_buffer);
   free(this->asm_text_buffer);
-  
+
   if (this->mem_buffer != NULL) {
     free(this->mem_buffer);
   }
-  
+
   free(this->stack_data.data_64);
   free(this->stack_data.data_32);
   free(this->stack_data.data_16);
-  
+
   if (this->smp_info.cpu_info != NULL) {
     free(this->smp_info.cpu_info);
   }
-  
+
 }
 
 /**
@@ -400,9 +403,9 @@ void bx_dbg_gui_c::init_internal(void) {
 
   this->read_dbg_gui_config();
 
-  
+
   this->init_os_depended();
-  
+
 }
 
 /**
@@ -411,7 +414,7 @@ void bx_dbg_gui_c::init_internal(void) {
 bool bx_dbg_gui_c::command_finished(int cpu) {
   if (this->in_run_loop) {
     bx_dbg_cmd_t * cmd;
-    
+
     cmd = dequeue_cmd();
     if (cmd != NULL) {
       if (cmd->cmd == DBG_BREAK) {
@@ -433,12 +436,12 @@ bool bx_dbg_gui_c::command_finished(int cpu) {
  * sync_evt_get_debug_command
  */
 size_t bx_dbg_gui_c::sync_evt_get_debug_command(char * buffer, size_t buffer_size) {
-  
+
   bx_dbg_cmd_t * cmd;
-  
+
   while(1) {
     cmd = dequeue_cmd();
-    
+
     if (cmd != NULL) {
       if (cmd->cmd == DBG_EXIT) {
         free(cmd);
@@ -457,11 +460,11 @@ size_t bx_dbg_gui_c::sync_evt_get_debug_command(char * buffer, size_t buffer_siz
       sleep(1);
 #endif
     }
-    
+
   };
-  
+
   return -1;
-  
+
 }
 
 
@@ -573,24 +576,24 @@ char * bx_dbg_gui_c::strip_whitespace(char * s) {
  * enqueue_cmd
  */
 void bx_dbg_gui_c::enqueue_cmd(bx_dbg_cmd_t * cmd) {
-  
+
   struct bx_dbg_cmd_chain_t * chain_cmd;
-  
+
   while(atomic_flag_test_and_set(&this->cmd_chain_lock)) {
     usleep(100);
   }
-  
+
   // root pred points to last element
-  
+
   chain_cmd = (struct bx_dbg_cmd_chain_t *)malloc(sizeof(struct bx_dbg_cmd_chain_t));
   this->cmd_chain->pred->succ = chain_cmd;
   chain_cmd->cmd = cmd;
   chain_cmd->pred = this->cmd_chain->pred;
   chain_cmd->succ = NULL;
   this->cmd_chain->pred = chain_cmd;
-  
+
   atomic_flag_clear(&this->cmd_chain_lock);
-  
+
 }
 
 /**
@@ -600,15 +603,15 @@ bx_dbg_cmd_t * bx_dbg_gui_c::dequeue_cmd(void) {
 
   bx_dbg_cmd_t * cmd;
   struct bx_dbg_cmd_chain_t * next;
-  
+
   if (this->cmd_chain->succ == NULL) {
     return (NULL);
   }
-  
+
   while(atomic_flag_test_and_set(&this->cmd_chain_lock)) {
     usleep(100);
   }
-  
+
   next = this->cmd_chain->succ;
   this->cmd_chain->succ = next->succ;
   if (next->succ != NULL) {
@@ -619,18 +622,18 @@ bx_dbg_cmd_t * bx_dbg_gui_c::dequeue_cmd(void) {
   }
   cmd = next->cmd;
   free(next);
-  
+
   atomic_flag_clear(&this->cmd_chain_lock);
-  
+
   return (cmd);
-  
+
 }
 
 /**
  * process_cmd
  */
 void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
-  
+
   switch (cmd->cmd) {
     case DBG_CONTINUE: {
       this->in_run_loop = true;
@@ -669,7 +672,7 @@ void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
       // ignore
     }
   }
-  
+
 }
 
 
@@ -677,62 +680,62 @@ void bx_dbg_gui_c::process_cmd(bx_dbg_cmd_t * cmd) {
  * cmd_step_n
  */
 void bx_dbg_gui_c::cmd_step_n(int cpuNo, unsigned step_cnt) {
-  
+
   bx_dbg_cmd_t * cmd;
-  
+
   cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
-  
+
   cmd->cmd = DBG_STEP_CPU;
   cmd->data.ctrl.cpu = cpuNo;
   cmd->data.ctrl.count = step_cnt;
-  
+
   this->enqueue_cmd(cmd);
-  
+
 }
 
 /**
  * cmd_continue
  */
 void bx_dbg_gui_c::cmd_continue(void) {
-  
+
   bx_dbg_cmd_t * cmd;
-  
+
   cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
-  
+
   cmd->cmd = DBG_CONTINUE;
-  
+
   this->enqueue_cmd(cmd);
-  
+
 }
 
 /**
  * cmd_break
  */
 void bx_dbg_gui_c::cmd_break(void) {
-  
+
   bx_dbg_cmd_t * cmd;
-  
+
   cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
-  
+
   cmd->cmd = DBG_BREAK;
-  
+
   this->enqueue_cmd(cmd);
-  
+
 }
 
 /**
  * cmd_step_over
  */
 void bx_dbg_gui_c::cmd_step_over(void) {
-  
+
   bx_dbg_cmd_t * cmd;
-  
+
   cmd = (bx_dbg_cmd_t *)malloc(sizeof(bx_dbg_cmd_t));
-  
+
   cmd->cmd = DBG_STEP;
-  
+
   this->enqueue_cmd(cmd);
-  
+
 }
 
 
@@ -749,26 +752,26 @@ void bx_dbg_gui_c::cmd_step_over(void) {
  * add_breakpoint_lin
  */
 bool bx_dbg_gui_c::add_breakpoint_lin(bx_address addr, bool enabled, const char * condition) {
-  
+
   bx_dbg_breakpoint_t * breakpoint;
   struct bx_dbg_breakpoint_chain_t * next;
   struct bx_dbg_breakpoint_chain_t * next_breakpoint;
-  
+
   breakpoint = (bx_dbg_breakpoint_t *)malloc(sizeof(bx_dbg_breakpoint_t));
   breakpoint->type = DBG_LIN_BREAK_POINT;
   breakpoint->enabled = enabled;
   breakpoint->addr.lin = addr;
-  
+
   if (condition != NULL) {
     size_t len;
-    
+
     len = strlen(condition);
     breakpoint->condition = (char *)malloc((len + 1) * sizeof(char));
     memcpy(breakpoint->condition, condition, len);
     breakpoint->condition[len] = 0;
     breakpoint->type = DBG_LIN_BREAK_POINT_COND;
   }
-  
+
   breakpoint->handle = bx_dbg_lbreakpoint_command(bkRegular, addr, condition);
   if (breakpoint->handle == -1) {
     if (breakpoint->condition != NULL) {
@@ -777,44 +780,44 @@ bool bx_dbg_gui_c::add_breakpoint_lin(bx_address addr, bool enabled, const char 
     free(breakpoint);
     return (false);
   }
-  
+
   next_breakpoint = (bx_dbg_breakpoint_chain_t *)malloc(sizeof(bx_dbg_breakpoint_chain_t));
   next_breakpoint->breakpoint = breakpoint;
-  
+
   next = this->breakpoint_chain->pred;
   next_breakpoint->pred = next;
   next->succ = next_breakpoint;
   this->breakpoint_chain->pred = next_breakpoint;
-  
+
   return true;
-  
+
 }
 
 /**
  * add_breakpoint_virt
  */
 bool bx_dbg_gui_c::add_breakpoint_virt(bx_dbg_address_t addr, bool enabled, const char * condition) {
-  
+
   bx_dbg_breakpoint_t * breakpoint;
   struct bx_dbg_breakpoint_chain_t * next;
   struct bx_dbg_breakpoint_chain_t * next_breakpoint;
-  
+
   breakpoint = (bx_dbg_breakpoint_t *)malloc(sizeof(bx_dbg_breakpoint_t));
   breakpoint->type = DBG_VIRT_BREAK_POINT;
   breakpoint->enabled = enabled;
   breakpoint->addr.seg.seg = addr.seg;
   breakpoint->addr.seg.ofs = addr.ofs;
-  
+
   if (condition != NULL) {
     size_t len;
-    
+
     len = strlen(condition);
     breakpoint->condition = (char *)malloc((len + 1) * sizeof(char));
     memcpy(breakpoint->condition, condition, len);
     breakpoint->condition[len] = 0;
     breakpoint->type = DBG_VIRT_BREAK_POINT_COND;
   }
-  
+
   breakpoint->handle = bx_dbg_vbreakpoint_command(bkRegular, addr.seg, addr.ofs, condition);
   if (breakpoint->handle == -1) {
     if (breakpoint->condition != NULL) {
@@ -823,43 +826,43 @@ bool bx_dbg_gui_c::add_breakpoint_virt(bx_dbg_address_t addr, bool enabled, cons
     free(breakpoint);
     return (false);
   }
-  
+
   next_breakpoint = (bx_dbg_breakpoint_chain_t *)malloc(sizeof(bx_dbg_breakpoint_chain_t));
   next_breakpoint->breakpoint = breakpoint;
-  
+
   next = this->breakpoint_chain->pred;
   next_breakpoint->pred = next;
   next->succ = next_breakpoint;
   this->breakpoint_chain->pred = next_breakpoint;
-  
+
   return true;
-  
+
 }
 
 /**
  * add_breakpoint_phy
  */
 bool bx_dbg_gui_c::add_breakpoint_phy(bx_address addr, bool enabled, const char * condition) {
-  
+
   bx_dbg_breakpoint_t * breakpoint;
   struct bx_dbg_breakpoint_chain_t * next;
   struct bx_dbg_breakpoint_chain_t * next_breakpoint;
-  
+
   breakpoint = (bx_dbg_breakpoint_t *)malloc(sizeof(bx_dbg_breakpoint_t));
   breakpoint->type = DBG_PHY_BREAK_POINT;
   breakpoint->enabled = enabled;
   breakpoint->addr.lin = addr;
-  
+
   if (condition != NULL) {
     size_t len;
-    
+
     len = strlen(condition);
     breakpoint->condition = (char *)malloc((len + 1) * sizeof(char));
     memcpy(breakpoint->condition, condition, len);
     breakpoint->condition[len] = 0;
     breakpoint->type = DBG_PHY_BREAK_POINT_COND;
   }
-  
+
   breakpoint->handle = bx_dbg_pbreakpoint_command(bkRegular, addr, condition);
   if (breakpoint->handle == -1) {
     if (breakpoint->condition != NULL) {
@@ -868,17 +871,17 @@ bool bx_dbg_gui_c::add_breakpoint_phy(bx_address addr, bool enabled, const char 
     free(breakpoint);
     return (false);
   }
-  
+
   next_breakpoint = (bx_dbg_breakpoint_chain_t *)malloc(sizeof(bx_dbg_breakpoint_chain_t));
   next_breakpoint->breakpoint = breakpoint;
-  
+
   next = this->breakpoint_chain->pred;
   next_breakpoint->pred = next;
   next->succ = next_breakpoint;
   this->breakpoint_chain->pred = next_breakpoint;
-  
+
   return true;
-  
+
 }
 
 /**
@@ -887,21 +890,21 @@ bool bx_dbg_gui_c::add_breakpoint_phy(bx_address addr, bool enabled, const char 
 int bx_dbg_gui_c::get_breakpoint_lin_count(void) {
   int result;
   struct bx_dbg_breakpoint_chain_t * next;
-  
+
   result = 0;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
         result++;
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -910,21 +913,21 @@ int bx_dbg_gui_c::get_breakpoint_lin_count(void) {
 int bx_dbg_gui_c::get_breakpoint_virt_count(void) {
   int result;
   struct bx_dbg_breakpoint_chain_t * next;
-  
+
   result = 0;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_VIRT_BREAK_POINT) || (next->breakpoint->type == DBG_VIRT_BREAK_POINT_COND)) {
         result++;
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -933,21 +936,21 @@ int bx_dbg_gui_c::get_breakpoint_virt_count(void) {
 int bx_dbg_gui_c::get_breakpoint_phy_count(void) {
   int result;
   struct bx_dbg_breakpoint_chain_t * next;
-  
+
   result = 0;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_PHY_BREAK_POINT) || (next->breakpoint->type == DBG_PHY_BREAK_POINT_COND)) {
         result++;
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -957,12 +960,12 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(int no) {
   int pos;
   struct bx_dbg_breakpoint_chain_t * next;
   bx_dbg_breakpoint_t * result;
-  
+
   pos = 0;
   result = NULL;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
         if (pos == no) {
@@ -972,11 +975,11 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(int no) {
         pos++;
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -985,11 +988,11 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(int no) {
 bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(bx_address addr) {
   struct bx_dbg_breakpoint_chain_t * next;
   bx_dbg_breakpoint_t * result;
-  
+
   result = NULL;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_LIN_BREAK_POINT) || (next->breakpoint->type == DBG_LIN_BREAK_POINT_COND)) {
         if (next->breakpoint->addr.lin == addr) {
@@ -998,11 +1001,11 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_lin(bx_address addr) {
         }
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -1012,12 +1015,12 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_virt(int no) {
   int pos;
   struct bx_dbg_breakpoint_chain_t * next;
   bx_dbg_breakpoint_t * result;
-  
+
   pos = 0;
   result = NULL;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_VIRT_BREAK_POINT) || (next->breakpoint->type == DBG_VIRT_BREAK_POINT_COND)) {
         if (pos == no) {
@@ -1027,11 +1030,11 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_virt(int no) {
         pos++;
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -1041,12 +1044,12 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_phy(int no) {
   int pos;
   struct bx_dbg_breakpoint_chain_t * next;
   bx_dbg_breakpoint_t * result;
-  
+
   pos = 0;
   result = NULL;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-  
+
     if (next->breakpoint != NULL) {
       if ((next->breakpoint->type == DBG_PHY_BREAK_POINT) || (next->breakpoint->type == DBG_PHY_BREAK_POINT_COND)) {
         if (pos == no) {
@@ -1056,11 +1059,11 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_phy(int no) {
         pos++;
       }
     }
-    
+
   }
-  
+
   return (result);
-  
+
 }
 
 /**
@@ -1069,17 +1072,17 @@ bx_dbg_breakpoint_t * bx_dbg_gui_c::get_breakpoint_phy(int no) {
 void bx_dbg_gui_c::del_breakpoint(unsigned handle) {
   struct bx_dbg_breakpoint_chain_t * next;
   struct bx_dbg_breakpoint_chain_t * node;
-  
+
   node = NULL;
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-    
+
     if (next->breakpoint != NULL) {
       if (next->breakpoint->handle == handle) {
         node = next;
         break;
       }
     }
-    
+
   }
 
   if (node == NULL) {
@@ -1100,7 +1103,7 @@ void bx_dbg_gui_c::del_breakpoint(unsigned handle) {
       return;
     }
   }
-        
+
   if (node->breakpoint->condition != NULL) {
     free(node->breakpoint->condition);
   }
@@ -1111,7 +1114,7 @@ void bx_dbg_gui_c::del_breakpoint(unsigned handle) {
   } else {
     this->breakpoint_chain->pred = node->pred;
   }
-  
+
 }
 
 /**
@@ -1119,12 +1122,12 @@ void bx_dbg_gui_c::del_breakpoint(unsigned handle) {
  */
 void bx_dbg_gui_c::del_all_breakpoints(void) {
   struct bx_dbg_breakpoint_chain_t * next;
-  
+
   next = this->breakpoint_chain->succ;
   while (next != NULL) {
-    
+
     struct bx_dbg_breakpoint_chain_t * node;
-    
+
     switch (next->breakpoint->type) {
       case DBG_VIRT_BREAK_POINT:
       case DBG_VIRT_BREAK_POINT_COND:
@@ -1139,24 +1142,24 @@ void bx_dbg_gui_c::del_all_breakpoints(void) {
         return;
       }
     }
-    
+
     if (next->breakpoint->condition != NULL) {
       free(next->breakpoint->condition);
     }
     free(next->breakpoint);
-    
+
     node = next;
     next = next->succ;
-    
+
     node->pred->succ = node->succ;
     if (node->succ != NULL) {
       node->succ->pred = node->pred;
     } else {
       this->breakpoint_chain->pred = node->pred;
     }
-    
+
   }
-  
+
 }
 
 /**
@@ -1164,9 +1167,9 @@ void bx_dbg_gui_c::del_all_breakpoints(void) {
  */
 void bx_dbg_gui_c::enable_breakpoint(unsigned handle, bool enable) {
   struct bx_dbg_breakpoint_chain_t * next;
-  
+
   for ( next = this->breakpoint_chain ; next != NULL ; next = next->succ ) {
-    
+
     if (next->breakpoint != NULL) {
       if (next->breakpoint->handle == handle) {
         bx_dbg_en_dis_breakpoint_command(handle, enable);
@@ -1174,9 +1177,9 @@ void bx_dbg_gui_c::enable_breakpoint(unsigned handle, bool enable) {
         break;
       }
     }
-    
+
   }
-  
+
 }
 
 
@@ -1218,7 +1221,7 @@ void bx_dbg_gui_c::init_register_refs(void) {
     }
 
     this->update_register(cpuNo);
-    
+
   }
 }
 
@@ -1228,14 +1231,16 @@ void bx_dbg_gui_c::init_register_refs(void) {
 void bx_dbg_gui_c::update_register(unsigned cpuNo) {
 
   unsigned cpuregno;
-  
+  bx_dbg_guard_state_t guard_state;
+
+  BX_CPU(cpuNo)->dbg_get_guard_state(&guard_state);
   this->smp_info.cpu_info[cpuNo].cpu_no = cpuNo;
   this->smp_info.cpu_info[cpuNo].cpu_mode = BX_CPU(cpuNo)->get_cpu_mode();
-  this->smp_info.cpu_info[cpuNo].cpu_mode32 = IS_CODE_32(BX_CPU(cpuNo)->guard_found.code_32_64);
-  this->smp_info.cpu_info[cpuNo].cpu_mode64 = IS_CODE_64(BX_CPU(cpuNo)->guard_found.code_32_64);
+  this->smp_info.cpu_info[cpuNo].cpu_mode32 = IS_CODE_32(guard_state.code_32_64);
+  this->smp_info.cpu_info[cpuNo].cpu_mode64 = IS_CODE_64(guard_state.code_32_64);
   this->smp_info.cpu_info[cpuNo].cpu_paging = this->smp_info.cpu_info[cpuNo].regs[CR0]->get64() & 0x80000000;
 
-  
+
   // setup reg_value
   cpuregno = 0;
   while (cpuregno != CPU_REG_END) {
@@ -1253,7 +1258,7 @@ void bx_dbg_gui_c::update_register(unsigned cpuNo) {
       }
     } else {
       this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].name = dbg_reg_names[cpuregno];
-      
+
 #if BX_SUPPORT_FPU
       // fpu regs
       if (cpuregno >= FPU_ST0_F & cpuregno <= FPU_ST7_E) {
@@ -1283,28 +1288,28 @@ void bx_dbg_gui_c::update_register(unsigned cpuNo) {
         this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].size = 64;
       }
     }
-    
+
     // set value
     this->smp_info.cpu_info[cpuNo].reg_value[cpuregno].value = this->smp_info.cpu_info[cpuNo].regs[cpuregno]->get64();
-    
+
     cpuregno++;
   }
-  
+
 }
 
 /**
  * write_register
  */
 void bx_dbg_gui_c::write_register(unsigned cpuNo, unsigned regno) {
-  
+
   Bit64u val;
-  
+
   val = this->smp_info.cpu_info[cpuNo].reg_value[regno].value;
-  
+
   switch (this->smp_info.cpu_info[cpuNo].reg_value[regno].size) {
     case 16: {
       Bit64u old;
-      
+
       old = (this->smp_info.cpu_info[cpuNo].regs[regno]->get64() & ~0xFFFF);
       old |= (val & 0xFFFF);
       this->smp_info.cpu_info[cpuNo].regs[regno]->set(old);
@@ -1312,7 +1317,7 @@ void bx_dbg_gui_c::write_register(unsigned cpuNo, unsigned regno) {
     }
     case 32: {
       Bit64u old;
-      
+
       old = (this->smp_info.cpu_info[cpuNo].regs[regno]->get64() & ~0xFFFFFFFF);
       old |= (val & 0xFFFFFFFF);
       this->smp_info.cpu_info[cpuNo].regs[regno]->set(old);
@@ -1323,7 +1328,7 @@ void bx_dbg_gui_c::write_register(unsigned cpuNo, unsigned regno) {
       break;
     }
   }
-  
+
 }
 
 
@@ -1331,7 +1336,7 @@ void bx_dbg_gui_c::write_register(unsigned cpuNo, unsigned regno) {
  * disassemble
  */
 void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, bool gas) {
-  
+
   bx_address laddr;
   bool read_ok;
   Bit32u lineno;
@@ -1340,9 +1345,9 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   bxInstruction_c i;
   Bit32u seg_base;
   bx_address lin_ofs;
-  
+
   dbg_cpu = cpuNo;
-  
+
   if (seg) {
     laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
     seg_base = get_segment(cpuNo, addr.seg, addr.ofs);
@@ -1359,36 +1364,36 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
   // clear buffers
   memset(this->asm_buffer, 0, ASM_BUFFER_SIZE);
   memset(this->asm_text_buffer, 0, ASM_TEXT_BUFFER_SIZE);
-  
+
   // ok now fill the buffer
   read_ok = bx_dbg_read_linear(cpuNo, laddr, ASM_BUFFER_SIZE, this->asm_buffer);
   if (!read_ok) {
     return;
   }
-  
+
   // create disasm
   data_ofs = 0;
   text_ptr = this->asm_text_buffer;
-  
+
   for (lineno = 0; lineno<ASM_ENTRY_LINES; lineno++) {
-    
+
     char buffer[64] = {0};
     size_t buffer_len;
-    
+
     disasm(
       (const Bit8u *)&this->asm_buffer[data_ofs],
       this->smp_info.cpu_info[cpuNo].cpu_mode32,
       this->smp_info.cpu_info[cpuNo].cpu_mode64,
       buffer,
-      &i, 
+      &i,
       BX_JUMP_TARGET_NOT_REQ,
       laddr,
       gas ? BX_DISASM_GAS : BX_DISASM_INTEL
     );
-    
+
     buffer_len = strlen(buffer) + 1;
     memcpy(text_ptr, buffer, buffer_len);
-    
+
     // setup asm_lines
     this->asm_lines[lineno].addr_seg.seg = seg_base;
     this->asm_lines[lineno].addr_seg.ofs = lin_ofs;
@@ -1396,7 +1401,7 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
     this->asm_lines[lineno].len = i.ilen();
     this->asm_lines[lineno].data = &this->asm_buffer[data_ofs];
     this->asm_lines[lineno].text = text_ptr;
-  
+
     text_ptr += buffer_len;
     laddr += this->asm_lines[lineno].len;
     data_ofs += this->asm_lines[lineno].len;
@@ -1410,18 +1415,18 @@ void bx_dbg_gui_c::disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr, 
       }
     }
   }
-  
+
 }
 
 /**
  * must_disassemble
  */
 bool bx_dbg_gui_c::must_disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t addr) {
-  
+
   bx_address laddr;
   bx_address laddr_from;
   bx_address laddr_to;
-  
+
   if (seg) {
     laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
     laddr_from = bx_dbg_get_laddr(this->asm_lines[0].addr_seg.seg, this->asm_lines[0].addr_seg.ofs);
@@ -1435,21 +1440,21 @@ bool bx_dbg_gui_c::must_disassemble(unsigned cpuNo, bool seg, bx_dbg_address_t a
     laddr_from = this->asm_lines[0].addr_lin;
     laddr_to = this->asm_lines[ASM_ENTRY_LINES - 1].addr_lin;
   }
-  
+
   return !((laddr >= laddr_from) && (laddr <= laddr_to));
-  
+
 }
-  
-  
+
+
 /**
  * get_segment
  */
 bx_address bx_dbg_gui_c::get_segment(unsigned cpuNo, Bit16u sel, bx_address ofs) {
-  
+
   bx_address laddr;
 
   dbg_cpu = cpuNo;
-  
+
   if (BX_CPU(dbg_cpu)->protected_mode()) {
 
     bx_descriptor_t descriptor;
@@ -1475,47 +1480,47 @@ bx_address bx_dbg_gui_c::get_segment(unsigned cpuNo, Bit16u sel, bx_address ofs)
     }
 
     laddr = descriptor.u.segment.base;
-    
+
   } else {
-    
+
     laddr = sel;
-    
+
   }
 
   return laddr;
-  
+
 }
-  
+
 /**
  * memorydump
  */
 void bx_dbg_gui_c::memorydump(unsigned cpuNo, bool seg, bx_dbg_address_t addr, size_t buffer_size) {
-  
+
   bx_address laddr;
-  
+
   if (seg) {
     laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
   } else {
     laddr = addr.ofs;
   }
-  
+
   // prepare buffer
   this->mem_buffer = (unsigned char *)realloc(this->mem_buffer, buffer_size * sizeof(unsigned char));
-  
+
   bx_dbg_read_linear(cpuNo, laddr, buffer_size, this->mem_buffer);
-  
+
 }
 
 /**
  * memoryset
  */
 void bx_dbg_gui_c::memoryset(unsigned cpuNo, bx_dbg_address_t addr, Bit8u val) {
-  
+
   bx_address laddr;
-  
+
   laddr = bx_dbg_get_laddr(addr.seg, addr.ofs);
   bx_dbg_write_linear(cpuNo, laddr, 1, &val);
-  
+
 }
 
 
@@ -1523,7 +1528,7 @@ void bx_dbg_gui_c::memoryset(unsigned cpuNo, bx_dbg_address_t addr, Bit8u val) {
  * prepare_stack_data
  */
 void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {
-  
+
   BX_CPU_C * cpu;
 #if BX_SUPPORT_X86_64
   bx_address linear_sp64;
@@ -1533,9 +1538,9 @@ void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {
   Bit8u buf64[8];
   Bit8u buf32[4];
   Bit8u buf16[2];
-  
+
   this->stack_data.cnt = 0;
-  
+
   cpu = BX_CPU(cpuNo);
 #if BX_SUPPORT_X86_64
     linear_sp64 = cpu->get_reg64(BX_64BIT_REG_RSP);
@@ -1544,7 +1549,7 @@ void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {
   linear_sp32 = cpu->get_laddr(BX_SEG_REG_SS, linear_sp32);
   linear_sp16 = cpu->get_reg16(BX_16BIT_REG_SP);
   linear_sp16 = cpu->get_laddr(BX_SEG_REG_SS, linear_sp16);
-  
+
   for (unsigned i = 0; i < STACK_ENTRY_LINES; i++) {
 
 #if BX_SUPPORT_X86_64
@@ -1552,57 +1557,57 @@ void bx_dbg_gui_c::prepare_stack_data(unsigned cpuNo) {
 #endif
     if (! bx_dbg_read_linear(cpuNo, linear_sp32, 4, buf32)) break;
     if (! bx_dbg_read_linear(cpuNo, linear_sp16, 2, buf16)) break;
-    
+
 #if BX_SUPPORT_X86_64
     this->stack_data.data_64[i].addr_lin = linear_sp64;
     this->stack_data.data_64[i].addr_seg.seg = 0;
     this->stack_data.data_64[i].addr_seg.ofs = linear_sp64;
     this->stack_data.data_64[i].addr_on_stack = conv_8xBit8u_to_Bit64u(buf64);
 #endif
-    
+
     this->stack_data.data_32[i].addr_lin = linear_sp32;
     this->stack_data.data_32[i].addr_seg.seg = 0;
     this->stack_data.data_32[i].addr_seg.ofs = linear_sp32;
     this->stack_data.data_32[i].addr_on_stack = conv_4xBit8u_to_Bit32u(buf32);
-    
+
     this->stack_data.data_16[i].addr_lin = linear_sp16;
     this->stack_data.data_16[i].addr_seg.seg = 0;
     this->stack_data.data_16[i].addr_seg.ofs = linear_sp16;
     this->stack_data.data_16[i].addr_on_stack = conv_2xBit8u_to_Bit16u(buf16);
-    
+
 #if BX_SUPPORT_X86_64
     linear_sp64 += 8;
 #endif
     linear_sp32 += 4;
     linear_sp16 += 2;
     this->stack_data.cnt ++;
-    
+
   }
-  
+
 }
 
 /**
  * is_addr_equal
  */
 bool bx_dbg_gui_c::is_addr_equal(unsigned cpuNo, bool segA, bx_dbg_address_t addrA, bool segB, bx_dbg_address_t addrB) {
-  
+
   bx_address linA;
   bx_address linB;
-  
+
   if (segA) {
     linA = bx_dbg_get_laddr(addrA.seg, addrA.ofs);
   } else {
     linA = addrA.ofs;
   }
-  
+
   if (segB) {
     linB = bx_dbg_get_laddr(addrB.seg, addrB.ofs);
   } else {
     linB = addrB.ofs;
   }
-  
+
   return (linA == linB);
-  
+
 }
 
 
